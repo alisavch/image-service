@@ -3,10 +3,9 @@ package main
 import (
 	"flag"
 
-	"github.com/sirupsen/logrus"
-
 	"github.com/alisavch/image-service/internal/apiserver"
 	_ "github.com/alisavch/image-service/internal/log"
+	"github.com/sirupsen/logrus"
 )
 
 func main() {

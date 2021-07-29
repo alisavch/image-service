@@ -14,11 +14,11 @@ import (
 	"github.com/google/uuid"
 )
 
-type  key string
+type key string
 
 const (
 	authorizationHeader key = "Authorization"
-	userCtx key             = "userId"
+	userCtx             key = "userId"
 )
 
 func (s *Server) authorize(next http.Handler) http.HandlerFunc {
@@ -56,10 +56,9 @@ func (s *Server) getUserID(r *http.Request) (int, error) {
 }
 
 func (s *Server) uploadImage(r *http.Request, uploadedImage model.UploadedImage) (model.UploadedImage, error) {
-	r.ParseMultipartForm(32 << 20)
 	file, handler, err := r.FormFile("uploadFile")
 	if err != nil {
-		return model.UploadedImage{}, utils.ErrUpload
+		return model.UploadedImage{}, err
 	}
 	defer file.Close()
 	handler.Filename = strings.Replace(uuid.New().String(), "-", "", -1) + handler.Filename

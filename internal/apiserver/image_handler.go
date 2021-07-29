@@ -22,11 +22,13 @@ func (s *Server) findUserHistory() http.HandlerFunc {
 		if err != nil {
 			s.error(w, r, http.StatusBadRequest, utils.ErrRequest)
 		}
+
 		vars := mux.Vars(r)
 		paramID, ok := vars["userID"]
 		if !ok {
 			s.error(w, r, http.StatusBadRequest, utils.ErrRequest)
 		}
+
 		intIDParam, _ := strconv.Atoi(paramID)
 		if userID != intIDParam {
 			s.error(w, r, http.StatusNotFound, utils.ErrPrivileges)
@@ -47,6 +49,12 @@ func (s *Server) compressImage() http.HandlerFunc {
 			return
 		}
 		user.ID = userID
+
+		err = r.ParseMultipartForm(32 << 20)
+		if err != nil {
+			s.error(w, r, http.StatusInternalServerError, utils.ErrMultipartForm)
+			return
+		}
 
 		newUploadedImage, err := s.uploadImage(r, uploadedImage)
 		if err != nil {
@@ -72,9 +80,9 @@ func (s *Server) compressImage() http.HandlerFunc {
 			newUploadedImage,
 			resultedImage,
 			model.UserImage{
-				UserAccountID: userID,
+				UserAccountID:   userID,
 				UploadedImageID: newUploadedImage.ID,
-				Status: model.Queued},
+				Status:          model.Queued},
 			model.Request{})
 		if err != nil {
 			s.error(w, r, http.StatusInternalServerError, err)
@@ -138,6 +146,11 @@ func (s *Server) convertImage() http.HandlerFunc {
 		}
 		user.ID = userID
 
+		err = r.ParseMultipartForm(32 << 20)
+		if err != nil {
+			s.error(w, r, http.StatusInternalServerError, utils.ErrMultipartForm)
+			return
+		}
 		newUploadedImage, err := s.uploadImage(r, uploadedImage)
 		if err != nil {
 			s.error(w, r, http.StatusInternalServerError, err)

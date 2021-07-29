@@ -43,4 +43,6 @@ var (
 	ErrConvert = errors.New("cannot convert")
 	// ErrCreateRequest the correctness of create request with image.
 	ErrCreateRequest = errors.New("cannot create request with image")
+	// ErrMultipartForm the correctness of parse multipart form.
+	ErrMultipartForm = errors.New("cannot parse multipart form")
 )

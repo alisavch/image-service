@@ -11,6 +11,7 @@ import (
 	"github.com/alisavch/image-service/internal/utils"
 )
 
+// EncodeConfig contains image constants.
 type EncodeConfig struct {
 	jpegQuality         int
 	pngCompressionLevel int

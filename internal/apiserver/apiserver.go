@@ -11,7 +11,7 @@ import (
 	"github.com/alisavch/image-service/internal/repository"
 	"github.com/alisavch/image-service/internal/service"
 	"github.com/joho/godotenv"
-	_ "github.com/lib/pq"
+	_ "github.com/lib/pq" // Registers database.
 )
 
 // Start starts the server.

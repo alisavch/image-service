@@ -19,3 +19,13 @@
 ### Go Patch ###
 /vendor/
 /Godeps/
+
+*.env
+# images #
+/results/
+/uploads/
+*.jpg
+*.jpeg
+*.JPG
+*.png
+*.tiff

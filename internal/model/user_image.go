@@ -1,10 +1,11 @@
-package domain
+package model
 
 // UserImage contains details of a single request.
 type UserImage struct {
-	ID              int64  `json:"id,omitempty"`
-	UserAccountID   int64  `json:"user_account_id,omitempty"`
-	UploadedImageID int64  `json:"uploaded_image_id,omitempty"`
+	ID              int    `json:"id,omitempty"`
+	UserAccountID   int    `json:"user_account_id,omitempty"`
+	UploadedImageID int    `json:"uploaded_image_id,omitempty"`
+	ResultedImageID int    `json:"resulted_image_id,omitempty"`
 	Status          Status `json:"status,omitempty"`
 }
 
@@ -15,9 +16,9 @@ type (
 
 const (
 	// Queued is the status of the request.
-	Queued     Status = "queued"
+	Queued Status = "queued"
 	// Processing is the status of the request.
 	Processing Status = "processing"
 	// Done is the status of the request.
-	Done       Status = "done"
+	Done Status = "done"
 )

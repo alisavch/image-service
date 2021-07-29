@@ -1,4 +1,4 @@
-package domain
+package model
 
 type (
 	// Service is the name of the command being executed.
@@ -7,15 +7,15 @@ type (
 
 const (
 	// Conversion is a command with an image.
-	Conversion  Service = "conversion"
+	Conversion Service = "conversion"
 	// Compression is a command with an image.
 	Compression Service = "compression"
 )
 
 // ResultedImage contains information about resulted image.
 type ResultedImage struct {
-	ID       int64   `json:"id,omitempty"`
-	Name     string  `json:"name,omitempty"`
-	Location string  `json:"location,omitempty"`
+	ID       int     `json:"id,omitempty"`
+	Name     string  `json:"resulted_name,omitempty"`
+	Location string  `json:"resulted_location,omitempty"`
 	Service  Service `json:"service,omitempty"`
 }

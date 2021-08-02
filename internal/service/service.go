@@ -22,6 +22,7 @@ type Image interface {
 	CreateRequest(ctx context.Context, user model.User, uplImg model.UploadedImage, resImg model.ResultedImage, uI model.UserImage, r model.Request) (int, error)
 	FindTheResultingImage(ctx context.Context, id int, service model.Service) (model.ResultedImage, error)
 	FindOriginalImage(ctx context.Context, id int) (model.UploadedImage, error)
+	FindUserHistoryByID(ctx context.Context, id int) ([]model.History, error)
 	SaveImage(filename, folder, resultedFilename string) error
 }
 

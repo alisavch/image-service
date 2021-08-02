@@ -31,16 +31,6 @@ func (s *Server) error(w http.ResponseWriter, r *http.Request, code int, err err
 	s.respondJSON(w, r, code, map[string]string{"error": err.Error()})
 }
 
-//
-//func (s *Server) renderJSON(w http.ResponseWriter, r *http.Request, data interface{}) {
-//	w.Header().Set("Content-Type", "application/json")
-//	dec := json.NewDecoder(r.Body)
-//	if err := dec.Decode(data); err != nil {
-//		s.error(w, r, http.StatusBadRequest, err)
-//		return
-//	}
-//}
-
 func (s *Server) respondJSON(w http.ResponseWriter, r *http.Request, code int, data interface{}) {
 	w.WriteHeader(code)
 	w.Header().Set("Content-Type", "application/json")

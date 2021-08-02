@@ -3,6 +3,7 @@ package repository
 import (
 	"context"
 	"database/sql"
+	_ "time" // Registers time.
 
 	"github.com/alisavch/image-service/internal/model"
 )
@@ -15,6 +16,31 @@ type ImageRepository struct {
 // NewImageRepository is constructor of the ImageRepository.
 func NewImageRepository(db *sql.DB) *ImageRepository {
 	return &ImageRepository{db: db}
+}
+
+// FindUserHistoryByID allows to get the history of interaction with the user's service.
+func (i *ImageRepository) FindUserHistoryByID(ctx context.Context, id int) ([]model.History, error) {
+	query := "SELECT upi.uploaded_name, ri.resulted_name, ri.service, r.time_start, r.end_of_time, ui.status from image_service.request r INNER JOIN image_service.user_image ui on r.user_image_id = ui.id INNER JOIN image_service.uploaded_image upi on ui.uploaded_image_id = upi.id INNER JOIN image_service.resulted_image ri on ri.id = ui.resulting_image_id INNER JOIN image_service.user_account ua on ua.id = ui.user_account_id where ua.id = $1"
+	rows, err := i.db.QueryContext(ctx, query, id)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var history []model.History
+
+	for rows.Next() {
+		var hist model.History
+		if err := rows.Scan(&hist.UploadedName, &hist.ResultedName, &hist.Service, &hist.TimeStart, &hist.EndOfTime, &hist.Status); err != nil {
+			return history, nil
+		}
+		history = append(history, hist)
+	}
+
+	if err = rows.Err(); err != nil {
+		return history, err
+	}
+	return history, nil
 }
 
 // UploadImage allows to upload an image.

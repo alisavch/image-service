@@ -21,20 +21,16 @@ func (s *Server) findUserHistory() http.HandlerFunc {
 		userID, err := s.getUserID(r)
 		if err != nil {
 			s.error(w, r, http.StatusBadRequest, utils.ErrRequest)
-		}
-
-		vars := mux.Vars(r)
-		paramID, ok := vars["userID"]
-		if !ok {
-			s.error(w, r, http.StatusBadRequest, utils.ErrRequest)
-		}
-
-		intIDParam, _ := strconv.Atoi(paramID)
-		if userID != intIDParam {
-			s.error(w, r, http.StatusNotFound, utils.ErrPrivileges)
 			return
 		}
-		s.respondJSON(w, r, http.StatusOK, userID)
+
+		result, err := s.service.Image.FindUserHistoryByID(r.Context(), userID)
+		if err != nil {
+			s.error(w, r, http.StatusInternalServerError, err)
+			return
+		}
+
+		s.respondJSON(w, r, http.StatusOK, result)
 	}
 }
 

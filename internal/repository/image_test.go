@@ -10,6 +10,51 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+func TestImageRepository_FindUserHistoryByID(t *testing.T) {
+	db, mock, err := sqlmock.New()
+	if err != nil {
+		t.Fatalf("an error '%s' was not expected wher opening a stub database connection", err)
+	}
+	defer db.Close()
+
+	repo := NewImageRepository(db)
+
+	tests := []struct {
+		name  string
+		mock  func()
+		input int
+		want  []model.History
+		isOk  bool
+	}{
+		{
+			name:  "Test with correct values",
+			input: 1,
+			mock: func() {
+				rows := sqlmock.NewRows([]string{"uploaded_name", "resulted_name", "service", "time_start", "end_of_time", "status"}).AddRow("", "", "", "", "", "")
+				mock.ExpectQuery("SELECT (.+) from image_service.request r INNER JOIN image_service.user_image ui on r.user_image_id = ui.id INNER JOIN image_service.uploaded_image upi on ui.uploaded_image_id = upi.id INNER JOIN image_service.resulted_image ri on ri.id = ui.resulting_image_id INNER JOIN image_service.user_account ua on ua.id = ui.user_account_id").
+					WithArgs(1).WillReturnRows(rows)
+			},
+			want: []model.History(nil),
+			isOk: true,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			tt.mock()
+
+			got, err := repo.FindUserHistoryByID(context.TODO(), tt.input)
+			if tt.isOk {
+				require.NoError(t, err)
+				require.Equal(t, tt.want, got)
+			} else {
+				require.Error(t, err)
+			}
+			require.NoError(t, mock.ExpectationsWereMet())
+		})
+	}
+}
+
 func TestImageRepository_UploadImage(t *testing.T) {
 	db, mock, err := sqlmock.New()
 	if err != nil {

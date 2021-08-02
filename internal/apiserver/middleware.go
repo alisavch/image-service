@@ -41,7 +41,7 @@ type imageRequest interface {
 	Build(r *http.Request) (int, error)
 }
 
-// ParseUserRequest parses request from http Request, stores it in the value pointed to by req.
+// ParseImageRequest parses request from http Request, stores it in the value pointed to by req.
 func ParseImageRequest(r *http.Request, req imageRequest) (int, error) {
 	v, err := req.Build(r)
 	if err != nil {

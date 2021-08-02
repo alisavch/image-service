@@ -1,6 +1,7 @@
 package apiserver
 
 import (
+	"fmt"
 	"net/http"
 	"net/http/httptest"
 	"strconv"
@@ -17,7 +18,7 @@ import (
 )
 
 func TestHandler_findUserHistory(t *testing.T) {
-	type fnBehavior func(mockAuthorization *mocks.Authorization, token string)
+	type fnBehavior func(mockAuthorization *mocks.Authorization, mockImage *mocks.Image, token string)
 
 	tests := []struct {
 		name                 string
@@ -33,41 +34,33 @@ func TestHandler_findUserHistory(t *testing.T) {
 			headerName:  "Authorization",
 			headerValue: "Bearer token",
 			token:       "token",
-			fn: func(mockAuthorization *mocks.Authorization, token string) {
+			fn: func(mockAuthorization *mocks.Authorization, mockImage *mocks.Image, token string) {
 				mockAuthorization.On("ParseToken", token).Return(1, nil)
+				mockImage.On("FindUserHistoryByID", mock.Anything, 1).Return([]model.History{}, nil)
 			},
 			expectedStatusCode:   200,
-			expectedResponseBody: "1\n",
+			expectedResponseBody: "[]\n",
 		},
 		{
-			name:        "Test with invalid header name",
-			headerName:  "",
+			name:        "Test with incorrect values",
+			headerName:  "Authorization",
 			headerValue: "Bearer token",
 			token:       "token",
-			fn: func(r *mocks.Authorization, token string) {
-				r.On("ParseToken", token).Return(1, nil)
+			fn: func(mockAuthorization *mocks.Authorization, mockImage *mocks.Image, token string) {
+				mockAuthorization.On("ParseToken", token).Return(1, nil)
+				mockImage.On("FindUserHistoryByID", mock.Anything, 1).Return([]model.History{}, fmt.Errorf(""))
 			},
-			expectedStatusCode:   401,
-			expectedResponseBody: "{\"error\":\"auth header is empty\"}\n",
-		},
-		{
-			name:        "Test with invalid header value",
-			headerName:  "Authorization",
-			headerValue: "",
-			token:       "token",
-			fn: func(r *mocks.Authorization, token string) {
-				r.On("ParseToken", token).Return(1, nil)
-			},
-			expectedStatusCode:   401,
-			expectedResponseBody: "{\"error\":\"auth header is empty\"}\n",
+			expectedStatusCode:   500,
+			expectedResponseBody: "{\"error\":\"\"}\n",
 		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			auth := new(mocks.Authorization)
-			tt.fn(auth, tt.token)
+			mockAuthorization := new(mocks.Authorization)
+			mockImage := new(mocks.Image)
+			tt.fn(mockAuthorization, mockImage, tt.token)
 
-			services := &service.Service{Authorization: auth}
+			services := &service.Service{Authorization: mockAuthorization, Image: mockImage}
 			s := Server{router: mux.NewRouter(), service: services}
 
 			s.router.HandleFunc("/api/{userID}/history",
@@ -75,7 +68,9 @@ func TestHandler_findUserHistory(t *testing.T) {
 
 			w := httptest.NewRecorder()
 			req := httptest.NewRequest(http.MethodGet, "/api/1/history", nil)
+
 			req.Header.Set(tt.headerName, tt.headerValue)
+
 			s.ServeHTTP(w, req)
 			require.Equal(t, tt.expectedStatusCode, w.Code)
 			require.Equal(t, tt.expectedResponseBody, w.Body.String())

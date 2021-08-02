@@ -31,6 +31,11 @@ func NewImageService(repo repository.Image) *ImageService {
 	return &ImageService{repo: repo}
 }
 
+// FindUserHistoryByID allows to get the history of interaction with the user's service.
+func (s *ImageService) FindUserHistoryByID(ctx context.Context, id int) ([]model.History, error) {
+	return s.repo.FindUserHistoryByID(ctx, id)
+}
+
 // UploadImage uploads image.
 func (s *ImageService) UploadImage(ctx context.Context, image model.UploadedImage) (int, error) {
 	return s.repo.UploadImage(ctx, image)

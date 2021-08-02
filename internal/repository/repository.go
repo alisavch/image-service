@@ -15,6 +15,7 @@ type Authorization interface {
 
 // Image consists of methods for working with images.
 type Image interface {
+	FindUserHistoryByID(ctx context.Context, id int) ([]model.History, error)
 	UploadImage(ctx context.Context, image model.UploadedImage) (int, error)
 	CreateRequest(ctx context.Context, user model.User, uplImg model.UploadedImage, resImg model.ResultedImage, uI model.UserImage, r model.Request) (int, error)
 	FindTheResultingImage(ctx context.Context, id int, service model.Service) (model.ResultedImage, error)

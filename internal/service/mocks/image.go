@@ -3,6 +3,8 @@
 package mocks
 
 import (
+	context "context"
+
 	model "github.com/alisavch/image-service/internal/model"
 	mock "github.com/stretchr/testify/mock"
 )
@@ -54,20 +56,20 @@ func (_m *Image) ConvertToType(uploadedImage model.UploadedImage) (model.Resulte
 	return r0, r1
 }
 
-// CreateRequest provides a mock function with given fields: _a0, _a1, _a2, _a3, _a4
-func (_m *Image) CreateRequest(_a0 model.User, _a1 model.UploadedImage, _a2 model.ResultedImage, _a3 model.UserImage, _a4 model.Request) (int, error) {
-	ret := _m.Called(_a0, _a1, _a2, _a3, _a4)
+// CreateRequest provides a mock function with given fields: ctx, user, uplImg, resImg, uI, r
+func (_m *Image) CreateRequest(ctx context.Context, user model.User, uplImg model.UploadedImage, resImg model.ResultedImage, uI model.UserImage, r model.Request) (int, error) {
+	ret := _m.Called(ctx, user, uplImg, resImg, uI, r)
 
 	var r0 int
-	if rf, ok := ret.Get(0).(func(model.User, model.UploadedImage, model.ResultedImage, model.UserImage, model.Request) int); ok {
-		r0 = rf(_a0, _a1, _a2, _a3, _a4)
+	if rf, ok := ret.Get(0).(func(context.Context, model.User, model.UploadedImage, model.ResultedImage, model.UserImage, model.Request) int); ok {
+		r0 = rf(ctx, user, uplImg, resImg, uI, r)
 	} else {
 		r0 = ret.Get(0).(int)
 	}
 
 	var r1 error
-	if rf, ok := ret.Get(1).(func(model.User, model.UploadedImage, model.ResultedImage, model.UserImage, model.Request) error); ok {
-		r1 = rf(_a0, _a1, _a2, _a3, _a4)
+	if rf, ok := ret.Get(1).(func(context.Context, model.User, model.UploadedImage, model.ResultedImage, model.UserImage, model.Request) error); ok {
+		r1 = rf(ctx, user, uplImg, resImg, uI, r)
 	} else {
 		r1 = ret.Error(1)
 	}
@@ -75,20 +77,20 @@ func (_m *Image) CreateRequest(_a0 model.User, _a1 model.UploadedImage, _a2 mode
 	return r0, r1
 }
 
-// FindOriginalImage provides a mock function with given fields: id
-func (_m *Image) FindOriginalImage(id int) (model.UploadedImage, error) {
-	ret := _m.Called(id)
+// FindOriginalImage provides a mock function with given fields: ctx, id
+func (_m *Image) FindOriginalImage(ctx context.Context, id int) (model.UploadedImage, error) {
+	ret := _m.Called(ctx, id)
 
 	var r0 model.UploadedImage
-	if rf, ok := ret.Get(0).(func(int) model.UploadedImage); ok {
-		r0 = rf(id)
+	if rf, ok := ret.Get(0).(func(context.Context, int) model.UploadedImage); ok {
+		r0 = rf(ctx, id)
 	} else {
 		r0 = ret.Get(0).(model.UploadedImage)
 	}
 
 	var r1 error
-	if rf, ok := ret.Get(1).(func(int) error); ok {
-		r1 = rf(id)
+	if rf, ok := ret.Get(1).(func(context.Context, int) error); ok {
+		r1 = rf(ctx, id)
 	} else {
 		r1 = ret.Error(1)
 	}
@@ -96,20 +98,20 @@ func (_m *Image) FindOriginalImage(id int) (model.UploadedImage, error) {
 	return r0, r1
 }
 
-// FindTheResultingImage provides a mock function with given fields: id, _a1
-func (_m *Image) FindTheResultingImage(id int, _a1 model.Service) (model.ResultedImage, error) {
-	ret := _m.Called(id, _a1)
+// FindTheResultingImage provides a mock function with given fields: ctx, id, _a2
+func (_m *Image) FindTheResultingImage(ctx context.Context, id int, _a2 model.Service) (model.ResultedImage, error) {
+	ret := _m.Called(ctx, id, _a2)
 
 	var r0 model.ResultedImage
-	if rf, ok := ret.Get(0).(func(int, model.Service) model.ResultedImage); ok {
-		r0 = rf(id, _a1)
+	if rf, ok := ret.Get(0).(func(context.Context, int, model.Service) model.ResultedImage); ok {
+		r0 = rf(ctx, id, _a2)
 	} else {
 		r0 = ret.Get(0).(model.ResultedImage)
 	}
 
 	var r1 error
-	if rf, ok := ret.Get(1).(func(int, model.Service) error); ok {
-		r1 = rf(id, _a1)
+	if rf, ok := ret.Get(1).(func(context.Context, int, model.Service) error); ok {
+		r1 = rf(ctx, id, _a2)
 	} else {
 		r1 = ret.Error(1)
 	}
@@ -131,20 +133,20 @@ func (_m *Image) SaveImage(filename string, folder string, resultedFilename stri
 	return r0
 }
 
-// UploadImage provides a mock function with given fields: image
-func (_m *Image) UploadImage(image model.UploadedImage) (int, error) {
-	ret := _m.Called(image)
+// UploadImage provides a mock function with given fields: ctx, image
+func (_m *Image) UploadImage(ctx context.Context, image model.UploadedImage) (int, error) {
+	ret := _m.Called(ctx, image)
 
 	var r0 int
-	if rf, ok := ret.Get(0).(func(model.UploadedImage) int); ok {
-		r0 = rf(image)
+	if rf, ok := ret.Get(0).(func(context.Context, model.UploadedImage) int); ok {
+		r0 = rf(ctx, image)
 	} else {
 		r0 = ret.Get(0).(int)
 	}
 
 	var r1 error
-	if rf, ok := ret.Get(1).(func(model.UploadedImage) error); ok {
-		r1 = rf(image)
+	if rf, ok := ret.Get(1).(func(context.Context, model.UploadedImage) error); ok {
+		r1 = rf(ctx, image)
 	} else {
 		r1 = ret.Error(1)
 	}

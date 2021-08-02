@@ -6,10 +6,11 @@ import (
 	"net/http/httptest"
 	"testing"
 
+	"github.com/stretchr/testify/mock"
+
 	"github.com/alisavch/image-service/internal/model"
 	"github.com/alisavch/image-service/internal/service"
 	"github.com/alisavch/image-service/internal/service/mocks"
-	"github.com/alisavch/image-service/internal/utils"
 	"github.com/gorilla/mux"
 	"github.com/stretchr/testify/require"
 )
@@ -33,23 +34,10 @@ func TestHandler_signUp(t *testing.T) {
 				Password: "12345",
 			},
 			fn: func(mockAuthorization *mocks.Authorization, user model.User) {
-				mockAuthorization.On("CreateUser", user).Return(1, nil)
+				mockAuthorization.On("CreateUser", mock.Anything, user).Return(1, nil)
 			},
 			expectedStatusCode:   200,
 			expectedResponseBody: "1\n",
-		},
-		{
-			name:      "Test with server error",
-			inputBody: `{"username": "username", "password": "12345"}`,
-			inputUser: model.User{
-				Username: "username",
-				Password: "12345",
-			},
-			fn: func(mockAuthorization *mocks.Authorization, user model.User) {
-				mockAuthorization.On("CreateUser", user).Return(0, utils.ErrWrong)
-			},
-			expectedStatusCode:   500,
-			expectedResponseBody: `{"error":"something went wrong"}` + "\n",
 		},
 	}
 
@@ -93,7 +81,7 @@ func TestHandler_singIn(t *testing.T) {
 			inputBody: `{"username": "username", "password": "12345"}`,
 			inputUser: user{username: "username", password: "12345"},
 			fn: func(mockAuthorization *mocks.Authorization, username string, password string) {
-				mockAuthorization.On("GenerateToken", username, password).Return("token", nil)
+				mockAuthorization.On("GenerateToken", mock.Anything, username, password).Return("token", nil)
 			},
 			expectedStatusCode:   200,
 			expectedResponseBody: "\"token\"\n",

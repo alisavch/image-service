@@ -1,6 +1,7 @@
 package service
 
 import (
+	"context"
 	"time"
 
 	"github.com/alisavch/image-service/internal/utils"
@@ -32,14 +33,14 @@ func NewAuthService(repo repository.Authorization) *AuthService {
 }
 
 // CreateUser creates user.
-func (s *AuthService) CreateUser(user model.User) (int, error) {
+func (s *AuthService) CreateUser(ctx context.Context, user model.User) (int, error) {
 	user.Password, _ = s.generatePasswordHash(user.Password)
-	return s.repo.CreateUser(user)
+	return s.repo.CreateUser(ctx, user)
 }
 
 // GenerateToken generates token.
-func (s *AuthService) GenerateToken(username, password string) (string, error) {
-	user, err := s.repo.GetUser(username)
+func (s *AuthService) GenerateToken(ctx context.Context, username, password string) (string, error) {
+	user, err := s.repo.GetUser(ctx, username)
 	if err != nil {
 		return "get user error", err
 	}

@@ -1,6 +1,7 @@
 package repository
 
 import (
+	"context"
 	"testing"
 	"time"
 
@@ -58,7 +59,7 @@ func TestImageRepository_UploadImage(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			tt.mock()
 
-			got, err := repo.UploadImage(tt.input)
+			got, err := repo.UploadImage(context.TODO(), tt.input)
 			if tt.isOk {
 				require.NoError(t, err)
 				require.Equal(t, tt.want, got)
@@ -171,7 +172,7 @@ func TestImageRepository_CreateRequest(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			tt.mock()
 
-			got, err := repo.CreateRequest(tt.input.user, tt.input.uploadedImage, tt.input.resultedImage, tt.input.userImage, tt.input.request)
+			got, err := repo.CreateRequest(context.TODO(), tt.input.user, tt.input.uploadedImage, tt.input.resultedImage, tt.input.userImage, tt.input.request)
 			if tt.isOk {
 				require.NoError(t, err)
 				require.Equal(t, tt.want, got)
@@ -243,7 +244,7 @@ func TestImageRepository_FindTheResultingImage(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			tt.mock(tt.input)
 
-			got, err := repo.FindTheResultingImage(tt.input.id, tt.input.service)
+			got, err := repo.FindTheResultingImage(context.TODO(), tt.input.id, tt.input.service)
 			if tt.isOk {
 				require.NoError(t, err)
 				require.Equal(t, tt.want, got)
@@ -311,7 +312,7 @@ func TestImageRepository_FindOriginalImage(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			tt.mock()
 
-			got, err := repo.FindOriginalImage(tt.input.id)
+			got, err := repo.FindOriginalImage(context.TODO(), tt.input.id)
 			if tt.isOk {
 				require.NoError(t, err)
 				require.Equal(t, tt.want, got)

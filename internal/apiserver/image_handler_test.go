@@ -118,10 +118,9 @@ func TestHandler_compressImage(t *testing.T) {
 	//			mockImage.On("UploadImage", mock.Anything).Return(1, nil)
 	//
 	//		},
-	//		expectedStatusCode:   200,
+	//		expectedStatusCode:   500,
 	//		expectedResponseBody: "1\n",
 	//	},
-	//
 	//}
 	//for _, tt := range tests {
 	//	t.Run(tt.name, func(t *testing.T) {
@@ -143,12 +142,24 @@ func TestHandler_compressImage(t *testing.T) {
 	//		q.Add(tt.params.name, string(rune(tt.params.quality)))
 	//		req.URL.RawQuery = q.Encode()
 	//
-	//		req.Header.Set(tt.headerName[0], tt.headerValue[0])
-	//		req.Header.Set(tt.headerName[1], tt.contentType)
-	//
-	//		if _, err := req.MultipartReader(); err != nil {
-	//			t.Fatalf("MultipartReades: %v", err)
+	//		body := &bytes.Buffer{}
+	//		writer := multipart.NewWriter(body)
+	//		_, err := writer.CreateFormFile("uploadFile", tt.inputImage.Name)
+	//		if err != nil {
+	//			writer.Close()
+	//			t.Error(err)
 	//		}
+	//
+	//		req.Header.Set(tt.headerName[1], tt.contentType)
+	//		req.Header.Set(tt.headerName[0], tt.headerValue[0])
+	//
+	//		_, _ = req.MultipartReader()
+	//
+	//
+	//		//io.Copy(part, mock.Anything)
+	//
+	//		//req.Header.Set(tt.headerName[2], tt.contentDisposition)
+	//
 	//
 	//		s.ServeHTTP(w, req)
 	//		require.Equal(t, tt.expectedStatusCode, w.Code)
@@ -191,10 +202,10 @@ func TestHandler_findCompressedImage(t *testing.T) {
 			params:       params{name: "original", isOriginal: true},
 			fn: func(mockAuthorization *mocks.Authorization, mockImage *mocks.Image, token string, compressedID int, isOriginal bool) {
 				mockAuthorization.On("ParseToken", token).Return(1, nil)
-				mockImage.On("FindTheResultingImage", compressedID, model.Compression).Return(resultedImage, nil)
+				mockImage.On("FindTheResultingImage", mock.Anything, compressedID, model.Compression).Return(resultedImage, nil)
 				mockImage.On("SaveImage", resultedImage.Name, "\\results\\", resultedImage.Name).Return(nil)
 				if isOriginal {
-					mockImage.On("FindOriginalImage", compressedID).Return(model.UploadedImage{ID: 1, Name: "filename", Location: "location"}, nil)
+					mockImage.On("FindOriginalImage", mock.Anything, compressedID).Return(model.UploadedImage{ID: 1, Name: "filename", Location: "location"}, nil)
 					mockImage.On("SaveImage", mock.Anything, "\\uploads\\", mock.Anything).Return(nil)
 				}
 			},
@@ -209,7 +220,7 @@ func TestHandler_findCompressedImage(t *testing.T) {
 			token:        "token",
 			fn: func(mockAuthorization *mocks.Authorization, mockImage *mocks.Image, token string, compressedID int, isOriginal bool) {
 				mockAuthorization.On("ParseToken", token).Return(1, nil)
-				mockImage.On("FindTheResultingImage", compressedID, model.Compression).Return(model.ResultedImage{}, utils.ErrFindImage)
+				mockImage.On("FindTheResultingImage", mock.Anything, compressedID, model.Compression).Return(model.ResultedImage{}, utils.ErrFindImage)
 			},
 			expectedStatusCode:   500,
 			expectedResponseBody: "{\"error\":\"cannot find image\"}\n",
@@ -223,7 +234,7 @@ func TestHandler_findCompressedImage(t *testing.T) {
 			params:       params{name: "original", isOriginal: true},
 			fn: func(mockAuthorization *mocks.Authorization, mockImage *mocks.Image, token string, compressedID int, isOriginal bool) {
 				mockAuthorization.On("ParseToken", token).Return(1, nil)
-				mockImage.On("FindTheResultingImage", compressedID, model.Compression).Return(resultedImage, nil)
+				mockImage.On("FindTheResultingImage", mock.Anything, compressedID, model.Compression).Return(resultedImage, nil)
 				mockImage.On("SaveImage", resultedImage.Name, "\\results\\", resultedImage.Name).Return(utils.ErrSaveImage)
 			},
 			expectedStatusCode:   500,
@@ -238,10 +249,10 @@ func TestHandler_findCompressedImage(t *testing.T) {
 			params:       params{name: "original", isOriginal: true},
 			fn: func(mockAuthorization *mocks.Authorization, mockImage *mocks.Image, token string, compressedID int, isOriginal bool) {
 				mockAuthorization.On("ParseToken", token).Return(1, nil)
-				mockImage.On("FindTheResultingImage", compressedID, model.Compression).Return(resultedImage, nil)
+				mockImage.On("FindTheResultingImage", mock.Anything, compressedID, model.Compression).Return(resultedImage, nil)
 				mockImage.On("SaveImage", resultedImage.Name, "\\results\\", resultedImage.Name).Return(nil)
 				if isOriginal {
-					mockImage.On("FindOriginalImage", compressedID).Return(model.UploadedImage{}, utils.ErrFindImage)
+					mockImage.On("FindOriginalImage", mock.Anything, compressedID).Return(model.UploadedImage{}, utils.ErrFindImage)
 				}
 			},
 			expectedStatusCode:   500,
@@ -395,7 +406,7 @@ func TestHandler_findConvertedImage(t *testing.T) {
 			token:       "token",
 			fn: func(mockAuthorization *mocks.Authorization, mockImage *mocks.Image, token string, convertedID int, isOriginal bool) {
 				mockAuthorization.On("ParseToken", token).Return(1, nil)
-				mockImage.On("FindTheResultingImage", convertedID, model.Conversion).Return(resultedImage, nil)
+				mockImage.On("FindTheResultingImage", mock.Anything, convertedID, model.Conversion).Return(resultedImage, nil)
 				mockImage.On("SaveImage", resultedImage.Name, "\\results\\", resultedImage.Name).Return(nil)
 			},
 			expectedStatusCode:   200,
@@ -409,7 +420,7 @@ func TestHandler_findConvertedImage(t *testing.T) {
 			token:       "token",
 			fn: func(mockAuthorization *mocks.Authorization, mockImage *mocks.Image, token string, convertedID int, isOriginal bool) {
 				mockAuthorization.On("ParseToken", token).Return(1, nil)
-				mockImage.On("FindTheResultingImage", convertedID, model.Conversion).Return(model.ResultedImage{}, utils.ErrFindImage)
+				mockImage.On("FindTheResultingImage", mock.Anything, convertedID, model.Conversion).Return(model.ResultedImage{}, utils.ErrFindImage)
 			},
 			expectedStatusCode:   500,
 			expectedResponseBody: "{\"error\":\"cannot find image\"}\n",
@@ -422,7 +433,7 @@ func TestHandler_findConvertedImage(t *testing.T) {
 			token:       "token",
 			fn: func(mockAuthorization *mocks.Authorization, mockImage *mocks.Image, token string, convertedID int, isOriginal bool) {
 				mockAuthorization.On("ParseToken", token).Return(1, nil)
-				mockImage.On("FindTheResultingImage", convertedID, model.Conversion).Return(resultedImage, nil)
+				mockImage.On("FindTheResultingImage", mock.Anything, convertedID, model.Conversion).Return(resultedImage, nil)
 				mockImage.On("SaveImage", resultedImage.Name, "\\results\\", resultedImage.Name).Return(utils.ErrSaveImage)
 			},
 			expectedStatusCode:   500,
@@ -437,10 +448,10 @@ func TestHandler_findConvertedImage(t *testing.T) {
 			params:      params{name: "original", isOriginal: true},
 			fn: func(mockAuthorization *mocks.Authorization, mockImage *mocks.Image, token string, convertedID int, isOriginal bool) {
 				mockAuthorization.On("ParseToken", token).Return(1, nil)
-				mockImage.On("FindTheResultingImage", convertedID, model.Conversion).Return(resultedImage, nil)
+				mockImage.On("FindTheResultingImage", mock.Anything, convertedID, model.Conversion).Return(resultedImage, nil)
 				mockImage.On("SaveImage", resultedImage.Name, "\\results\\", resultedImage.Name).Return(nil)
 				if isOriginal {
-					mockImage.On("FindOriginalImage", convertedID).Return(model.UploadedImage{}, utils.ErrFindImage)
+					mockImage.On("FindOriginalImage", mock.Anything, convertedID).Return(model.UploadedImage{}, utils.ErrFindImage)
 				}
 			},
 			expectedStatusCode:   500,

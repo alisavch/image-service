@@ -3,6 +3,8 @@
 package mocks
 
 import (
+	context "context"
+
 	model "github.com/alisavch/image-service/internal/model"
 	mock "github.com/stretchr/testify/mock"
 )
@@ -12,20 +14,20 @@ type Authorization struct {
 	mock.Mock
 }
 
-// CreateUser provides a mock function with given fields: user
-func (_m *Authorization) CreateUser(user model.User) (int, error) {
-	ret := _m.Called(user)
+// CreateUser provides a mock function with given fields: ctx, user
+func (_m *Authorization) CreateUser(ctx context.Context, user model.User) (int, error) {
+	ret := _m.Called(ctx, user)
 
 	var r0 int
-	if rf, ok := ret.Get(0).(func(model.User) int); ok {
-		r0 = rf(user)
+	if rf, ok := ret.Get(0).(func(context.Context, model.User) int); ok {
+		r0 = rf(ctx, user)
 	} else {
 		r0 = ret.Get(0).(int)
 	}
 
 	var r1 error
-	if rf, ok := ret.Get(1).(func(model.User) error); ok {
-		r1 = rf(user)
+	if rf, ok := ret.Get(1).(func(context.Context, model.User) error); ok {
+		r1 = rf(ctx, user)
 	} else {
 		r1 = ret.Error(1)
 	}
@@ -33,20 +35,20 @@ func (_m *Authorization) CreateUser(user model.User) (int, error) {
 	return r0, r1
 }
 
-// GenerateToken provides a mock function with given fields: username, password
-func (_m *Authorization) GenerateToken(username string, password string) (string, error) {
-	ret := _m.Called(username, password)
+// GenerateToken provides a mock function with given fields: ctx, username, password
+func (_m *Authorization) GenerateToken(ctx context.Context, username string, password string) (string, error) {
+	ret := _m.Called(ctx, username, password)
 
 	var r0 string
-	if rf, ok := ret.Get(0).(func(string, string) string); ok {
-		r0 = rf(username, password)
+	if rf, ok := ret.Get(0).(func(context.Context, string, string) string); ok {
+		r0 = rf(ctx, username, password)
 	} else {
 		r0 = ret.Get(0).(string)
 	}
 
 	var r1 error
-	if rf, ok := ret.Get(1).(func(string, string) error); ok {
-		r1 = rf(username, password)
+	if rf, ok := ret.Get(1).(func(context.Context, string, string) error); ok {
+		r1 = rf(ctx, username, password)
 	} else {
 		r1 = ret.Error(1)
 	}

@@ -1,6 +1,7 @@
 package service
 
 import (
+	"context"
 	"fmt"
 	"image"
 	"image/color"
@@ -31,8 +32,8 @@ func NewImageService(repo repository.Image) *ImageService {
 }
 
 // UploadImage uploads image.
-func (s *ImageService) UploadImage(image model.UploadedImage) (int, error) {
-	return s.repo.UploadImage(image)
+func (s *ImageService) UploadImage(ctx context.Context, image model.UploadedImage) (int, error) {
+	return s.repo.UploadImage(ctx, image)
 }
 
 // CompressImage compress image.
@@ -133,18 +134,18 @@ func (s *ImageService) ConvertToType(uploadedImage model.UploadedImage) (model.R
 }
 
 // CreateRequest creates request.
-func (s *ImageService) CreateRequest(user model.User, uplImg model.UploadedImage, resImg model.ResultedImage, uI model.UserImage, r model.Request) (int, error) {
-	return s.repo.CreateRequest(user, uplImg, resImg, uI, r)
+func (s *ImageService) CreateRequest(ctx context.Context, user model.User, uplImg model.UploadedImage, resImg model.ResultedImage, uI model.UserImage, r model.Request) (int, error) {
+	return s.repo.CreateRequest(ctx, user, uplImg, resImg, uI, r)
 }
 
 // FindTheResultingImage finds the resulting image by id.
-func (s *ImageService) FindTheResultingImage(id int, service model.Service) (model.ResultedImage, error) {
-	return s.repo.FindTheResultingImage(id, service)
+func (s *ImageService) FindTheResultingImage(ctx context.Context, id int, service model.Service) (model.ResultedImage, error) {
+	return s.repo.FindTheResultingImage(ctx, id, service)
 }
 
 // FindOriginalImage finds original image by id.
-func (s *ImageService) FindOriginalImage(id int) (model.UploadedImage, error) {
-	return s.repo.FindOriginalImage(id)
+func (s *ImageService) FindOriginalImage(ctx context.Context, id int) (model.UploadedImage, error) {
+	return s.repo.FindOriginalImage(ctx, id)
 }
 
 // SaveImage saves image to users machine.

@@ -21,6 +21,35 @@ const (
 	userCtx             key = "userId"
 )
 
+// userRequest is an interface which must be implemented by request models.
+type userRequest interface {
+	Build(*http.Request) error
+	Validate() error
+}
+
+// ParseUserRequest parses request from http Request, stores it in the value pointed to by req and validates it.
+func ParseUserRequest(r *http.Request, req userRequest) error {
+	err := req.Build(r)
+	if err != nil {
+		return err
+	}
+	return req.Validate()
+}
+
+// imageRequest is an interface which must be implemented by request models.
+type imageRequest interface {
+	Build(r *http.Request) (int, error)
+}
+
+// ParseUserRequest parses request from http Request, stores it in the value pointed to by req.
+func ParseImageRequest(r *http.Request, req imageRequest) (int, error) {
+	v, err := req.Build(r)
+	if err != nil {
+		return 0, err
+	}
+	return v, nil
+}
+
 func (s *Server) authorize(next http.Handler) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		header := r.Header.Get(string(authorizationHeader))
@@ -56,6 +85,10 @@ func (s *Server) getUserID(r *http.Request) (int, error) {
 }
 
 func (s *Server) uploadImage(r *http.Request, uploadedImage model.UploadedImage) (model.UploadedImage, error) {
+	err := r.ParseMultipartForm(32 << 20)
+	if err != nil {
+		return model.UploadedImage{}, err
+	}
 	file, handler, err := r.FormFile("uploadFile")
 	if err != nil {
 		return model.UploadedImage{}, err
@@ -78,7 +111,7 @@ func (s *Server) uploadImage(r *http.Request, uploadedImage model.UploadedImage)
 	uploadedImage.Name = handler.Filename
 	currentDir, _ := os.Getwd()
 	uploadedImage.Location = currentDir + "\\uploaded\\"
-	uploadedID, err := s.service.Image.UploadImage(uploadedImage)
+	uploadedID, err := s.service.Image.UploadImage(r.Context(), uploadedImage)
 	if err != nil {
 		return model.UploadedImage{}, utils.ErrUpload
 	}
@@ -96,7 +129,7 @@ func (s *Server) findOriginalImage(r *http.Request, id int) error {
 		return err
 	}
 	if isOriginal {
-		uploaded, err := s.service.Image.FindOriginalImage(id)
+		uploaded, err := s.service.Image.FindOriginalImage(r.Context(), id)
 		if err != nil {
 			return utils.ErrFindImage
 		}

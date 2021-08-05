@@ -63,11 +63,11 @@ func TestHandler_findUserHistory(t *testing.T) {
 			services := &service.Service{Authorization: mockAuthorization, Image: mockImage}
 			s := Server{router: mux.NewRouter(), service: services}
 
-			s.router.HandleFunc("/api/{userID}/history",
+			s.router.HandleFunc("/api/user/{userID}/history",
 				s.authorize(s.findUserHistory())).Methods(http.MethodGet)
 
 			w := httptest.NewRecorder()
-			req := httptest.NewRequest(http.MethodGet, "/api/1/history", nil)
+			req := httptest.NewRequest(http.MethodGet, "/api/user/1/history", nil)
 
 			req.Header.Set(tt.headerName, tt.headerValue)
 
@@ -126,11 +126,11 @@ func TestHandler_compressImage(t *testing.T) {
 	//		services := &service.Service{Authorization: auth, Image: image}
 	//		s := Server{router: mux.NewRouter(), service: services}
 	//
-	//		s.router.HandleFunc("/api/{userID}/compress",
+	//		s.router.HandleFunc("/api/user/{userID}/compress",
 	//			s.authorize(s.compressImage())).Methods(http.MethodPost)
 	//
 	//		w := httptest.NewRecorder()
-	//		req := httptest.NewRequest(http.MethodPost, "/api/1/compress",
+	//		req := httptest.NewRequest(http.MethodPost, "/api/user/1/compress",
 	//			ioutil.NopCloser(new(bytes.Buffer)))
 	//
 	//		q := req.URL.Query()
@@ -263,11 +263,11 @@ func TestHandler_findCompressedImage(t *testing.T) {
 			services := &service.Service{Authorization: mockAuthorization, Image: mockImage}
 			s := Server{router: mux.NewRouter(), service: services}
 
-			s.router.HandleFunc("/api/{userID}/compress/{id}",
+			s.router.HandleFunc("/api/user/{userID}/compress/{compressedID}",
 				s.authorize(s.findCompressedImage())).Methods(http.MethodGet)
 
 			w := httptest.NewRecorder()
-			req := httptest.NewRequest(http.MethodGet, "/api/1/compress/1", nil)
+			req := httptest.NewRequest(http.MethodGet, "/api/user/1/compress/1", nil)
 
 			q := req.URL.Query()
 			q.Add(tt.params.name, strconv.FormatBool(tt.params.isOriginal))
@@ -351,11 +351,11 @@ func TestHandler_convertImage(t *testing.T) {
 	//		services := &service.Service{Authorization: auth, Image: image}
 	//		s := Server{router: mux.NewRouter(), service: services}
 	//
-	//		s.router.HandleFunc("/api/{userID}/convert",
+	//		s.router.HandleFunc("/api/user/{userID}/convert",
 	//			s.authorize(s.convertImage())).Methods(http.MethodPost)
 	//
 	//		w := httptest.NewRecorder()
-	//		req := httptest.NewRequest(http.MethodPost, "/api/1/convert",
+	//		req := httptest.NewRequest(http.MethodPost, "/api/user/1/convert",
 	//			ioutil.NopCloser(new(bytes.Buffer)))
 	//
 	//		req.Header.Set(tt.headerName[0], tt.headerValue[0])
@@ -462,11 +462,11 @@ func TestHandler_findConvertedImage(t *testing.T) {
 			services := &service.Service{Authorization: mockAuthorization, Image: mockImage}
 			s := Server{router: mux.NewRouter(), service: services}
 
-			s.router.HandleFunc("/api/{userID}/convert/{id}",
+			s.router.HandleFunc("/api/user/{userID}/convert/{convertedID}",
 				s.authorize(s.findConvertedImage())).Methods(http.MethodGet)
 
 			w := httptest.NewRecorder()
-			req := httptest.NewRequest(http.MethodGet, "/api/1/convert/1", nil)
+			req := httptest.NewRequest(http.MethodGet, "/api/user/1/convert/1", nil)
 
 			q := req.URL.Query()
 			q.Add(tt.params.name, strconv.FormatBool(tt.params.isOriginal))

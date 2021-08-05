@@ -37,7 +37,7 @@ func (s *Server) signUp() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		var req signUpRequest
 
-		err := ParseUserRequest(r, &req)
+		err := ParseRequest(r, &req)
 		if err != nil {
 			s.error(w, r, http.StatusBadRequest, err)
 			return
@@ -80,7 +80,7 @@ func (req *signInRequest) Validate() error {
 func (s *Server) signIn() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		var req signInRequest
-		err := ParseUserRequest(r, &req)
+		err := ParseRequest(r, &req)
 		if err != nil {
 			s.error(w, r, http.StatusBadRequest, err)
 			return

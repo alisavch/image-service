@@ -21,33 +21,19 @@ const (
 	userCtx             key = "userId"
 )
 
-// userRequest is an interface which must be implemented by request models.
-type userRequest interface {
+// Request is an interface which must be implemented by request models.
+type Request interface {
 	Build(*http.Request) error
 	Validate() error
 }
 
-// ParseUserRequest parses request from http Request, stores it in the value pointed to by req and validates it.
-func ParseUserRequest(r *http.Request, req userRequest) error {
+// ParseRequest parses request from http Request, stores it in the value pointed to by req and validates it.
+func ParseRequest(r *http.Request, req Request) error {
 	err := req.Build(r)
 	if err != nil {
 		return err
 	}
 	return req.Validate()
-}
-
-// imageRequest is an interface which must be implemented by request models.
-type imageRequest interface {
-	Build(r *http.Request) (int, error)
-}
-
-// ParseImageRequest parses request from http Request, stores it in the value pointed to by req.
-func ParseImageRequest(r *http.Request, req imageRequest) (int, error) {
-	v, err := req.Build(r)
-	if err != nil {
-		return 0, err
-	}
-	return v, nil
 }
 
 func (s *Server) authorize(next http.Handler) http.HandlerFunc {
@@ -74,14 +60,6 @@ func (s *Server) authorize(next http.Handler) http.HandlerFunc {
 		ctx := context.WithValue(r.Context(), userCtx, userID)
 		next.ServeHTTP(w, r.WithContext(ctx))
 	}
-}
-
-func (s *Server) getUserID(r *http.Request) (int, error) {
-	id, ok := r.Context().Value(userCtx).(int)
-	if !ok {
-		return 0, utils.ErrFailedConvert
-	}
-	return id, nil
 }
 
 func (s *Server) uploadImage(r *http.Request, uploadedImage model.UploadedImage) (model.UploadedImage, error) {

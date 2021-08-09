@@ -4,13 +4,13 @@ import (
 	"context"
 	"fmt"
 	"io"
+	"mime/multipart"
 	"net/http"
 	"os"
 	"strconv"
 	"strings"
 
 	"github.com/alisavch/image-service/internal/model"
-	"github.com/alisavch/image-service/internal/utils"
 	"github.com/google/uuid"
 )
 
@@ -40,16 +40,16 @@ func (s *Server) authorize(next http.Handler) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		header := r.Header.Get(string(authorizationHeader))
 		if header == "" {
-			s.error(w, r, http.StatusUnauthorized, utils.ErrEmptyHeader)
+			s.error(w, r, http.StatusUnauthorized, fmt.Errorf("auth header is empty"))
 			return
 		}
 		headerParts := strings.Split(header, " ")
 		if len(headerParts) != 2 || headerParts[0] != "Bearer" {
-			s.error(w, r, http.StatusUnauthorized, utils.ErrInvalidHeader)
+			s.error(w, r, http.StatusUnauthorized, fmt.Errorf("auth header is invalid"))
 			return
 		}
 		if len(headerParts[1]) == 0 {
-			s.error(w, r, http.StatusUnauthorized, utils.ErrEmptyToken)
+			s.error(w, r, http.StatusUnauthorized, fmt.Errorf("token is empty"))
 		}
 
 		userID, err := s.service.Authorization.ParseToken(headerParts[1])
@@ -62,38 +62,57 @@ func (s *Server) authorize(next http.Handler) http.HandlerFunc {
 	}
 }
 
-func (s *Server) uploadImage(r *http.Request, uploadedImage model.UploadedImage) (model.UploadedImage, error) {
+type request struct {
+	file    multipart.File
+	handler *multipart.FileHeader
+}
+
+func (req *request) Build(r *http.Request) error {
 	err := r.ParseMultipartForm(32 << 20)
 	if err != nil {
-		return model.UploadedImage{}, err
+		return fmt.Errorf("error parse multipart from")
 	}
-	file, handler, err := r.FormFile("uploadFile")
+	req.file, req.handler, err = r.FormFile("uploadFile")
 	if err != nil {
-		return model.UploadedImage{}, err
+		return fmt.Errorf("error upload file from form")
 	}
-	defer file.Close()
-	handler.Filename = strings.Replace(uuid.New().String(), "-", "", -1) + handler.Filename
-	out, err := os.Create(fmt.Sprintf("./uploads/%s", handler.Filename))
+	defer req.file.Close()
+	return nil
+}
+
+func (req request) Validate() error {
+	return nil
+}
+
+func (s *Server) uploadImage(r *http.Request, uploadedImage model.UploadedImage) (model.UploadedImage, error) {
+	var req request
+	err := ParseRequest(r, &req)
+	req.handler.Filename = strings.Replace(uuid.New().String(), "-", "", -1) + req.handler.Filename
+
+	out, err := os.Create(fmt.Sprintf("./uploads/%s", req.handler.Filename))
 	if err != nil {
-		return model.UploadedImage{}, utils.ErrCreateFile
+		return model.UploadedImage{}, fmt.Errorf("error create new file")
 	}
 	defer out.Close()
-	_, err = io.Copy(out, file)
+
+	_, err = io.Copy(out, req.file)
 	if err != nil {
-		return model.UploadedImage{}, utils.ErrCopyFile
-	}
-	if !(handler.Header["Content-Type"][0] == "image/jpeg" || handler.Header["Content-Type"][0] == "image/png") {
-		return model.UploadedImage{}, utils.ErrAllowedFormat
+		return model.UploadedImage{}, fmt.Errorf("error copy file")
 	}
 
-	uploadedImage.Name = handler.Filename
+	if !(req.handler.Header["Content-Type"][0] == "image/jpeg" || req.handler.Header["Content-Type"][0] == "image/png") {
+		return model.UploadedImage{}, fmt.Errorf("file format is not allowed. Please upload a JPEG or PNG")
+	}
+
+	uploadedImage.Name = req.handler.Filename
 	currentDir, _ := os.Getwd()
 	uploadedImage.Location = currentDir + "\\uploaded\\"
 	uploadedID, err := s.service.Image.UploadImage(r.Context(), uploadedImage)
 	if err != nil {
-		return model.UploadedImage{}, utils.ErrUpload
+		return model.UploadedImage{}, fmt.Errorf("error upload file")
 	}
 	uploadedImage.ID = uploadedID
+
 	return uploadedImage, nil
 }
 
@@ -103,18 +122,22 @@ func (s *Server) findOriginalImage(r *http.Request, id int) error {
 		originalImage = DefaultOriginal
 	}
 	isOriginal, err := strconv.ParseBool(originalImage)
+
 	if err != nil {
 		return err
 	}
-	if isOriginal {
-		uploaded, err := s.service.Image.FindOriginalImage(r.Context(), id)
-		if err != nil {
-			return utils.ErrFindImage
-		}
-		err = s.service.Image.SaveImage(uploaded.Name, "\\uploads\\", "orig"+uploaded.Name)
-		if err != nil {
-			return utils.ErrSaveImage
-		}
+
+	if !isOriginal {
+		return nil
+	}
+
+	uploaded, err := s.service.Image.FindOriginalImage(r.Context(), id)
+	if err != nil {
+		return fmt.Errorf("cannot find image")
+	}
+
+	if err = s.service.Image.SaveImage(uploaded.Name, "\\uploads\\", "orig"+uploaded.Name); err != nil {
+		return fmt.Errorf("cannot save image")
 	}
 	return nil
 }

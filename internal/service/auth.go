@@ -2,9 +2,8 @@ package service
 
 import (
 	"context"
+	"fmt"
 	"time"
-
-	"github.com/alisavch/image-service/internal/utils"
 
 	"github.com/alisavch/image-service/internal/model"
 	"github.com/alisavch/image-service/internal/repository"
@@ -62,7 +61,7 @@ func (s *AuthService) GenerateToken(ctx context.Context, username, password stri
 func (s *AuthService) ParseToken(accessToken string) (int, error) {
 	token, err := jwt.ParseWithClaims(accessToken, &tokenClaims{}, func(token *jwt.Token) (interface{}, error) {
 		if _, ok := token.Method.(*jwt.SigningMethodHMAC); !ok {
-			return nil, utils.ErrSigningMethod
+			return nil, fmt.Errorf("invalid signing method")
 		}
 		return []byte(signingKey), nil
 	})
@@ -71,7 +70,7 @@ func (s *AuthService) ParseToken(accessToken string) (int, error) {
 	}
 	claims, ok := token.Claims.(*tokenClaims)
 	if !ok {
-		return 0, utils.ErrInvalidToken
+		return 0, fmt.Errorf("token claims is invalid")
 	}
 	return int(claims.UserID), nil
 }

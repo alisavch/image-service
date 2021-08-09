@@ -170,7 +170,6 @@ func TestImageRepository_CreateRequest(t *testing.T) {
 				userImage: model.UserImage{
 					Status: model.Queued,
 				},
-				// TODO: time
 				request: model.Request{
 					TimeStart: time.Now(),
 					EndOfTime: time.Now(),
@@ -203,7 +202,6 @@ func TestImageRepository_CreateRequest(t *testing.T) {
 				userImage: model.UserImage{
 					Status: model.Queued,
 				},
-				// TODO: time
 				request: model.Request{
 					TimeStart: time.Now(),
 					EndOfTime: time.Now(),

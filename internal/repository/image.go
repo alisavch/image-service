@@ -76,7 +76,6 @@ func (i *ImageRepository) CreateRequest(ctx context.Context, user model.User, up
 		return 0, err
 	}
 
-	// TODO: request time
 	createRequest := "INSERT INTO image_service.request(user_image_id, time_start, end_of_time) VALUES($1, $2, $3)"
 	_, err = tx.ExecContext(ctx, createRequest, userImageID, r.TimeStart, r.EndOfTime)
 	if err != nil {

@@ -30,6 +30,7 @@ func Start() error {
 	repos := repository.NewRepository(db)
 	services := service.NewService(repos)
 	srv := newServer(services)
+
 	return http.ListenAndServe(
 		":8080",
 		srv,

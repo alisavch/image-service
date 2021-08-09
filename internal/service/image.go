@@ -12,7 +12,6 @@ import (
 
 	"github.com/alisavch/image-service/internal/model"
 	"github.com/alisavch/image-service/internal/repository"
-	"github.com/alisavch/image-service/internal/utils"
 )
 
 var convertedType = map[string]string{
@@ -51,28 +50,30 @@ func (s *ImageService) CompressImage(quality int, uploadedImage model.UploadedIm
 		return model.ResultedImage{}, err
 	}
 	defer imgFile.Close()
+
 	imgSrc, format, err := image.Decode(imgFile)
 	if err != nil {
 		return model.ResultedImage{}, err
 	}
+
 	newImgFile, err := os.Create(fmt.Sprintf("./results/%s", uploadedImage.Name))
 	if err != nil {
 		return model.ResultedImage{}, err
 	}
 	defer newImgFile.Close()
+
 	switch format {
 	case "jpeg":
 		if quality < 0 || quality > 100 {
-			return model.ResultedImage{}, utils.ErrJPEG
+			return model.ResultedImage{}, fmt.Errorf("jpeg support only quality from 0 to 100")
 		}
 		err = jpeg.Encode(newImgFile, imgSrc, &jpeg.Options{Quality: quality})
 		if err != nil {
 			return model.ResultedImage{}, err
 		}
 	case "png":
-		// TODO: correct compress png
 		if quality < 0 || quality > 255 {
-			return model.ResultedImage{}, utils.ErrPNG
+			return model.ResultedImage{}, fmt.Errorf("png support only quality from 0 to 255")
 		}
 		size := imgSrc.Bounds().Size()
 		rect := image.Rect(0, 0, size.X, size.Y)
@@ -81,9 +82,9 @@ func (s *ImageService) CompressImage(quality int, uploadedImage model.UploadedIm
 			for x := imgSrc.Bounds().Min.X; x < imgSrc.Bounds().Max.X; x++ {
 				pixel := imgSrc.At(x, y)
 				originalColor := color.RGBAModel.Convert(pixel).(color.RGBA)
-				r := uint32(originalColor.R >> quality)
-				g := uint32(originalColor.G >> quality)
-				b := uint32(originalColor.B >> quality)
+				r := int(originalColor.R) - quality
+				g := int(originalColor.G) - quality
+				b := int(originalColor.B) - quality
 
 				newColor := uint8((r + g + b) / 3)
 				c := color.RGBA{
@@ -99,6 +100,7 @@ func (s *ImageService) CompressImage(quality int, uploadedImage model.UploadedIm
 	}
 	result.Name = uploadedImage.Name
 	result.Location = currentDir + "\\results\\"
+
 	return result, nil
 }
 
@@ -113,18 +115,21 @@ func (s *ImageService) ConvertToType(uploadedImage model.UploadedImage) (model.R
 		return model.ResultedImage{}, err
 	}
 	defer file.Close()
+
 	img, format, err := image.Decode(file)
 	if err != nil {
 		return model.ResultedImage{}, err
 	}
+
 	convertedName, err := ChangeFormat(uploadedImage.Name)
 	if err != nil {
 		return model.ResultedImage{}, err
 	}
+
 	newImg, err := os.Create(fmt.Sprintf("./results/%s", convertedName))
 	defer file.Close()
 	if err != nil {
-		return model.ResultedImage{}, utils.ErrCreateFile
+		return model.ResultedImage{}, fmt.Errorf("error create new file")
 	}
 	defer newImg.Close()
 

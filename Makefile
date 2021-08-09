@@ -12,8 +12,8 @@ mocks:
 
 .PHONY: lint
 lint: build
-	goimports -w cmd/api internal/apiserver internal/log internal/model internal/repository internal/service internal/utils
-	gofmt -w cmd/api internal/apiserver internal/log internal/model internal/repository internal/service internal/utils
+	goimports -w cmd/api internal/apiserver internal/broker internal/log internal/model internal/repository internal/service internal/utils
+	gofmt -w cmd/api internal/apiserver internal/broker internal/log internal/model internal/repository internal/service internal/utils
 	golint ./...
 
 .PHONY: test

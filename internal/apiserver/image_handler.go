@@ -1,11 +1,12 @@
 package apiserver
 
 import (
+	"fmt"
 	"net/http"
 	"strconv"
+	"time"
 
 	"github.com/alisavch/image-service/internal/model"
-	"github.com/alisavch/image-service/internal/utils"
 	"github.com/gorilla/mux"
 )
 
@@ -20,16 +21,17 @@ type findUserHistoryRequest struct {
 	model.User
 }
 
+// Build builds a request to find history.
 func (req *findUserHistoryRequest) Build(r *http.Request) error {
 	id, ok := r.Context().Value(userCtx).(int)
 	if !ok {
-		return utils.ErrFailedConvert
+		return fmt.Errorf("failed convert to int userID")
 	}
 	req.User.ID = id
-
 	return nil
 }
 
+// Validate validates request to find history.
 func (req findUserHistoryRequest) Validate() error {
 	return nil
 }
@@ -41,6 +43,7 @@ func (s *Server) findUserHistory() http.HandlerFunc {
 		err := ParseRequest(r, &req)
 		if err != nil {
 			s.error(w, r, http.StatusBadRequest, err)
+			return
 		}
 
 		history, err := s.service.Image.FindUserHistoryByID(r.Context(), req.User.ID)
@@ -63,7 +66,7 @@ type uploadImageRequest struct {
 func (req *uploadImageRequest) Build(r *http.Request) error {
 	id, ok := r.Context().Value(userCtx).(int)
 	if !ok {
-		return utils.ErrFailedConvert
+		return fmt.Errorf("failed convert to int userID")
 	}
 	req.User.ID = id
 
@@ -72,6 +75,7 @@ func (req *uploadImageRequest) Build(r *http.Request) error {
 		ratio = DefaultRatio
 	}
 	req.Ratio, _ = strconv.Atoi(ratio)
+
 	return nil
 }
 
@@ -87,7 +91,20 @@ func (s *Server) compressImage() http.HandlerFunc {
 		err := ParseRequest(r, &req)
 		if err != nil {
 			s.error(w, r, http.StatusBadRequest, err)
+			return
 		}
+
+		startOfExecution := time.Now()
+
+		//rabbit := new(broker.RabbitMQ)
+		//if err = rabbit.Connect(); err != nil {
+		//	s.error(w, r, http.StatusInternalServerError, err)
+		//}
+		//defer rabbit.Close()
+		//
+		//if err = rabbit.DeclareQueue(model.Queued); err != nil {
+		//	s.error(w, r, http.StatusInternalServerError, err)
+		//}
 
 		newUploadedImage, err := s.uploadImage(r, req.UploadedImage)
 		if err != nil {
@@ -101,6 +118,7 @@ func (s *Server) compressImage() http.HandlerFunc {
 			return
 		}
 
+		endOfExecution := time.Now()
 		resultedImage.Service = model.Compression
 
 		requestID, err := s.service.CreateRequest(
@@ -112,7 +130,10 @@ func (s *Server) compressImage() http.HandlerFunc {
 				UserAccountID:   req.User.ID,
 				UploadedImageID: newUploadedImage.ID,
 				Status:          model.Queued},
-			model.Request{})
+			model.Request{
+				TimeStart: startOfExecution,
+				EndOfTime: endOfExecution,
+			})
 		if err != nil {
 			s.error(w, r, http.StatusInternalServerError, err)
 			return
@@ -132,14 +153,14 @@ type findCompressedImageRequest struct {
 func (req *findCompressedImageRequest) Build(r *http.Request) error {
 	id, ok := r.Context().Value(userCtx).(int)
 	if !ok {
-		return utils.ErrFailedConvert
+		return fmt.Errorf("failed convert to int userID")
 	}
 	req.User.ID = id
 
 	vars := mux.Vars(r)
 	compressedImageID, ok := vars["compressedID"]
 	if !ok {
-		return utils.ErrRequest
+		return fmt.Errorf("incorrect request")
 	}
 
 	req.CompressedID, _ = strconv.Atoi(compressedImageID)
@@ -158,17 +179,18 @@ func (s *Server) findCompressedImage() http.HandlerFunc {
 		err := ParseRequest(r, &req)
 		if err != nil {
 			s.error(w, r, http.StatusBadRequest, err)
+			return
 		}
 
 		resultedImage, err := s.service.Image.FindTheResultingImage(r.Context(), req.CompressedID, model.Compression)
 		if err != nil {
-			s.error(w, r, http.StatusInternalServerError, utils.ErrFindImage)
+			s.error(w, r, http.StatusInternalServerError, fmt.Errorf("cannot find image\""))
 			return
 		}
 
 		err = s.service.Image.SaveImage(resultedImage.Name, "\\results\\", resultedImage.Name)
 		if err != nil {
-			s.error(w, r, http.StatusInternalServerError, utils.ErrSaveImage)
+			s.error(w, r, http.StatusInternalServerError, fmt.Errorf("cannot save image"))
 			return
 		}
 
@@ -187,16 +209,18 @@ type convertImageRequest struct {
 	User model.User
 }
 
-func (req convertImageRequest) Build(r *http.Request) error {
+// Build builds a request to convert image.
+func (req *convertImageRequest) Build(r *http.Request) error {
 	id, ok := r.Context().Value(userCtx).(int)
 	if !ok {
-		return utils.ErrFailedConvert
+		return fmt.Errorf("failed convert to int userID")
 	}
 	req.User.ID = id
 
 	return nil
 }
 
+// Validate validates request to convert image.
 func (req convertImageRequest) Validate() error {
 	return nil
 }
@@ -208,13 +232,10 @@ func (s *Server) convertImage() http.HandlerFunc {
 		err := ParseRequest(r, &req)
 		if err != nil {
 			s.error(w, r, http.StatusBadRequest, err)
-		}
-
-		err = r.ParseMultipartForm(32 << 20)
-		if err != nil {
-			s.error(w, r, http.StatusInternalServerError, utils.ErrMultipartForm)
 			return
 		}
+
+		startOfExecution := time.Now()
 
 		newUploadedImage, err := s.uploadImage(r, req.UploadedImage)
 		if err != nil {
@@ -224,10 +245,11 @@ func (s *Server) convertImage() http.HandlerFunc {
 
 		resultedImage, err := s.service.Image.ConvertToType(newUploadedImage)
 		if err != nil {
-			s.error(w, r, http.StatusInternalServerError, utils.ErrConvert)
+			s.error(w, r, http.StatusInternalServerError, fmt.Errorf("cannot convert image"))
 			return
 		}
 
+		endOfExecution := time.Now()
 		resultedImage.Service = model.Conversion
 
 		requestID, err := s.service.CreateRequest(
@@ -239,9 +261,12 @@ func (s *Server) convertImage() http.HandlerFunc {
 				UserAccountID:   req.User.ID,
 				UploadedImageID: newUploadedImage.ID,
 				Status:          model.Queued},
-			model.Request{})
+			model.Request{
+				TimeStart: startOfExecution,
+				EndOfTime: endOfExecution,
+			})
 		if err != nil {
-			s.error(w, r, http.StatusInternalServerError, utils.ErrCreateRequest)
+			s.error(w, r, http.StatusInternalServerError, err)
 			return
 		}
 
@@ -259,14 +284,14 @@ type findConvertedImageRequest struct {
 func (req *findConvertedImageRequest) Build(r *http.Request) error {
 	id, ok := r.Context().Value(userCtx).(int)
 	if !ok {
-		return utils.ErrFailedConvert
+		return fmt.Errorf("failed convert to int userID")
 	}
 	req.User.ID = id
 
 	vars := mux.Vars(r)
 	convertedImageID, ok := vars["convertedID"]
 	if !ok {
-		return utils.ErrRequest
+		return fmt.Errorf("incorrect request")
 	}
 
 	convertedID, err := strconv.Atoi(convertedImageID)
@@ -290,17 +315,18 @@ func (s *Server) findConvertedImage() http.HandlerFunc {
 		err := ParseRequest(r, &req)
 		if err != nil {
 			s.error(w, r, http.StatusBadRequest, err)
+			return
 		}
 
 		resultedImage, err := s.service.Image.FindTheResultingImage(r.Context(), req.requestID, model.Conversion)
 		if err != nil {
-			s.error(w, r, http.StatusInternalServerError, utils.ErrFindImage)
+			s.error(w, r, http.StatusInternalServerError, fmt.Errorf("cannot find image\""))
 			return
 		}
 
 		err = s.service.Image.SaveImage(resultedImage.Name, "\\results\\", resultedImage.Name)
 		if err != nil {
-			s.error(w, r, http.StatusInternalServerError, utils.ErrSaveImage)
+			s.error(w, r, http.StatusInternalServerError, fmt.Errorf("cannot save image"))
 			return
 		}
 

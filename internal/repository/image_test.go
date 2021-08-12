@@ -2,6 +2,7 @@ package repository
 
 import (
 	"context"
+	"database/sql/driver"
 	"testing"
 	"time"
 
@@ -9,6 +10,15 @@ import (
 	"github.com/alisavch/image-service/internal/model"
 	"github.com/stretchr/testify/require"
 )
+
+// AnyTime ...
+type AnyTime struct{}
+
+// Match satisfies sqlmock.Argument interface
+func (a AnyTime) Match(v driver.Value) bool {
+	_, ok := v.(time.Time)
+	return ok
+}
 
 func TestImageRepository_FindUserHistoryByID(t *testing.T) {
 	db, mock, err := sqlmock.New()
@@ -152,7 +162,7 @@ func TestImageRepository_CreateRequest(t *testing.T) {
 				mock.ExpectQuery("INSERT INTO image_service.user_image").
 					WithArgs(1, 1, 1, model.Queued).WillReturnRows(uiRows)
 				mock.ExpectExec("INSERT INTO image_service.request").
-					WithArgs(1, time.Now(), time.Now()).WillReturnResult(sqlmock.NewResult(1, 1))
+					WithArgs(1, AnyTime{}, AnyTime{}).WillReturnResult(sqlmock.NewResult(1, 1))
 				mock.ExpectCommit()
 			},
 			input: args{

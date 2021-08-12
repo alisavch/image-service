@@ -4,11 +4,10 @@ import (
 	"context"
 	"fmt"
 	"image"
-	"image/color"
-	"image/jpeg"
-	"image/png"
 	"io"
 	"os"
+
+	"github.com/alisavch/image-service/internal/utils"
 
 	"github.com/alisavch/image-service/internal/model"
 	"github.com/alisavch/image-service/internal/repository"
@@ -41,7 +40,7 @@ func (s *ImageService) UploadImage(ctx context.Context, image model.UploadedImag
 }
 
 // CompressImage compress image.
-func (s *ImageService) CompressImage(quality int, uploadedImage model.UploadedImage) (model.ResultedImage, error) {
+func (s *ImageService) CompressImage(width int, uploadedImage model.UploadedImage) (model.ResultedImage, error) {
 	var result model.ResultedImage
 	currentDir, _ := os.Getwd()
 	// TODO: image location instead of --currentDir+ "\\uploads\\"--
@@ -64,37 +63,11 @@ func (s *ImageService) CompressImage(quality int, uploadedImage model.UploadedIm
 
 	switch format {
 	case "jpeg":
-		if quality < 0 || quality > 100 {
-			return model.ResultedImage{}, fmt.Errorf("jpeg support only quality from 0 to 100")
-		}
-		err = jpeg.Encode(newImgFile, imgSrc, &jpeg.Options{Quality: quality})
-		if err != nil {
+		if err := CompressJPEG(imgSrc, width, newImgFile); err != nil {
 			return model.ResultedImage{}, err
 		}
 	case "png":
-		if quality < 0 || quality > 255 {
-			return model.ResultedImage{}, fmt.Errorf("png support only quality from 0 to 255")
-		}
-		size := imgSrc.Bounds().Size()
-		rect := image.Rect(0, 0, size.X, size.Y)
-		wImg := image.NewRGBA(rect)
-		for y := imgSrc.Bounds().Min.Y; y < imgSrc.Bounds().Max.Y; y++ {
-			for x := imgSrc.Bounds().Min.X; x < imgSrc.Bounds().Max.X; x++ {
-				pixel := imgSrc.At(x, y)
-				originalColor := color.RGBAModel.Convert(pixel).(color.RGBA)
-				r := int(originalColor.R) - quality
-				g := int(originalColor.G) - quality
-				b := int(originalColor.B) - quality
-
-				newColor := uint8((r + g + b) / 3)
-				c := color.RGBA{
-					R: newColor, G: newColor, B: newColor, A: originalColor.A,
-				}
-				wImg.Set(x, y, c)
-			}
-		}
-		err = png.Encode(newImgFile, wImg)
-		if err != nil {
+		if err := CompressPNG(imgSrc, width, newImgFile); err != nil {
 			return model.ResultedImage{}, err
 		}
 	}
@@ -129,7 +102,7 @@ func (s *ImageService) ConvertToType(uploadedImage model.UploadedImage) (model.R
 	newImg, err := os.Create(fmt.Sprintf("./results/%s", convertedName))
 	defer file.Close()
 	if err != nil {
-		return model.ResultedImage{}, fmt.Errorf("error create new file")
+		return model.ResultedImage{}, utils.ErrCreateFile
 	}
 	defer newImg.Close()
 
@@ -165,11 +138,13 @@ func (s *ImageService) SaveImage(filename, folder, resultedFilename string) erro
 	if err != nil {
 		return err
 	}
+
 	out, err := SaveToDownloads(resultedFilename)
 	if err != nil {
 		return err
 	}
 	defer out.Close()
+
 	_, err = io.Copy(out, file)
 	if err != nil {
 		return err

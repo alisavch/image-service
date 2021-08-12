@@ -3,6 +3,8 @@ package apiserver
 import (
 	"database/sql"
 	"fmt"
+	"github.com/alisavch/image-service/internal/broker"
+	"github.com/alisavch/image-service/internal/model"
 	"net/http"
 
 	"github.com/alisavch/image-service/internal/utils"
@@ -15,21 +17,32 @@ import (
 
 // Start starts the server.
 func Start() error {
-	utils.LoadEnv()
-	get := utils.GetEnvWithKey
-	db, err := newDB(
-		get("DB_USER"),
-		get("DB_PASSWORD"),
-		get("DB_HOST"),
-		get("DB_PORT"),
-		get("DB_NAME"))
+	conf := utils.NewConfig(".env")
+	user, pass, host, port, dbname, err := utils.GetDBEnvironments(conf)
+	if err != nil {
+		logrus.Fatalf("error find variables :%s", err.Error())
+	}
+	db, err := newDB(user, pass, host, port, dbname)
 	if err != nil {
 		logrus.Fatalf("error initialize database: %s", err.Error())
 	}
 	defer db.Close()
 	repos := repository.NewRepository(db)
 	services := service.NewService(repos)
-	srv := newServer(services)
+
+	rabbit := new(broker.RabbitMQ)
+	if err = rabbit.Connect(); err != nil {
+		logrus.Fatalf("rabbit connection: %s", err)
+	}
+	defer rabbit.Close()
+
+	if err = rabbit.DeclareQueue(model.Queued); err != nil {
+		logrus.Fatalf("declare queue: %s", err)
+	}
+
+	srv := newServer(services, rabbit)
+
+
 
 	return http.ListenAndServe(
 		":8080",

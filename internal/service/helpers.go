@@ -1,13 +1,16 @@
 package service
 
 import (
-	"fmt"
 	"image"
 	"image/jpeg"
 	"image/png"
 	"io"
 	"os"
 	"strings"
+
+	"github.com/alisavch/image-service/internal/utils"
+
+	"github.com/nfnt/resize"
 )
 
 // EncodeConfig contains image constants.
@@ -30,7 +33,7 @@ func ChangeFormat(filename string) (string, error) {
 		convertedName := strings.Join(imgNames, ".")
 		return convertedName, nil
 	}
-	return "", fmt.Errorf("unsupported file format")
+	return "", utils.ErrUnsupportedFormat
 }
 
 // EncodeOption sets an optional parameter for the Encode and Save functions.
@@ -63,7 +66,7 @@ func Encode(w io.Writer, img image.Image, format string, opts ...EncodeOption) e
 			err = jpeg.Encode(w, img, &jpeg.Options{Quality: cfg.jpegQuality})
 		}
 	default:
-		err = fmt.Errorf("unsupported file format")
+		err = utils.ErrUnsupportedFormat
 	}
 	return err
 }
@@ -71,9 +74,23 @@ func Encode(w io.Writer, img image.Image, format string, opts ...EncodeOption) e
 // SaveToDownloads saves the image to download folder on your computer.
 func SaveToDownloads(name string) (*os.File, error) {
 	userprofile := os.Getenv("USERPROFILE")
-	out, err := os.Create(userprofile + "\\Downloads\\" + name)
-	if err != nil {
-		return nil, err
+	return os.Create(userprofile + "\\Downloads\\" + name)
+}
+
+// CompressJPEG allows you to compress the JPEG image in width while maintaining the aspect ratio.
+func CompressJPEG(imgSrc image.Image, width int, newImgFile *os.File) error {
+	if width < 0 || width > imgSrc.Bounds().Max.X {
+		return utils.ErrIncorrectRatio
 	}
-	return out, nil
+	m := resize.Resize(uint(width), 0, imgSrc, resize.Lanczos3)
+	return jpeg.Encode(newImgFile, m, nil)
+}
+
+// CompressPNG allows you to compress the PNG image in width while maintaining the aspect ratio.
+func CompressPNG(imgSrc image.Image, width int, newImgFile *os.File) error {
+	if width < 0 || width > imgSrc.Bounds().Max.X {
+		return utils.ErrIncorrectRatio
+	}
+	m := resize.Resize(uint(width), 0, imgSrc, resize.Lanczos3)
+	return png.Encode(newImgFile, m)
 }

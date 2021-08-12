@@ -17,7 +17,10 @@ type RabbitMQ struct {
 
 // Connect instantiates the RabbitMW instances using configuration defined in environment variables.
 func (r *RabbitMQ) Connect() (err error) {
-	url := utils.GetEnvWithKey("RABBITMQ_URL")
+	url, err := utils.GetRabbitMQURL(utils.NewConfig(".env"))
+	if err != nil {
+		return err
+	}
 
 	r.conn, err = amqp.Dial(url)
 	if err != nil {
@@ -38,7 +41,6 @@ func (r *RabbitMQ) Connect() (err error) {
 func (r *RabbitMQ) Publish(exchange, key string, deliveryMode, priority uint8, body string) (err error) {
 	err = r.ch.Publish(exchange, key, false, false,
 		amqp.Publishing{
-			Headers:      amqp.Table{},
 			ContentType:  "application/json",
 			DeliveryMode: deliveryMode,
 			Priority:     priority,
@@ -59,6 +61,10 @@ func (r *RabbitMQ) DeclareQueue(name model.Status) (err error) {
 	return nil
 }
 
+//func (r *RabbitMQ) BindQueue(name string, key string) (err error) {
+//	err = r.ch.QueueBind(name, key, )
+//}
+
 // DeleteQueue removes the queue from the server.
 func (r *RabbitMQ) DeleteQueue(name string) (err error) {
 	_, err = r.ch.QueueDelete(name, false, false, false)
@@ -69,8 +75,8 @@ func (r *RabbitMQ) DeleteQueue(name string) (err error) {
 }
 
 // ConsumeQueue starts delivering queued messages.
-func (r *RabbitMQ) ConsumeQueue(queue string, message chan []byte) (err error) {
-	deliveries, err := r.ch.Consume(queue, "", false, false, false, false, nil)
+func (r *RabbitMQ) ConsumeQueue(queue model.Status, message chan []byte) (err error) {
+	deliveries, err := r.ch.Consume(string(queue), "", false, false, false, false, nil)
 	if err != nil {
 		return fmt.Errorf("consume queue error: %w", err)
 	}
@@ -89,5 +95,6 @@ func (r *RabbitMQ) Close() (err error) {
 	if err != nil {
 		return fmt.Errorf("close error: %w", err)
 	}
+	<-r.done
 	return nil
 }

@@ -2,9 +2,9 @@ package apiserver
 
 import (
 	"encoding/json"
-	"errors"
-	"fmt"
 	"net/http"
+
+	"github.com/alisavch/image-service/internal/utils"
 
 	"github.com/alisavch/image-service/internal/model"
 )
@@ -25,10 +25,10 @@ func (req *signUpRequest) Build(r *http.Request) error {
 // Validate validates request to sign up.
 func (req *signUpRequest) Validate() error {
 	if req.Username == "" {
-		return errors.New("username must not be empty")
+		return utils.ErrEmptyUsername
 	}
 	if req.Password == "" {
-		return errors.New("password must not be empty")
+		return utils.ErrEmptyPassword
 	}
 	return nil
 }
@@ -39,13 +39,13 @@ func (s *Server) signUp() http.HandlerFunc {
 
 		err := ParseRequest(r, &req)
 		if err != nil {
-			s.error(w, r, http.StatusBadRequest, err)
+			s.errorJSON(w, r, http.StatusBadRequest, err)
 			return
 		}
 
 		id, err := s.service.Authorization.CreateUser(r.Context(), req.User)
 		if err != nil {
-			s.error(w, r, http.StatusInternalServerError, err)
+			s.errorJSON(w, r, http.StatusInternalServerError, err)
 			return
 		}
 		s.respondJSON(w, r, http.StatusOK, id)
@@ -69,10 +69,10 @@ func (req *signInRequest) Build(r *http.Request) error {
 // Validate validates request to sign in.
 func (req *signInRequest) Validate() error {
 	if req.Username == "" {
-		return fmt.Errorf("username must not be empty")
+		return utils.ErrEmptyUsername
 	}
 	if req.Password == "" {
-		return fmt.Errorf("password must not be empty")
+		return utils.ErrEmptyPassword
 	}
 	return nil
 }
@@ -82,13 +82,13 @@ func (s *Server) signIn() http.HandlerFunc {
 		var req signInRequest
 		err := ParseRequest(r, &req)
 		if err != nil {
-			s.error(w, r, http.StatusBadRequest, err)
+			s.errorJSON(w, r, http.StatusBadRequest, err)
 			return
 		}
 
 		token, err := s.service.Authorization.GenerateToken(r.Context(), req.Username, req.Password)
 		if err != nil {
-			s.error(w, r, http.StatusInternalServerError, err)
+			s.errorJSON(w, r, http.StatusInternalServerError, err)
 			return
 		}
 		s.respondJSON(w, r, http.StatusOK, token)

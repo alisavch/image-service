@@ -18,8 +18,7 @@ func NewAuthRepository(db *sql.DB) *AuthRepository {
 }
 
 // CreateUser provides adding new user.
-func (r *AuthRepository) CreateUser(ctx context.Context, user model.User) (int, error) {
-	var id int
+func (r *AuthRepository) CreateUser(ctx context.Context, user model.User) (id int, err error) {
 	query := "INSERT INTO image_service.user_account(username, password) VALUES ($1, $2) RETURNING id"
 	row := r.db.QueryRowContext(ctx, query, user.Username, user.Password)
 	if err := row.Scan(&id); err != nil {

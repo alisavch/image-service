@@ -65,21 +65,21 @@ func (i *ImageRepository) CreateRequest(ctx context.Context, user model.User, up
 	createResultedImage := "INSERT INTO image_service.resulted_image(resulted_name, resulted_location, service) VALUES ($1, $2, $3) RETURNING id"
 	row := tx.QueryRowContext(ctx, createResultedImage, resImg.Name, resImg.Location, resImg.Service)
 	if err := row.Scan(&resultedImageID); err != nil {
-		tx.Rollback()
+		_ = tx.Rollback()
 		return 0, err
 	}
 
 	createUserImage := "INSERT INTO image_service.user_image(user_account_id, uploaded_image_id, resulting_image_id, status) VALUES($1, $2, $3, $4) RETURNING id"
 	row = tx.QueryRowContext(ctx, createUserImage, user.ID, uplImg.ID, resultedImageID, uI.Status)
 	if err := row.Scan(&userImageID); err != nil {
-		tx.Rollback()
+		_ = tx.Rollback()
 		return 0, err
 	}
 
 	createRequest := "INSERT INTO image_service.request(user_image_id, time_start, end_of_time) VALUES($1, $2, $3)"
 	_, err = tx.ExecContext(ctx, createRequest, userImageID, r.TimeStart, r.EndOfTime)
 	if err != nil {
-		tx.Rollback()
+		_ = tx.Rollback()
 		return 0, err
 	}
 	return resultedImageID, tx.Commit()

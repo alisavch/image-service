@@ -2,8 +2,9 @@ package service
 
 import (
 	"context"
-	"fmt"
 	"time"
+
+	"github.com/alisavch/image-service/internal/utils"
 
 	"github.com/alisavch/image-service/internal/model"
 	"github.com/alisavch/image-service/internal/repository"
@@ -13,7 +14,6 @@ import (
 
 const (
 	signingKey = "QTicXLOhp5uxp80xTGrosP5Hpa9C"
-	tokenTTL   = 12 * time.Hour
 )
 
 type tokenClaims struct {
@@ -32,8 +32,11 @@ func NewAuthService(repo repository.Authorization) *AuthService {
 }
 
 // CreateUser creates user.
-func (s *AuthService) CreateUser(ctx context.Context, user model.User) (int, error) {
-	user.Password, _ = s.generatePasswordHash(user.Password)
+func (s *AuthService) CreateUser(ctx context.Context, user model.User) (id int, err error) {
+	user.Password, err = generatePasswordHash(user.Password)
+	if err != nil {
+		return 0, err
+	}
 	return s.repo.CreateUser(ctx, user)
 }
 
@@ -43,13 +46,21 @@ func (s *AuthService) GenerateToken(ctx context.Context, username, password stri
 	if err != nil {
 		return "get user error", err
 	}
-	match := s.checkPasswordHash(password, user.Password)
+	match := checkPasswordHash(password, user.Password)
 	if !match {
-		return "err check passwords", err
+		return "password verification error", err
+	}
+	value, err := utils.GetTokenTTL(utils.NewConfig(".env"))
+	if err != nil {
+		return "", err
+	}
+	jwtTTL, err := time.ParseDuration(value)
+	if err != nil {
+		return "error getting jwt ttl", nil
 	}
 	token := jwt.NewWithClaims(jwt.SigningMethodHS256, &tokenClaims{
 		jwt.StandardClaims{
-			ExpiresAt: time.Now().Add(tokenTTL).Unix(),
+			ExpiresAt: time.Now().Add(jwtTTL).Unix(),
 			IssuedAt:  time.Now().Unix(),
 		},
 		int64(user.ID),
@@ -61,7 +72,7 @@ func (s *AuthService) GenerateToken(ctx context.Context, username, password stri
 func (s *AuthService) ParseToken(accessToken string) (int, error) {
 	token, err := jwt.ParseWithClaims(accessToken, &tokenClaims{}, func(token *jwt.Token) (interface{}, error) {
 		if _, ok := token.Method.(*jwt.SigningMethodHMAC); !ok {
-			return nil, fmt.Errorf("invalid signing method")
+			return nil, utils.ErrSigningMethod
 		}
 		return []byte(signingKey), nil
 	})
@@ -70,17 +81,17 @@ func (s *AuthService) ParseToken(accessToken string) (int, error) {
 	}
 	claims, ok := token.Claims.(*tokenClaims)
 	if !ok {
-		return 0, fmt.Errorf("token claims is invalid")
+		return 0, utils.ErrInvalidToken
 	}
 	return int(claims.UserID), nil
 }
 
-func (s *AuthService) generatePasswordHash(password string) (string, error) {
+func generatePasswordHash(password string) (string, error) {
 	bytes, err := bcrypt.GenerateFromPassword([]byte(password), 14)
 	return string(bytes), err
 }
 
-func (s *AuthService) checkPasswordHash(password, hash string) bool {
+func checkPasswordHash(password, hash string) bool {
 	err := bcrypt.CompareHashAndPassword([]byte(hash), []byte(password))
 	return err == nil
 }

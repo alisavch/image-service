@@ -1,26 +1,9 @@
-# Builder
-FROM golang:1.16-alpine as build
+FROM golang:alpine as builder
+RUN apk --no-cache add build-base git gcc make
+ADD . /src
+RUN cd /src && make test build
 
-RUN go version
-
-WORKDIR /cmd/api
-
-ENV GOPATH=/
-
-COPY ./ ./
-
-RUN go mod download
-RUN go build -o image-service ./cmd/api/main.go
-
-# Distribution
-FROM alpine:latest
-
-RUN go version
-
-WORKDIR /cmd/api
-
-EXPOSE 8080
-
-COPY --from-builder /cmd/api/main /cmd/api
-
-CMD /cmd/api/main
+FROM alpine
+WORKDIR /app
+COPY --from=builder /src/image_service /app/
+ENTRYPOINT ./image_service

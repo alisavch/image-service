@@ -1,25 +1,30 @@
+GOCMD=go
+GOBUILD=$(GOCMD) build
+GORUN=$(GOCMD) run
+GOCLEAN=$(GOCMD) clean
+GOTEST=$(GOCMD) test
+GOGET=$(GOCMD) get
+BINARY_NAME=image_service
+LINTER=golangci-lint
+
 .PHONY: build
 build:
-	go build -v ./...
+	$(GOBUILD) -x ./cmd/api/main.go
 
 .PHONY: run
 run:
-	go run ./cmd/api/main.go
+	$(GORUN) ./cmd/api/main.go
 
 .PHONY: mocks
 mocks:
 	mockery --case underscore --dir ./internal/service/ --output ./internal/service/mocks --all --disable-version-string
 
 .PHONY: lint
-lint: build
-	goimports -w cmd/api internal/apiserver internal/broker internal/log internal/model internal/repository internal/service internal/utils
-	gofmt -w cmd/api internal/apiserver internal/broker internal/log internal/model internal/repository internal/service internal/utils
-	golint ./...
+lint:
+	$(LINTER) run
 
 .PHONY: test
 test: lint
-	go test -v ./internal/apiserver ./internal/repository
+	$(GOTEST) ./... -v
 
-
-
-.DEFAULT_GOAL := build
+.DEFAULT_GOAL := test

@@ -10,6 +10,8 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/alisavch/image-service/internal/utils"
+
 	"github.com/alisavch/image-service/internal/model"
 	"github.com/google/uuid"
 )
@@ -36,25 +38,44 @@ func ParseRequest(r *http.Request, req Request) error {
 	return req.Validate()
 }
 
+type authorization struct {
+	header      string
+	headerParts []string
+	token       string
+}
+
+func (req *authorization) Build(r *http.Request) error {
+	req.header = r.Header.Get(string(authorizationHeader))
+	if req.header == "" {
+		return utils.ErrEmptyHeader
+	}
+	req.headerParts = strings.Split(req.header, " ")
+	req.token = req.headerParts[1]
+	return nil
+}
+
+func (req authorization) Validate() error {
+	if len(req.headerParts) != 2 || req.headerParts[0] != "Bearer" {
+		return fmt.Errorf("auth header is invalid")
+	}
+	if len(req.token) == 0 {
+		return utils.ErrEmptyToken
+	}
+	return nil
+}
+
 func (s *Server) authorize(next http.Handler) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		header := r.Header.Get(string(authorizationHeader))
-		if header == "" {
-			s.error(w, r, http.StatusUnauthorized, fmt.Errorf("auth header is empty"))
-			return
-		}
-		headerParts := strings.Split(header, " ")
-		if len(headerParts) != 2 || headerParts[0] != "Bearer" {
-			s.error(w, r, http.StatusUnauthorized, fmt.Errorf("auth header is invalid"))
-			return
-		}
-		if len(headerParts[1]) == 0 {
-			s.error(w, r, http.StatusUnauthorized, fmt.Errorf("token is empty"))
+		var req authorization
+
+		err := ParseRequest(r, &req)
+		if err != nil {
+			s.errorJSON(w, r, http.StatusBadRequest, err)
 		}
 
-		userID, err := s.service.Authorization.ParseToken(headerParts[1])
+		userID, err := s.service.Authorization.ParseToken(req.token)
 		if err != nil {
-			s.error(w, r, http.StatusUnauthorized, err)
+			s.errorJSON(w, r, http.StatusUnauthorized, err)
 			return
 		}
 		ctx := context.WithValue(r.Context(), userCtx, userID)
@@ -62,46 +83,48 @@ func (s *Server) authorize(next http.Handler) http.HandlerFunc {
 	}
 }
 
-type request struct {
+type uploaded struct {
 	file    multipart.File
 	handler *multipart.FileHeader
 }
 
-func (req *request) Build(r *http.Request) error {
+func (req *uploaded) Build(r *http.Request) error {
 	err := r.ParseMultipartForm(32 << 20)
 	if err != nil {
-		return fmt.Errorf("error parse multipart from")
+		return utils.ErrMultipartForm
 	}
 	req.file, req.handler, err = r.FormFile("uploadFile")
 	if err != nil {
-		return fmt.Errorf("error upload file from form")
+		return utils.ErrUpload
 	}
 	defer req.file.Close()
 	return nil
 }
 
-func (req request) Validate() error {
+func (req uploaded) Validate() error {
+	if !(req.handler.Header["Content-Type"][0] == "image/jpeg" || req.handler.Header["Content-Type"][0] == "image/png") {
+		return utils.ErrAllowedFormat
+	}
 	return nil
 }
 
 func (s *Server) uploadImage(r *http.Request, uploadedImage model.UploadedImage) (model.UploadedImage, error) {
-	var req request
+	var req uploaded
 	err := ParseRequest(r, &req)
+	if err != nil {
+		return model.UploadedImage{}, err
+	}
 	req.handler.Filename = strings.Replace(uuid.New().String(), "-", "", -1) + req.handler.Filename
 
 	out, err := os.Create(fmt.Sprintf("./uploads/%s", req.handler.Filename))
 	if err != nil {
-		return model.UploadedImage{}, fmt.Errorf("error create new file")
+		return model.UploadedImage{}, utils.ErrCreateFile
 	}
 	defer out.Close()
 
 	_, err = io.Copy(out, req.file)
 	if err != nil {
-		return model.UploadedImage{}, fmt.Errorf("error copy file")
-	}
-
-	if !(req.handler.Header["Content-Type"][0] == "image/jpeg" || req.handler.Header["Content-Type"][0] == "image/png") {
-		return model.UploadedImage{}, fmt.Errorf("file format is not allowed. Please upload a JPEG or PNG")
+		return model.UploadedImage{}, utils.ErrCopyFile
 	}
 
 	uploadedImage.Name = req.handler.Filename
@@ -109,7 +132,7 @@ func (s *Server) uploadImage(r *http.Request, uploadedImage model.UploadedImage)
 	uploadedImage.Location = currentDir + "\\uploaded\\"
 	uploadedID, err := s.service.Image.UploadImage(r.Context(), uploadedImage)
 	if err != nil {
-		return model.UploadedImage{}, fmt.Errorf("error upload file")
+		return model.UploadedImage{}, utils.ErrUpload
 	}
 	uploadedImage.ID = uploadedID
 
@@ -133,11 +156,11 @@ func (s *Server) findOriginalImage(r *http.Request, id int) error {
 
 	uploaded, err := s.service.Image.FindOriginalImage(r.Context(), id)
 	if err != nil {
-		return fmt.Errorf("cannot find image")
+		return utils.ErrFindImage
 	}
 
 	if err = s.service.Image.SaveImage(uploaded.Name, "\\uploads\\", "orig"+uploaded.Name); err != nil {
-		return fmt.Errorf("cannot save image")
+		return utils.ErrSaveImage
 	}
 	return nil
 }

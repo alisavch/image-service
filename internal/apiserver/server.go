@@ -2,6 +2,7 @@ package apiserver
 
 import (
 	"encoding/json"
+	"github.com/alisavch/image-service/internal/broker"
 	"net/http"
 
 	"github.com/alisavch/image-service/internal/service"
@@ -12,12 +13,14 @@ import (
 type Server struct {
 	router  *mux.Router
 	service *service.Service
+	mq *broker.RabbitMQ
 }
 
-func newServer(service *service.Service) *Server {
+func newServer(service *service.Service, mq *broker.RabbitMQ) *Server {
 	s := &Server{
 		router:  mux.NewRouter(),
 		service: service,
+		mq: mq,
 	}
 	s.ConfigureRouter()
 	return s
@@ -27,7 +30,7 @@ func (s *Server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	s.router.ServeHTTP(w, r)
 }
 
-func (s *Server) error(w http.ResponseWriter, r *http.Request, code int, err error) {
+func (s *Server) errorJSON(w http.ResponseWriter, r *http.Request, code int, err error) {
 	s.respondJSON(w, r, code, map[string]string{"error": err.Error()})
 }
 

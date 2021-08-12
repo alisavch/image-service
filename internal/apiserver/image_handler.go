@@ -2,17 +2,20 @@ package apiserver
 
 import (
 	"fmt"
+	"github.com/sirupsen/logrus"
 	"net/http"
 	"strconv"
 	"time"
+
+	"github.com/alisavch/image-service/internal/utils"
 
 	"github.com/alisavch/image-service/internal/model"
 	"github.com/gorilla/mux"
 )
 
 const (
-	// DefaultRatio is default value for compress jpeg.
-	DefaultRatio = "95"
+	// DefaultWidth is default value for compress JPEG and PNG.
+	DefaultWidth = "150"
 	// DefaultOriginal is default value for downloads original image.
 	DefaultOriginal = "false"
 )
@@ -25,7 +28,7 @@ type findUserHistoryRequest struct {
 func (req *findUserHistoryRequest) Build(r *http.Request) error {
 	id, ok := r.Context().Value(userCtx).(int)
 	if !ok {
-		return fmt.Errorf("failed convert to int userID")
+		return utils.ErrFailedConvert
 	}
 	req.User.ID = id
 	return nil
@@ -42,13 +45,13 @@ func (s *Server) findUserHistory() http.HandlerFunc {
 
 		err := ParseRequest(r, &req)
 		if err != nil {
-			s.error(w, r, http.StatusBadRequest, err)
+			s.errorJSON(w, r, http.StatusBadRequest, err)
 			return
 		}
 
 		history, err := s.service.Image.FindUserHistoryByID(r.Context(), req.User.ID)
 		if err != nil {
-			s.error(w, r, http.StatusInternalServerError, err)
+			s.errorJSON(w, r, http.StatusInternalServerError, err)
 			return
 		}
 
@@ -59,22 +62,22 @@ func (s *Server) findUserHistory() http.HandlerFunc {
 type uploadImageRequest struct {
 	model.UploadedImage
 	User  model.User
-	Ratio int
+	Width int
 }
 
 // Build builds a request to compress image.
 func (req *uploadImageRequest) Build(r *http.Request) error {
 	id, ok := r.Context().Value(userCtx).(int)
 	if !ok {
-		return fmt.Errorf("failed convert to int userID")
+		return utils.ErrFailedConvert
 	}
 	req.User.ID = id
 
-	ratio := r.FormValue("ratio")
-	if ratio == "" {
-		ratio = DefaultRatio
+	width := r.FormValue("width")
+	if width == "" {
+		width = DefaultWidth
 	}
-	req.Ratio, _ = strconv.Atoi(ratio)
+	req.Width, _ = strconv.Atoi(width)
 
 	return nil
 }
@@ -90,31 +93,56 @@ func (s *Server) compressImage() http.HandlerFunc {
 
 		err := ParseRequest(r, &req)
 		if err != nil {
-			s.error(w, r, http.StatusBadRequest, err)
+			s.errorJSON(w, r, http.StatusBadRequest, err)
 			return
 		}
 
 		startOfExecution := time.Now()
 
-		//rabbit := new(broker.RabbitMQ)
-		//if err = rabbit.Connect(); err != nil {
-		//	s.error(w, r, http.StatusInternalServerError, err)
-		//}
-		//defer rabbit.Close()
-		//
-		//if err = rabbit.DeclareQueue(model.Queued); err != nil {
-		//	s.error(w, r, http.StatusInternalServerError, err)
-		//}
-
 		newUploadedImage, err := s.uploadImage(r, req.UploadedImage)
 		if err != nil {
-			s.error(w, r, http.StatusInternalServerError, err)
+			s.errorJSON(w, r, http.StatusInternalServerError, err)
 			return
 		}
 
-		resultedImage, err := s.service.Image.CompressImage(req.Ratio, newUploadedImage)
+		err = s.mq.Connect()
 		if err != nil {
-			s.error(w, r, http.StatusInternalServerError, err)
+			logrus.Fatalf("open channel: %s", err)
+		}
+
+		err = s.mq.DeclareQueue(model.Processing)
+		if err != nil {
+			logrus.Fatalf("queue declare: %s", err)
+		}
+
+		proc := make(chan []byte)
+		err = s.mq.ConsumeQueue(model.Processing, proc)
+		if err != nil {
+			logrus.Fatalf("consume: %s", err)
+		}
+
+		resultedImage, err := s.service.Image.CompressImage(req.Width, newUploadedImage)
+		if err != nil {
+			s.errorJSON(w, r, http.StatusInternalServerError, err)
+			return
+		}
+
+		err = s.mq.DeclareQueue(model.Done)
+		if err != nil {
+			logrus.Fatalf("queue declare: %s", err)
+			return
+		}
+
+		done := make(chan []byte)
+		err = s.mq.ConsumeQueue(model.Done, done)
+		if err != nil {
+			logrus.Fatalf("consume: %s", err)
+			return
+		}
+
+		err = s.mq.Close()
+		if err != nil {
+			logrus.Fatalf("close: %s", err)
 			return
 		}
 
@@ -129,13 +157,13 @@ func (s *Server) compressImage() http.HandlerFunc {
 			model.UserImage{
 				UserAccountID:   req.User.ID,
 				UploadedImageID: newUploadedImage.ID,
-				Status:          model.Queued},
+				Status:          model.Done},
 			model.Request{
 				TimeStart: startOfExecution,
 				EndOfTime: endOfExecution,
 			})
 		if err != nil {
-			s.error(w, r, http.StatusInternalServerError, err)
+			s.errorJSON(w, r, http.StatusInternalServerError, err)
 			return
 		}
 
@@ -178,25 +206,25 @@ func (s *Server) findCompressedImage() http.HandlerFunc {
 
 		err := ParseRequest(r, &req)
 		if err != nil {
-			s.error(w, r, http.StatusBadRequest, err)
+			s.errorJSON(w, r, http.StatusBadRequest, err)
 			return
 		}
 
 		resultedImage, err := s.service.Image.FindTheResultingImage(r.Context(), req.CompressedID, model.Compression)
 		if err != nil {
-			s.error(w, r, http.StatusInternalServerError, fmt.Errorf("cannot find image\""))
+			s.errorJSON(w, r, http.StatusInternalServerError, utils.ErrFindImage)
 			return
 		}
 
 		err = s.service.Image.SaveImage(resultedImage.Name, "\\results\\", resultedImage.Name)
 		if err != nil {
-			s.error(w, r, http.StatusInternalServerError, fmt.Errorf("cannot save image"))
+			s.errorJSON(w, r, http.StatusInternalServerError, utils.ErrSaveImage)
 			return
 		}
 
 		err = s.findOriginalImage(r, req.CompressedID)
 		if err != nil {
-			s.error(w, r, http.StatusInternalServerError, err)
+			s.errorJSON(w, r, http.StatusInternalServerError, err)
 			return
 		}
 
@@ -231,7 +259,7 @@ func (s *Server) convertImage() http.HandlerFunc {
 
 		err := ParseRequest(r, &req)
 		if err != nil {
-			s.error(w, r, http.StatusBadRequest, err)
+			s.errorJSON(w, r, http.StatusBadRequest, err)
 			return
 		}
 
@@ -239,13 +267,48 @@ func (s *Server) convertImage() http.HandlerFunc {
 
 		newUploadedImage, err := s.uploadImage(r, req.UploadedImage)
 		if err != nil {
-			s.error(w, r, http.StatusInternalServerError, err)
+			s.errorJSON(w, r, http.StatusInternalServerError, err)
 			return
+		}
+
+		err = s.mq.Connect()
+		if err != nil {
+			logrus.Fatalf("open channel: %s", err)
+		}
+
+		err = s.mq.DeclareQueue(model.Processing)
+		if err != nil {
+			logrus.Fatalf("queue declare: %s", err)
+		}
+
+		proc := make(chan []byte)
+		err = s.mq.ConsumeQueue(model.Processing, proc)
+		if err != nil {
+			logrus.Fatalf("consume: %s", err)
 		}
 
 		resultedImage, err := s.service.Image.ConvertToType(newUploadedImage)
 		if err != nil {
-			s.error(w, r, http.StatusInternalServerError, fmt.Errorf("cannot convert image"))
+			s.errorJSON(w, r, http.StatusInternalServerError, utils.ErrConvert)
+			return
+		}
+
+		err = s.mq.DeclareQueue(model.Done)
+		if err != nil {
+			logrus.Fatalf("queue declare: %s", err)
+			return
+		}
+
+		done := make(chan []byte)
+		err = s.mq.ConsumeQueue(model.Done, done)
+		if err != nil {
+			logrus.Fatalf("consume: %s", err)
+			return
+		}
+
+		err = s.mq.Close()
+		if err != nil {
+			logrus.Fatalf("close: %s", err)
 			return
 		}
 
@@ -260,13 +323,13 @@ func (s *Server) convertImage() http.HandlerFunc {
 			model.UserImage{
 				UserAccountID:   req.User.ID,
 				UploadedImageID: newUploadedImage.ID,
-				Status:          model.Queued},
+				Status:          model.Done},
 			model.Request{
 				TimeStart: startOfExecution,
 				EndOfTime: endOfExecution,
 			})
 		if err != nil {
-			s.error(w, r, http.StatusInternalServerError, err)
+			s.errorJSON(w, r, http.StatusInternalServerError, err)
 			return
 		}
 
@@ -284,14 +347,14 @@ type findConvertedImageRequest struct {
 func (req *findConvertedImageRequest) Build(r *http.Request) error {
 	id, ok := r.Context().Value(userCtx).(int)
 	if !ok {
-		return fmt.Errorf("failed convert to int userID")
+		return utils.ErrFailedConvert
 	}
 	req.User.ID = id
 
 	vars := mux.Vars(r)
 	convertedImageID, ok := vars["convertedID"]
 	if !ok {
-		return fmt.Errorf("incorrect request")
+		return utils.ErrRequest
 	}
 
 	convertedID, err := strconv.Atoi(convertedImageID)
@@ -314,25 +377,25 @@ func (s *Server) findConvertedImage() http.HandlerFunc {
 
 		err := ParseRequest(r, &req)
 		if err != nil {
-			s.error(w, r, http.StatusBadRequest, err)
+			s.errorJSON(w, r, http.StatusBadRequest, err)
 			return
 		}
 
 		resultedImage, err := s.service.Image.FindTheResultingImage(r.Context(), req.requestID, model.Conversion)
 		if err != nil {
-			s.error(w, r, http.StatusInternalServerError, fmt.Errorf("cannot find image\""))
+			s.errorJSON(w, r, http.StatusInternalServerError, utils.ErrFindImage)
 			return
 		}
 
 		err = s.service.Image.SaveImage(resultedImage.Name, "\\results\\", resultedImage.Name)
 		if err != nil {
-			s.error(w, r, http.StatusInternalServerError, fmt.Errorf("cannot save image"))
+			s.errorJSON(w, r, http.StatusInternalServerError, utils.ErrSaveImage)
 			return
 		}
 
 		err = s.findOriginalImage(r, req.requestID)
 		if err != nil {
-			s.error(w, r, http.StatusInternalServerError, err)
+			s.errorJSON(w, r, http.StatusInternalServerError, err)
 			return
 		}
 

@@ -24,7 +24,7 @@ lint:
 	$(LINTER) run
 
 .PHONY: test
-test: lint
+test:
 	$(GOTEST) ./... -v
 
 .DEFAULT_GOAL := test

@@ -8,3 +8,10 @@ before_install:
 
 script:
   - make lint test
+  - docker build -t image_service .
+
+deploy:
+  provider: script
+  script: bash .docker_push
+  on:
+    branch: main

@@ -5,5 +5,5 @@ RUN cd /src && make test build
 
 FROM alpine
 WORKDIR /app
-COPY --from=builder /src/image_service /app/
-ENTRYPOINT ./image_service
+COPY --from=builder /src /app/
+ENTRYPOINT ./bin/main

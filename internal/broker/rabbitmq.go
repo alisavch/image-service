@@ -3,6 +3,8 @@ package broker
 import (
 	"fmt"
 
+	"github.com/sirupsen/logrus"
+
 	"github.com/alisavch/image-service/internal/model"
 	"github.com/alisavch/image-service/internal/utils"
 	"github.com/streadway/amqp"
@@ -56,14 +58,19 @@ func (r *RabbitMQ) Publish(exchange, key string, deliveryMode, priority uint8, b
 func (r *RabbitMQ) DeclareQueue(name model.Status) (err error) {
 	_, err = r.ch.QueueDeclare(string(name), true, false, false, false, nil)
 	if err != nil {
-		return fmt.Errorf("declare queue errror: %w", err)
+		return fmt.Errorf("declare queue error: %w", err)
 	}
 	return nil
 }
 
-//func (r *RabbitMQ) BindQueue(name string, key string) (err error) {
-//	err = r.ch.QueueBind(name, key, )
-//}
+// BindQueue binds an exchange to queue.
+func (r *RabbitMQ) BindQueue(name string, key string) (err error) {
+	err = r.ch.QueueBind(name, key, "image", false, nil)
+	if err != nil {
+		return fmt.Errorf("bind queue error: %w", err)
+	}
+	return nil
+}
 
 // DeleteQueue removes the queue from the server.
 func (r *RabbitMQ) DeleteQueue(name string) (err error) {
@@ -82,10 +89,30 @@ func (r *RabbitMQ) ConsumeQueue(queue model.Status, message chan []byte) (err er
 	}
 	go func(deliveries <-chan amqp.Delivery, done chan error, message chan []byte) {
 		for d := range deliveries {
+			logrus.Printf("Received a message: %s", d.Body)
 			message <- d.Body
+			logrus.Printf("Done")
+
+			err = d.Ack(false)
+			if err != nil {
+				logrus.Printf("Error ack: %s", err)
+			}
 		}
 		done <- nil
 	}(deliveries, r.done, message)
+	return nil
+}
+
+// QosQueue controls messages.
+func (r *RabbitMQ) QosQueue() error {
+	err := r.ch.Qos(
+		1,
+		0,
+		false,
+	)
+	if err != nil {
+		return fmt.Errorf("qos :%s", err)
+	}
 	return nil
 }
 

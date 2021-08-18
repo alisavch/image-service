@@ -2,8 +2,9 @@ package apiserver
 
 import (
 	"encoding/json"
-	"github.com/alisavch/image-service/internal/broker"
 	"net/http"
+
+	"github.com/alisavch/image-service/internal/broker"
 
 	"github.com/alisavch/image-service/internal/service"
 	"github.com/gorilla/mux"
@@ -13,14 +14,15 @@ import (
 type Server struct {
 	router  *mux.Router
 	service *service.Service
-	mq *broker.RabbitMQ
+	mq      *broker.RabbitMQ
 }
 
-func newServer(service *service.Service, mq *broker.RabbitMQ) *Server {
+// NewServer configures server.
+func NewServer(service *service.Service, mq *broker.RabbitMQ) *Server {
 	s := &Server{
 		router:  mux.NewRouter(),
 		service: service,
-		mq: mq,
+		mq:      mq,
 	}
 	s.ConfigureRouter()
 	return s

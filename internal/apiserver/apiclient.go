@@ -1,8 +1,6 @@
 package apiserver
 
 import (
-	"database/sql"
-	"fmt"
 	"net/http"
 
 	"github.com/alisavch/image-service/internal/broker"
@@ -12,11 +10,10 @@ import (
 	"github.com/alisavch/image-service/internal/utils"
 	_ "github.com/lib/pq" // Registers database.
 	"github.com/sirupsen/logrus"
-	"github.com/streadway/amqp"
 )
 
-// Start starts the server.
-func Start() error {
+// StartClient starts the server.
+func StartClient() error {
 	conf := utils.NewConfig(".env")
 	user, pass, host, port, dbname, err := utils.GetDBEnvironments(conf)
 	if err != nil {
@@ -40,35 +37,20 @@ func Start() error {
 		logrus.Fatalf("declare queue: %s", err)
 	}
 
-	if err = rabbit.BindQueue("exchange", "queue"); err != nil {
-		logrus.Fatalf("bind queue: %s", err)
+	if err = rabbit.QosQueue(); err != nil {
+		logrus.Fatalf("qos: %s", err)
 	}
 
-	if err = rabbit.Close(); err != nil {
-		logrus.Fatal("failed to close channel: %s", err)
-	}
-
-	err = rabbit.Publish("exchange", "image", amqp.Persistent, 1, "")
+	proc := make(chan []byte)
+	err = rabbit.ConsumeQueue(model.Processing, proc)
 	if err != nil {
-		logrus.Fatalf("publish: %s", err)
+		logrus.Fatalf("consume: %s", err)
 	}
 
 	srv := NewServer(services, rabbit)
 
 	return http.ListenAndServe(
-		":8080",
+		":8081",
 		srv,
 	)
-}
-
-func newDB(user, pass, host, port, dbname string) (*sql.DB, error) {
-	URL := fmt.Sprintf("postgres://%s:%s@%s:%s/%s?sslmode=disable", user, pass, host, port, dbname)
-	db, err := sql.Open("postgres", URL)
-	if err != nil {
-		return nil, err
-	}
-	if err := db.Ping(); err != nil {
-		return nil, fmt.Errorf("error, not sent ping to database, %w", err)
-	}
-	return db, nil
 }

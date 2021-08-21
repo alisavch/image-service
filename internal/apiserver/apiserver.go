@@ -6,13 +6,11 @@ import (
 	"net/http"
 
 	"github.com/alisavch/image-service/internal/broker"
-	"github.com/alisavch/image-service/internal/model"
 	"github.com/alisavch/image-service/internal/repository"
 	"github.com/alisavch/image-service/internal/service"
 	"github.com/alisavch/image-service/internal/utils"
 	_ "github.com/lib/pq" // Registers database.
 	"github.com/sirupsen/logrus"
-	"github.com/streadway/amqp"
 )
 
 // Start starts the server.
@@ -35,23 +33,6 @@ func Start() error {
 		logrus.Fatalf("rabbit connection: %s", err)
 	}
 	defer rabbit.Close()
-
-	if err = rabbit.DeclareQueue(model.Queued); err != nil {
-		logrus.Fatalf("declare queue: %s", err)
-	}
-
-	if err = rabbit.BindQueue("exchange", "queue"); err != nil {
-		logrus.Fatalf("bind queue: %s", err)
-	}
-
-	if err = rabbit.Close(); err != nil {
-		logrus.Fatal("failed to close channel: %s", err)
-	}
-
-	err = rabbit.Publish("exchange", "image", amqp.Persistent, 1, "")
-	if err != nil {
-		logrus.Fatalf("publish: %s", err)
-	}
 
 	srv := NewServer(services, rabbit)
 

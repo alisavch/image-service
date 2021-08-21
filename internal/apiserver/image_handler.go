@@ -2,6 +2,7 @@ package apiserver
 
 import (
 	"fmt"
+	"github.com/sirupsen/logrus"
 	"net/http"
 	"strconv"
 	"time"
@@ -104,21 +105,25 @@ func (s *Server) compressImage() http.HandlerFunc {
 			return
 		}
 
-		//err = s.mq.Connect()
-		//if err != nil {
-		//	logrus.Fatalf("open channel: %s", err)
-		//}
-		//
-		//err = s.mq.DeclareQueue(model.Processing)
-		//if err != nil {
-		//	logrus.Fatalf("queue declare: %s", err)
-		//}
-		//
-		//proc := make(chan []byte)
-		//err = s.mq.ConsumeQueue(model.Processing, proc)
-		//if err != nil {
-		//	logrus.Fatalf("consume: %s", err)
-		//}
+		err = s.mq.Connect()
+		if err != nil {
+			logrus.Fatalf("open channel: %s", err)
+		}
+
+		q, err := s.mq.DeclareQueue("publisher")
+		if err != nil {
+			logrus.Fatalf("failed to declare queue: %s", err)
+		}
+
+		err = s.mq.Publish("", q.Name, string(model.Queued))
+		if err != nil {
+			logrus.Fatalf("queue declare: %s", err)
+		}
+
+		err = s.mq.Publish("", q.Name, string(model.Processing))
+		if err != nil {
+			logrus.Fatalf("queue declare: %s", err)
+		}
 
 		resultedImage, err := s.service.Image.CompressImage(req.Width, newUploadedImage)
 		if err != nil {
@@ -126,24 +131,10 @@ func (s *Server) compressImage() http.HandlerFunc {
 			return
 		}
 
-		//err = s.mq.DeclareQueue(model.Done)
-		//if err != nil {
-		//	logrus.Fatalf("queue declare: %s", err)
-		//	return
-		//}
-		//
-		//done := make(chan []byte)
-		//err = s.mq.ConsumeQueue(model.Done, done)
-		//if err != nil {
-		//	logrus.Fatalf("consume: %s", err)
-		//	return
-		//}
-		//
-		//err = s.mq.Close()
-		//if err != nil {
-		//	logrus.Fatalf("close: %s", err)
-		//	return
-		//}
+		err = s.mq.Publish("", q.Name, string(model.Done))
+		if err != nil {
+			logrus.Fatalf("queue declare: %s", err)
+		}
 
 		endOfExecution := time.Now()
 		resultedImage.Service = model.Compression
@@ -270,10 +261,35 @@ func (s *Server) convertImage() http.HandlerFunc {
 			return
 		}
 
+		err = s.mq.Connect()
+		if err != nil {
+			logrus.Fatalf("open channel: %s", err)
+		}
+
+		q, err := s.mq.DeclareQueue("publisher")
+		if err != nil {
+			logrus.Fatalf("failed to declare queue: %s", err)
+		}
+
+		err = s.mq.Publish("", q.Name, string(model.Queued))
+		if err != nil {
+			logrus.Fatalf("queue declare: %s", err)
+		}
+
+		err = s.mq.Publish("", q.Name, string(model.Processing))
+		if err != nil {
+			logrus.Fatalf("queue declare: %s", err)
+		}
+
 		resultedImage, err := s.service.Image.ConvertToType(newUploadedImage)
 		if err != nil {
 			s.errorJSON(w, r, http.StatusInternalServerError, utils.ErrConvert)
 			return
+		}
+
+		err = s.mq.Publish("", q.Name, string(model.Done))
+		if err != nil {
+			logrus.Fatalf("queue declare: %s", err)
 		}
 
 		endOfExecution := time.Now()

@@ -11,8 +11,6 @@ import (
 
 func main() {
 	flag.Parse()
-	logrus.Info("The server is running")
-	if err := apiserver.StartClient(); err != nil {
-		logrus.Fatalf("error starting server: %s", err.Error())
-	}
+	logrus.Info("The consumer is running")
+	apiserver.Consume()
 }

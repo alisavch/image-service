@@ -40,32 +40,32 @@ func (r *RabbitMQ) Connect() (err error) {
 }
 
 // Publish sends data to the queue.
-func (r *RabbitMQ) Publish(exchange, key string, deliveryMode, priority uint8, body string) (err error) {
+func (r *RabbitMQ) Publish(exchange, key string, body string) (err error) {
 	err = r.ch.Publish(exchange, key, false, false,
 		amqp.Publishing{
 			ContentType:  "application/json",
-			DeliveryMode: deliveryMode,
-			Priority:     priority,
 			Body:         []byte(body),
 		})
 	if err != nil {
-		return fmt.Errorf("publish message errro: %w", err)
+		return fmt.Errorf("failed to publish a message: %w", err)
 	}
 	return nil
 }
 
 // DeclareQueue declares a queue.
-func (r *RabbitMQ) DeclareQueue(name model.Status) (err error) {
-	_, err = r.ch.QueueDeclare(string(name), true, false, false, false, nil)
+func (r *RabbitMQ) DeclareQueue(name model.Status) (q amqp.Queue, err error) {
+	q, err = r.ch.QueueDeclare(string(name), true, false, false, false, nil)
 	if err != nil {
-		return fmt.Errorf("declare queue error: %w", err)
+		return amqp.Queue{}, fmt.Errorf("declare queue error: %w", err)
 	}
-	return nil
+	defer r.conn.Close()
+	defer r.ch.Close()
+	return q, nil
 }
 
 // BindQueue binds an exchange to queue.
 func (r *RabbitMQ) BindQueue(name string, key string) (err error) {
-	err = r.ch.QueueBind(name, key, "image", false, nil)
+	err = r.ch.QueueBind(name, key, "", false, nil)
 	if err != nil {
 		return fmt.Errorf("bind queue error: %w", err)
 	}
@@ -82,24 +82,34 @@ func (r *RabbitMQ) DeleteQueue(name string) (err error) {
 }
 
 // ConsumeQueue starts delivering queued messages.
-func (r *RabbitMQ) ConsumeQueue(queue model.Status, message chan []byte) (err error) {
-	deliveries, err := r.ch.Consume(string(queue), "", false, false, false, false, nil)
+func (r *RabbitMQ) ConsumeQueue(queue string) (err error) {
+	deliveries, err := r.ch.Consume(queue, "", false, false, false, false, nil)
 	if err != nil {
-		return fmt.Errorf("consume queue error: %w", err)
+		return fmt.Errorf("failed to register consumer: %w", err)
 	}
-	go func(deliveries <-chan amqp.Delivery, done chan error, message chan []byte) {
+	forever := make(chan bool)
+	//go func(deliveries <-chan amqp.Delivery, done chan error, message chan []byte) {
+	//	for d := range deliveries {
+	//		logrus.Printf("Received a message: %s", d.Body)
+	//		message <- d.Body
+	//		logrus.Printf("Done")
+	//
+	//		err = d.Ack(false)
+	//		if err != nil {
+	//			logrus.Printf("Error ack: %s", err)
+	//		}
+	//	}
+	//	done <- nil
+	//}(deliveries, r.done, message)
+	go func() {
 		for d := range deliveries {
 			logrus.Printf("Received a message: %s", d.Body)
-			message <- d.Body
-			logrus.Printf("Done")
 
-			err = d.Ack(false)
-			if err != nil {
-				logrus.Printf("Error ack: %s", err)
-			}
+			d.Ack(false)
 		}
-		done <- nil
-	}(deliveries, r.done, message)
+	}()
+	fmt.Println("Running...")
+	<-forever
 	return nil
 }
 

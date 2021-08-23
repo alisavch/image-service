@@ -1,3 +1,26 @@
+// Golang SwaggerUI image-service
+//
+// Documentation of our awesome API
+//
+//     Schemes: http
+//     BasePath: /
+//     Version: 1.0.0
+//     Host: localhost:8080
+//
+//     Consumes:
+//     - application/json
+//
+//     Produces:
+//     - application/json
+//
+//     Security:
+//     - basic
+//
+//    SecurityDefinitions:
+//    basic:
+//      type: basic
+//
+// swagger:meta
 package main
 
 import (
@@ -9,6 +32,7 @@ import (
 	"github.com/sirupsen/logrus"
 )
 
+//go:generate swagger generate spec
 func main() {
 	flag.Parse()
 	logrus.Info("The server is running")

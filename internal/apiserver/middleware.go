@@ -10,6 +10,8 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/alisavch/image-service/internal/service"
+
 	"github.com/alisavch/image-service/internal/utils"
 
 	"github.com/alisavch/image-service/internal/model"
@@ -116,6 +118,11 @@ func (s *Server) uploadImage(r *http.Request, uploadedImage model.UploadedImage)
 	}
 	req.handler.Filename = strings.Replace(uuid.New().String(), "-", "", -1) + req.handler.Filename
 
+	err = service.EnsureBaseDir("./uploads/")
+	if err != nil {
+		return model.UploadedImage{}, err
+	}
+
 	out, err := os.Create(fmt.Sprintf("./uploads/%s", req.handler.Filename))
 	if err != nil {
 		return model.UploadedImage{}, utils.ErrCreateFile
@@ -129,7 +136,7 @@ func (s *Server) uploadImage(r *http.Request, uploadedImage model.UploadedImage)
 
 	uploadedImage.Name = req.handler.Filename
 	currentDir, _ := os.Getwd()
-	uploadedImage.Location = currentDir + "\\uploaded\\"
+	uploadedImage.Location = currentDir + "/uploads/"
 	uploadedID, err := s.service.Image.UploadImage(r.Context(), uploadedImage)
 	if err != nil {
 		return model.UploadedImage{}, utils.ErrUpload
@@ -159,7 +166,7 @@ func (s *Server) findOriginalImage(r *http.Request, id int) error {
 		return utils.ErrFindImage
 	}
 
-	if err = s.service.Image.SaveImage(uploaded.Name, "\\uploads\\", "orig"+uploaded.Name); err != nil {
+	if err = s.service.Image.SaveImage(uploaded.Name, "/uploads/", "orig"+uploaded.Name); err != nil {
 		return utils.ErrSaveImage
 	}
 	return nil

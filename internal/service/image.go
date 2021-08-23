@@ -42,15 +42,23 @@ func (s *ImageService) UploadImage(ctx context.Context, image model.UploadedImag
 // CompressImage compress image.
 func (s *ImageService) CompressImage(width int, uploadedImage model.UploadedImage) (model.ResultedImage, error) {
 	var result model.ResultedImage
-	currentDir, _ := os.Getwd()
-	// TODO: image location instead of --currentDir+ "\\uploads\\"--
-	imgFile, err := os.Open(currentDir + "\\uploads\\" + uploadedImage.Name)
+	currentDir, err := os.Getwd()
+	if err != nil {
+		return model.ResultedImage{}, err
+	}
+
+	imgFile, err := os.Open(uploadedImage.Location + uploadedImage.Name)
 	if err != nil {
 		return model.ResultedImage{}, err
 	}
 	defer imgFile.Close()
 
 	imgSrc, format, err := image.Decode(imgFile)
+	if err != nil {
+		return model.ResultedImage{}, err
+	}
+
+	err = EnsureBaseDir("./results/")
 	if err != nil {
 		return model.ResultedImage{}, err
 	}
@@ -72,7 +80,7 @@ func (s *ImageService) CompressImage(width int, uploadedImage model.UploadedImag
 		}
 	}
 	result.Name = uploadedImage.Name
-	result.Location = currentDir + "\\results\\"
+	result.Location = currentDir + "/results/"
 
 	return result, nil
 }
@@ -80,10 +88,12 @@ func (s *ImageService) CompressImage(width int, uploadedImage model.UploadedImag
 // ConvertToType converts from png to jpeg and vice versa.
 func (s *ImageService) ConvertToType(uploadedImage model.UploadedImage) (model.ResultedImage, error) {
 	var result model.ResultedImage
-	currentDir, _ := os.Getwd()
+	currentDir, err := os.Getwd()
+	if err != nil {
+		return model.ResultedImage{}, err
+	}
 
-	// TODO: image location instead of --currentDir+ "\\uploads\\"--
-	file, err := os.Open(currentDir + "\\uploads\\" + uploadedImage.Name)
+	file, err := os.Open(uploadedImage.Location + uploadedImage.Name)
 	if err != nil {
 		return model.ResultedImage{}, err
 	}
@@ -95,6 +105,11 @@ func (s *ImageService) ConvertToType(uploadedImage model.UploadedImage) (model.R
 	}
 
 	convertedName, err := ChangeFormat(uploadedImage.Name)
+	if err != nil {
+		return model.ResultedImage{}, err
+	}
+
+	err = EnsureBaseDir("./results/")
 	if err != nil {
 		return model.ResultedImage{}, err
 	}
@@ -112,7 +127,7 @@ func (s *ImageService) ConvertToType(uploadedImage model.UploadedImage) (model.R
 	}
 
 	result.Name = convertedName
-	result.Location = currentDir + "\\results\\"
+	result.Location = currentDir + "/results/"
 	return result, nil
 }
 
@@ -133,7 +148,11 @@ func (s *ImageService) FindOriginalImage(ctx context.Context, id int) (model.Upl
 
 // SaveImage saves image to users machine.
 func (s *ImageService) SaveImage(filename, folder, resultedFilename string) error {
-	currentDir, _ := os.Getwd()
+	currentDir, err := os.Getwd()
+	if err != nil {
+		return err
+	}
+
 	file, err := os.Open(currentDir + folder + filename)
 	if err != nil {
 		return err

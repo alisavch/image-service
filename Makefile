@@ -27,4 +27,8 @@ lint:
 test:
 	$(GOTEST) ./... -v
 
+.PHONY: generate-spec
+generate-spec:
+	swagger generate spec -o swagger.json
+
 .DEFAULT_GOAL := test

@@ -6,6 +6,7 @@ import (
 	"image/png"
 	"io"
 	"os"
+	"path"
 	"strings"
 
 	"github.com/alisavch/image-service/internal/utils"
@@ -73,8 +74,8 @@ func Encode(w io.Writer, img image.Image, format string, opts ...EncodeOption) e
 
 // SaveToDownloads saves the image to download folder on your computer.
 func SaveToDownloads(name string) (*os.File, error) {
-	userprofile := os.Getenv("USERPROFILE")
-	return os.Create(userprofile + "\\Downloads\\" + name)
+	userprofile := os.Getenv("HOME")
+	return os.Create(userprofile + "/Downloads/" + name)
 }
 
 // CompressJPEG allows you to compress the JPEG image in width while maintaining the aspect ratio.
@@ -93,4 +94,14 @@ func CompressPNG(imgSrc image.Image, width int, newImgFile *os.File) error {
 	}
 	m := resize.Resize(uint(width), 0, imgSrc, resize.Lanczos3)
 	return png.Encode(newImgFile, m)
+}
+
+// EnsureBaseDir checks if a directory exists.
+func EnsureBaseDir(filepath string) error {
+	baseDir := path.Dir(filepath)
+	info, err := os.Stat(baseDir)
+	if err == nil && info.IsDir() {
+		return nil
+	}
+	return os.MkdirAll(baseDir, 0755)
 }

@@ -18,11 +18,11 @@ func Start() error {
 	conf := utils.NewConfig(".env")
 	user, pass, host, port, dbname, err := utils.GetDBEnvironments(conf)
 	if err != nil {
-		logrus.Fatalf("error find variables :%s", err.Error())
+		logrus.Fatalf("%s: %s", "Failed to find variables", err)
 	}
 	db, err := newDB(user, pass, host, port, dbname)
 	if err != nil {
-		logrus.Fatalf("error initialize database: %s", err.Error())
+		logrus.Fatalf("%s: %s", "Failed to initialize database", err)
 	}
 	defer db.Close()
 	repos := repository.NewRepository(db)
@@ -30,7 +30,7 @@ func Start() error {
 
 	rabbit := new(broker.RabbitMQ)
 	if err = rabbit.Connect(); err != nil {
-		logrus.Fatalf("rabbit connection: %s", err)
+		logrus.Fatalf("%s: %s", "Failed to connect rabbitmq", err)
 	}
 	defer rabbit.Close()
 

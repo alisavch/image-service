@@ -7,24 +7,22 @@ services:
     command: ./image-service
     env_file: .env
     ports:
-      - 8080:8080
+      - "8080:8080"
     depends_on:
       - postgresql
 
   postgresql:
     image: postgres:latest
     container_name: postgresql
-    restart: always
-    volumes:
-    - ./.database/postgres/data:/var/lib/postgresql/data
     env_file: .env
     ports:
       - "5432:5432"
+    volumes:
+      - database_postgres:/var/lib/postgresql/data
 
   rabbitmq:
     image: rabbitmq:3-management
     container_name: rabbitmq
-    restart: always
     env_file: .env
     ports:
       - "5672:5672"

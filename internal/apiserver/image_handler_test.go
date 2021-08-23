@@ -200,10 +200,10 @@ func TestHandler_findCompressedImage(t *testing.T) {
 			fn: func(mockAuthorization *mocks.Authorization, mockImage *mocks.Image, token string, compressedID int, isOriginal bool) {
 				mockAuthorization.On("ParseToken", token).Return(1, nil)
 				mockImage.On("FindTheResultingImage", mock.Anything, compressedID, model.Compression).Return(resultedImage, nil)
-				mockImage.On("SaveImage", resultedImage.Name, "\\results\\", resultedImage.Name).Return(nil)
+				mockImage.On("SaveImage", resultedImage.Name, "/results/", resultedImage.Name).Return(nil)
 				if isOriginal {
 					mockImage.On("FindOriginalImage", mock.Anything, compressedID).Return(model.UploadedImage{ID: 1, Name: "filename", Location: "location"}, nil)
-					mockImage.On("SaveImage", mock.Anything, "\\uploads\\", mock.Anything).Return(nil)
+					mockImage.On("SaveImage", mock.Anything, "/uploads/", mock.Anything).Return(nil)
 				}
 			},
 			expectedStatusCode:   200,
@@ -232,7 +232,7 @@ func TestHandler_findCompressedImage(t *testing.T) {
 			fn: func(mockAuthorization *mocks.Authorization, mockImage *mocks.Image, token string, compressedID int, isOriginal bool) {
 				mockAuthorization.On("ParseToken", token).Return(1, nil)
 				mockImage.On("FindTheResultingImage", mock.Anything, compressedID, model.Compression).Return(resultedImage, nil)
-				mockImage.On("SaveImage", resultedImage.Name, "\\results\\", resultedImage.Name).Return(utils.ErrSaveImage)
+				mockImage.On("SaveImage", resultedImage.Name, "/results/", resultedImage.Name).Return(utils.ErrSaveImage)
 			},
 			expectedStatusCode:   500,
 			expectedResponseBody: "{\"error\":\"cannot save image\"}\n",
@@ -247,7 +247,7 @@ func TestHandler_findCompressedImage(t *testing.T) {
 			fn: func(mockAuthorization *mocks.Authorization, mockImage *mocks.Image, token string, compressedID int, isOriginal bool) {
 				mockAuthorization.On("ParseToken", token).Return(1, nil)
 				mockImage.On("FindTheResultingImage", mock.Anything, compressedID, model.Compression).Return(resultedImage, nil)
-				mockImage.On("SaveImage", resultedImage.Name, "\\results\\", resultedImage.Name).Return(nil)
+				mockImage.On("SaveImage", resultedImage.Name, "/results/", resultedImage.Name).Return(nil)
 				if isOriginal {
 					mockImage.On("FindOriginalImage", mock.Anything, compressedID).Return(model.UploadedImage{}, utils.ErrFindImage)
 				}
@@ -404,7 +404,7 @@ func TestHandler_findConvertedImage(t *testing.T) {
 			fn: func(mockAuthorization *mocks.Authorization, mockImage *mocks.Image, token string, convertedID int, isOriginal bool) {
 				mockAuthorization.On("ParseToken", token).Return(1, nil)
 				mockImage.On("FindTheResultingImage", mock.Anything, convertedID, model.Conversion).Return(resultedImage, nil)
-				mockImage.On("SaveImage", resultedImage.Name, "\\results\\", resultedImage.Name).Return(nil)
+				mockImage.On("SaveImage", resultedImage.Name, "/results/", resultedImage.Name).Return(nil)
 			},
 			expectedStatusCode:   200,
 			expectedResponseBody: "\"successfully saved\"\n",
@@ -431,7 +431,7 @@ func TestHandler_findConvertedImage(t *testing.T) {
 			fn: func(mockAuthorization *mocks.Authorization, mockImage *mocks.Image, token string, convertedID int, isOriginal bool) {
 				mockAuthorization.On("ParseToken", token).Return(1, nil)
 				mockImage.On("FindTheResultingImage", mock.Anything, convertedID, model.Conversion).Return(resultedImage, nil)
-				mockImage.On("SaveImage", resultedImage.Name, "\\results\\", resultedImage.Name).Return(utils.ErrSaveImage)
+				mockImage.On("SaveImage", resultedImage.Name, "/results/", resultedImage.Name).Return(utils.ErrSaveImage)
 			},
 			expectedStatusCode:   500,
 			expectedResponseBody: "{\"error\":\"cannot save image\"}\n",
@@ -446,7 +446,7 @@ func TestHandler_findConvertedImage(t *testing.T) {
 			fn: func(mockAuthorization *mocks.Authorization, mockImage *mocks.Image, token string, convertedID int, isOriginal bool) {
 				mockAuthorization.On("ParseToken", token).Return(1, nil)
 				mockImage.On("FindTheResultingImage", mock.Anything, convertedID, model.Conversion).Return(resultedImage, nil)
-				mockImage.On("SaveImage", resultedImage.Name, "\\results\\", resultedImage.Name).Return(nil)
+				mockImage.On("SaveImage", resultedImage.Name, "/results/", resultedImage.Name).Return(nil)
 				if isOriginal {
 					mockImage.On("FindOriginalImage", mock.Anything, convertedID).Return(model.UploadedImage{}, utils.ErrFindImage)
 				}

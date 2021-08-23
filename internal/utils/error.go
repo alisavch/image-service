@@ -9,7 +9,6 @@ var (
 	ErrRequest = errors.New("incorrect request")
 	// ErrEmptyHeader checks empty header.
 	ErrEmptyHeader = errors.New("auth header is empty")
-
 	// ErrEmptyToken checks token.
 	ErrEmptyToken = errors.New("token is empty")
 	// ErrUpload checks file upload.

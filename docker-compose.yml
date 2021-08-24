@@ -4,21 +4,28 @@ services:
   image-service:
     build: ./
     container_name: image-service
-    command: ./image-service
+    command: ./main
     env_file: .env
     ports:
       - "8080:8080"
     depends_on:
       - postgresql
+    networks:
+      - fullstack
 
   postgresql:
     image: postgres:latest
     container_name: postgresql
-    env_file: .env
+    environment:
+      - POSTGRES_USER=${DB_USER}
+      - POSTGRES_PASSWORD=${DB_PASSWORD}
+      - POSTGRES_DB=${DB_NAME}
     ports:
       - "5432:5432"
     volumes:
       - database_postgres:/var/lib/postgresql/data
+    networks:
+      - fullstack
 
   rabbitmq:
     image: rabbitmq:3-management
@@ -30,3 +37,12 @@ services:
     volumes:
       - ~/.docker-conf/rabbitmq/data/:/var/lib/rabbitmq/
       - ~/.docker-conf/rabbitmq/log/:/var/log/rabbitmq
+    networks:
+      - fullstack
+
+volumes:
+  api:
+  database_postgres:
+networks:
+  fullstack:
+    driver: bridge

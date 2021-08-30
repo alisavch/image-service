@@ -13,9 +13,25 @@ const (
 )
 
 // ResultedImage contains information about resulted image.
+//
+// A resulted image is the general summary.
+//
+// swagger:model
 type ResultedImage struct {
-	ID       int     `json:"id,omitempty"`
-	Name     string  `json:"resulted_name,omitempty"`
-	Location string  `json:"resulted_location,omitempty"`
-	Service  Service `json:"service,omitempty"`
+	// the ID for this resulted image
+	//
+	// required: false
+	ID int `json:"id,omitempty"`
+	// the Name for this resulted image
+	//
+	// required: false
+	Name string `json:"resulted_name,omitempty"`
+	// the Location for this resulted image
+	//
+	// required: false
+	Location string `json:"resulted_location,omitempty"`
+	// the Service for this resulted image
+	//
+	// required: false
+	Service Service `json:"service,omitempty"`
 }

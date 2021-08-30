@@ -1,12 +1,31 @@
 package model
 
 // UserImage contains details of a single request.
+//
+// User image is general details of a single user request.
+//
+// swagger:model
 type UserImage struct {
-	ID              int    `json:"id,omitempty"`
-	UserAccountID   int    `json:"user_account_id,omitempty"`
-	UploadedImageID int    `json:"uploaded_image_id,omitempty"`
-	ResultedImageID int    `json:"resulted_image_id,omitempty"`
-	Status          Status `json:"status,omitempty"`
+	// the ID for the user image
+	//
+	// required: false
+	ID int `json:"id,omitempty"`
+	// the UserAccountID for the user image
+	//
+	// required: false
+	UserAccountID int `json:"user_account_id,omitempty"`
+	// the UploadedImageID for the user image
+	//
+	// required: false
+	UploadedImageID int `json:"uploaded_image_id,omitempty"`
+	// the ResultedImageID for the user image
+	//
+	// required: false
+	ResultedImageID int `json:"resulted_image_id,omitempty"`
+	// the Status for the user image
+	//
+	// required: false
+	Status Status `json:"status,omitempty"`
 }
 
 type (

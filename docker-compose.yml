@@ -6,39 +6,60 @@ services:
     container_name: image-service
     command: ./main
     env_file: .env
+    environment:
+      RABBITMQ_SERVER: rabbitmq
+    restart: on-failure
     ports:
       - "8080:8080"
     depends_on:
       - postgresql
+      - rabbitmq
     networks:
       - fullstack
 
   postgresql:
     image: postgres:latest
+    restart: always
     container_name: postgresql
     environment:
       - POSTGRES_USER=${DB_USER}
       - POSTGRES_PASSWORD=${DB_PASSWORD}
       - POSTGRES_DB=${DB_NAME}
     ports:
-      - "5432:5432"
+      - "8001:5432"
     volumes:
-      - database_postgres:/var/lib/postgresql/data
+      - ./postgres-data:/var/lib/postgresql/data
+      - ./sql/create_tables.sql:/docker-entrypoint-initdb.d/create_tables.sql
     networks:
       - fullstack
+    healthcheck:
+      test: [ "CMD", "nc", "-z", "localhost", "5432" ]
+      interval: 5s
+      timeout: 15s
+      retries: 1
 
   rabbitmq:
-    image: rabbitmq:3-management
+    image: rabbitmq:management
+    restart: always
     container_name: rabbitmq
     env_file: .env
+    environment:
+      - RABBITMQ_DEFAULT_PASS=test
+      - RABBITMQ_DEFAULT_USER=test
     ports:
-      - "5672:5672"
-      - "15672:15672"
+      - "8002:5672"
+      - "8004:15672"
     volumes:
-      - ~/.docker-conf/rabbitmq/data/:/var/lib/rabbitmq/
-      - ~/.docker-conf/rabbitmq/log/:/var/log/rabbitmq
+      - ./rabbitmq-data:/var/lib/rabbitmq/
+      - ./rabbitmq-data:/var/log/rabbitmq/
+      - ./rabbitmq-data:/etc/rabbitmq/
     networks:
       - fullstack
+    healthcheck:
+      test: [ "CMD", "nc", "-z", "localhost", "15672" ]
+      interval: 5s
+      timeout: 15s
+      retries: 1
 
 volumes:
   api:

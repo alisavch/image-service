@@ -48,7 +48,7 @@ func (r *RabbitMQ) Publish(exchange, key string, body string) (err error) {
 			Body:        []byte(body),
 		})
 	if err != nil {
-		return fmt.Errorf("failed to publish a message: %w", err)
+		return fmt.Errorf("%s:%s", "Failed to publish a message", err)
 	}
 	return nil
 }
@@ -67,14 +67,17 @@ func (r *RabbitMQ) DeclareQueue(name string) (q amqp.Queue, err error) {
 func (r *RabbitMQ) ConsumeQueue(queue string) (err error) {
 	deliveries, err := r.ch.Consume(queue, "", false, false, false, false, nil)
 	if err != nil {
-		return fmt.Errorf("failed to register consumer: %w", err)
+		return fmt.Errorf("%s: %s", "Failed to register consumer", err)
 	}
 	forever := make(chan bool)
 	go func() {
 		for d := range deliveries {
-			logrus.Printf("Received a message: %s", d.Body)
+			logrus.Printf("%s: %s", "Received a message", d.Body)
 
-			d.Ack(false)
+			err := d.Ack(false)
+			if err != nil {
+				logrus.Printf("%s: %s", "Failed to delegates acknowledgment", d.Body)
+			}
 		}
 	}()
 	<-forever
@@ -89,7 +92,7 @@ func (r *RabbitMQ) QosQueue() error {
 		false,
 	)
 	if err != nil {
-		return fmt.Errorf("qos :%s", err)
+		return fmt.Errorf("%s: %s", "Failed qos", err)
 	}
 	return nil
 }
@@ -98,7 +101,7 @@ func (r *RabbitMQ) QosQueue() error {
 func (r *RabbitMQ) Close() (err error) {
 	err = r.conn.Close()
 	if err != nil {
-		return fmt.Errorf("close error: %w", err)
+		return fmt.Errorf("%s: %s", "Failed to close", err)
 	}
 	<-r.done
 	return nil

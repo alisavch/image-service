@@ -20,9 +20,10 @@ func Start() error {
 	if err != nil {
 		logrus.Fatalf("%s: %s", "Failed to find variables", err)
 	}
+
 	db, err := newDB(user, pass, host, port, dbname)
 	if err != nil {
-		logrus.Fatalf("%s: %s", "Failed to initialize database", err)
+		logrus.Printf("%s: %s", "Failed to initialize database", err)
 	}
 	defer db.Close()
 	repos := repository.NewRepository(db)

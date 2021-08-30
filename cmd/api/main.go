@@ -32,7 +32,7 @@ import (
 	"github.com/sirupsen/logrus"
 )
 
-//go:generate swagger generate spec
+//go:generate swagger generate spec -o ./swagger.json
 func main() {
 	flag.Parse()
 	logrus.Info("The server is running")

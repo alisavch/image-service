@@ -1,8 +1,7 @@
-package apiserver
+package apiconsumer
 
 import (
 	"github.com/alisavch/image-service/internal/broker"
-	_ "github.com/lib/pq" // Registers database.
 	"github.com/sirupsen/logrus"
 )
 

@@ -22,6 +22,8 @@
 /Godeps/
 
 *.env
+/postgres-data/
+/rabbitmq-data/
 # images #
 /results/
 /uploads/

@@ -22,7 +22,7 @@ type Configure struct {
 func (conf Configure) GetEnv(key string) (string, error) {
 	err := godotenv.Load(".env")
 	if err != nil {
-		logrus.Fatalf("Error loading .env file: %s", conf.path)
+		logrus.Fatalf("%s:%s", "Error loading .env file", conf.path)
 	}
 
 	value, ok := os.LookupEnv(key)

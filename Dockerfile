@@ -13,15 +13,17 @@ RUN go get github.com/lib/pq
 WORKDIR /app
 COPY go.mod .
 COPY go.sum .
+COPY .env .
 RUN go mod download
 COPY . .
 RUN go build -o main ./cmd/api/main.go
 WORKDIR /out
 RUN cp /app/main .
+RUN cp /app/.env .
 
 FROM alpine:latest
 RUN apk --no-cache add ca-certificates
 COPY --from=builder /out/main /
-COPY .env ./
+COPY --from=builder /out/.env /
 EXPOSE 8080
 ENTRYPOINT ["/main"]

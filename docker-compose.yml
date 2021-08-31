@@ -28,7 +28,7 @@ services:
     ports:
       - "8001:5432"
     volumes:
-      - ./postgres-data:/var/lib/postgresql/data
+      - ~/.docker-conf/postgresql:/var/lib/postgresql/data
       - ./sql/create_tables.sql:/docker-entrypoint-initdb.d/create_tables.sql
     networks:
       - fullstack
@@ -50,9 +50,9 @@ services:
       - "8002:5672"
       - "8004:15672"
     volumes:
-      - ./rabbitmq-data:/var/lib/rabbitmq/
-      - ./rabbitmq-data:/var/log/rabbitmq/
-      - ./rabbitmq-data:/etc/rabbitmq/
+      - ~/.docker-conf/rabbitmq:/var/lib/rabbitmq/
+      - ~/.docker-conf/rabbitmq:/var/log/rabbitmq/
+      - ~/.docker-conf/rabbitmq:/etc/rabbitmq/
     networks:
       - fullstack
     healthcheck:

@@ -22,6 +22,6 @@ RUN cp /app/main .
 FROM alpine:latest
 RUN apk --no-cache add ca-certificates
 COPY --from=builder /out/main /
-COPY .env /
+COPY .env ./
 EXPOSE 8080
 ENTRYPOINT ["/main"]

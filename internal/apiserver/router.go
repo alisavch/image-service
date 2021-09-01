@@ -12,7 +12,7 @@ func (s *Server) ConfigureRouter() {
 
 func (s *Server) newAPIRouter() {
 	apiRouter := s.router.PathPrefix("/api").Subrouter()
-	// swagger:route POST /api/sign-up sign-up sign-up
+	// swagger:operation POST /api/sign-up sign-up sign-up
 	// ---
 	// summary: Registers a user.
 	// description: Could be any user.
@@ -37,7 +37,7 @@ func (s *Server) newAPIRouter() {
 	//   "500":
 	//     "$ref": "#/responses/internal"
 	apiRouter.HandleFunc("/sign-up", s.signUp()).Methods(http.MethodPost)
-	// swagger:route POST /api/sign-in sign-in sign-in
+	// swagger:operation POST /api/sign-in sign-in sign-in
 	// ---
 	// summary: Authorizes the user.
 	// description: Only authorized user has access.
@@ -56,17 +56,17 @@ func (s *Server) newAPIRouter() {
 	//     "$ref": "#/definitions/User"
 	// responses:
 	//   "200":
-	//     "$ref": "#/responses/ok"
+	//     description: successful operation
 	//   "400":
-	//     "$ref": "#/responses/badReq"
+	//     description: successful bad request
 	//   "500":
-	//     "$ref": "#/responses/internal"
+	//     description: internal server error
 	apiRouter.HandleFunc("/sign-in", s.signIn()).Methods(http.MethodPost)
 }
 
 func (s *Server) newUserRouter() {
 	userRouter := s.router.PathPrefix("/api").Subrouter().PathPrefix("/user").Subrouter()
-	// swagger:route GET /api/user/{userID}/history history history
+	// swagger:operation GET /api/user/{userID}/history history
 	// ---
 	// summary: Finds users history.
 	// description: Lists all queries created by user.
@@ -78,18 +78,16 @@ func (s *Server) newUserRouter() {
 	//   type: integer
 	// responses:
 	//   "200":
-	//     "$ref": "#/responses/ok"
+	//     description: successful operation
 	//   "400":
-	//     "$ref": "#/responses/badReq"
+	//     description: successful bad request
 	//   "500":
-	//     "$ref": "#/responses/internal"
+	//     description: internal server error
 	userRouter.HandleFunc("/{userID}/history", s.authorize(s.findUserHistory())).Methods(http.MethodGet)
-	// swagger:route POST /api/user/{userID}/compress compress compress
+	// swagger:operation POST /api/user/{userID}/compress compress compress
 	// ---
 	// summary: Compresses the image.
 	// description: Receives an image from an input form and compresses it, also allows you to enter width in the query string.
-	// consumes:
-	// - multipart/form-data
 	// parameters:
 	// - name: userID
 	//   in: path
@@ -101,19 +99,19 @@ func (s *Server) newUserRouter() {
 	//   type: integer
 	//   required: false
 	// - name: uploadFile
-	//   in: formData
-	//	 type: file
+	//   in: body
 	//   required: true
-	//   description: The file to upload.
+	//   schema:
+	//     "$ref": "#/definitions/UploadedImage"
 	// responses:
 	//   "200":
-	//     "$ref": "#/responses/ok"
+	//     description: successful operation
 	//   "400":
-	//     "$ref": "#/responses/badReq"
+	//     description: successful bad request
 	//   "500":
-	//     "$ref": "#/responses/internal"
+	//     description: internal server error
 	userRouter.HandleFunc("/{userID}/compress", s.authorize(s.compressImage())).Methods(http.MethodPost)
-	// swagger:route GET /api/user/{userID}/compress/{compressedID} findCompressed
+	// swagger:operation GET /api/user/{userID}/compress/{compressedID} findCompressed
 	// ---
 	// summary: Finds the compressed image.
 	// description: Downloads the compressed image and original if required.
@@ -134,9 +132,10 @@ func (s *Server) newUserRouter() {
 	//   required: true
 	//   type: integer
 	// - name: uploadFile
-	//   in: formData
-	//	 type: file
+	//   in: body
 	//   required: true
+	//   schema:
+	//     "$ref": "#/definitions/UploadedImage"
 	// - name: original
 	//   in: query
 	//   schema:
@@ -150,12 +149,10 @@ func (s *Server) newUserRouter() {
 	//   "500":
 	//     "$ref": "#/responses/internal"
 	userRouter.HandleFunc("/{userID}/compress/{compressedID}", s.authorize(s.findCompressedImage())).Methods(http.MethodGet)
-	// swagger:route POST /api/user/{userID}/convert convert convert
+	// swagger:operation POST /api/user/{userID}/convert convert convert
 	// ---
 	// summary: Converts the image.
 	// description: Receives an image from an input form and converts it PNG to JPG and vice versa.
-	// consumes:
-	// - multipart/form-data
 	// parameters:
 	// - name: userID
 	//   in: path
@@ -163,10 +160,10 @@ func (s *Server) newUserRouter() {
 	//   required: true
 	//   type: integer
 	// - name: uploadFile
-	//   in: formData
-	//	 type: file
+	//   in: body
 	//   required: true
-	//   description: The file to upload.
+	//   schema:
+	//     "$ref": "#/definitions/UploadedImage"
 	// responses:
 	//   "200":
 	//     "$ref": "#/responses/ok"
@@ -175,12 +172,10 @@ func (s *Server) newUserRouter() {
 	//   "500":
 	//     "$ref": "#/responses/internal"
 	userRouter.HandleFunc("/{userID}/convert", s.authorize(s.convertImage())).Methods(http.MethodPost)
-	// swagger:route POST /api/user/{userID}/convert/{convertedID} findConverted
+	// swagger:operation POST /api/user/{userID}/convert/{convertedID} findConverted
 	// ---
 	// summary: Finds the converted image.
 	// description: Downloads the converted image and original if required.
-	// consumes:
-	// - multipart/form-data
 	// parameters:
 	// - name: userID
 	//   in: path
@@ -188,10 +183,10 @@ func (s *Server) newUserRouter() {
 	//   required: true
 	//   type: integer
 	// - name: uploadFile
-	//   in: formData
-	//	 type: file
+	//   in: body
 	//   required: true
-	//   description: The file to upload.
+	//   schema:
+	//     "$ref": "#/definitions/UploadedImage"
 	// - name: original
 	//   in: query
 	//   schema:

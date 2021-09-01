@@ -1,0 +1,316 @@
+{
+  "consumes": [
+    "application/json"
+  ],
+  "produces": [
+    "application/json"
+  ],
+  "schemes": [
+    "http"
+  ],
+  "swagger": "2.0",
+  "info": {
+    "description": "Documentation of our awesome API",
+    "title": "Golang SwaggerUI image-service",
+    "version": "1.0.0"
+  },
+  "host": "localhost:8080",
+  "basePath": "/",
+  "paths": {
+    "/api/sign-in": {
+      "post": {
+        "description": "Only authorized user has access.",
+        "tags": [
+          "sign-in"
+        ],
+        "summary": "Authorizes the user.",
+        "operationId": "sign-in",
+        "parameters": [
+          {
+            "description": "user object",
+            "name": "username",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/User"
+            }
+          },
+          {
+            "description": "user object",
+            "name": "password",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/User"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "successful operation"
+          },
+          "400": {
+            "description": "successful bad request"
+          },
+          "500": {
+            "description": "internal server error"
+          }
+        }
+      }
+    },
+    "/api/sign-up": {
+      "post": {
+        "description": "Could be any user.",
+        "tags": [
+          "sign-up"
+        ],
+        "summary": "Registers a user.",
+        "operationId": "sign-up",
+        "parameters": [
+          {
+            "description": "user object",
+            "name": "username",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/User"
+            }
+          },
+          {
+            "description": "user object",
+            "name": "password",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/User"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "$ref": "#/responses/ok"
+          },
+          "400": {
+            "$ref": "#/responses/badReq"
+          },
+          "500": {
+            "$ref": "#/responses/internal"
+          }
+        }
+      }
+    },
+    "/api/user/{userID}/compress": {
+      "post": {
+        "description": "Receives an image from an input form and compresses it, also allows you to enter width in the query string.",
+        "tags": [
+          "compress"
+        ],
+        "summary": "Compresses the image.",
+        "operationId": "compress",
+        "parameters": [
+          {
+            "type": "integer",
+            "description": "userID to filter by id",
+            "name": "userID",
+            "in": "path",
+            "required": true
+          },
+          {
+            "type": "integer",
+            "name": "width",
+            "in": "query"
+          },
+          {
+            "name": "uploadFile",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/UploadedImage"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "successful operation"
+          },
+          "400": {
+            "description": "successful bad request"
+          },
+          "500": {
+            "description": "internal server error"
+          }
+        }
+      }
+    },
+    "/api/user/{userID}/compress/{compressedID}": {
+      "get": {
+        "description": "Downloads the compressed image and original if required.",
+        "summary": "Finds the compressed image.",
+        "operationId": "findCompressed",
+        "parameters": [
+          {
+            "type": "integer",
+            "description": "userID to filter by id",
+            "name": "userID",
+            "in": "path",
+            "required": true
+          },
+          {
+            "type": "integer",
+            "description": "compressedID to filter by id",
+            "name": "compressedID",
+            "in": "path",
+            "required": true
+          },
+          {
+            "type": "integer",
+            "description": "compressedID to filter by id",
+            "name": "original",
+            "in": "path",
+            "required": true
+          },
+          {
+            "name": "uploadFile",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/UploadedImage"
+            }
+          },
+          {
+            "description": "If true - the original will be saved",
+            "name": "original",
+            "in": "query",
+            "schema": {
+              "type": "boolean"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "$ref": "#/responses/ok"
+          },
+          "400": {
+            "$ref": "#/responses/badReq"
+          },
+          "500": {
+            "$ref": "#/responses/internal"
+          }
+        }
+      }
+    },
+    "/api/user/{userID}/convert": {
+      "post": {
+        "description": "Receives an image from an input form and converts it PNG to JPG and vice versa.",
+        "tags": [
+          "convert"
+        ],
+        "summary": "Converts the image.",
+        "operationId": "convert",
+        "parameters": [
+          {
+            "type": "integer",
+            "description": "userID to filter by id",
+            "name": "userID",
+            "in": "path",
+            "required": true
+          },
+          {
+            "name": "uploadFile",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/UploadedImage"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "$ref": "#/responses/ok"
+          },
+          "400": {
+            "$ref": "#/responses/badReq"
+          },
+          "500": {
+            "$ref": "#/responses/internal"
+          }
+        }
+      }
+    },
+    "/api/user/{userID}/convert/{convertedID}": {
+      "post": {
+        "description": "Downloads the converted image and original if required.",
+        "summary": "Finds the converted image.",
+        "operationId": "findConverted",
+        "parameters": [
+          {
+            "type": "integer",
+            "description": "userID to filter by id",
+            "name": "userID",
+            "in": "path",
+            "required": true
+          },
+          {
+            "name": "uploadFile",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/UploadedImage"
+            }
+          },
+          {
+            "description": "If true - the original will be saved",
+            "name": "original",
+            "in": "query",
+            "schema": {
+              "type": "boolean"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "$ref": "#/responses/ok"
+          },
+          "400": {
+            "$ref": "#/responses/badReq"
+          },
+          "500": {
+            "$ref": "#/responses/internal"
+          }
+        }
+      }
+    },
+    "/api/user/{userID}/history": {
+      "get": {
+        "description": "Lists all queries created by user.",
+        "summary": "Finds users history.",
+        "operationId": "history",
+        "parameters": [
+          {
+            "type": "integer",
+            "description": "userID to filter by id",
+            "name": "userID",
+            "in": "path",
+            "required": true
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "successful operation"
+          },
+          "400": {
+            "description": "successful bad request"
+          },
+          "500": {
+            "description": "internal server error"
+          }
+        }
+      }
+    }
+  },
+  "securityDefinitions": {
+    "basic": {
+      "type": "basic"
+    }
+  }
+}

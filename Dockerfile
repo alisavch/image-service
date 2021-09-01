@@ -18,11 +18,9 @@ COPY . .
 RUN go build -o main ./cmd/api/main.go
 WORKDIR /out
 RUN cp /app/main .
-RUN cp /app/.env .
 
 FROM alpine:latest
 RUN apk --no-cache add ca-certificates
 COPY --from=builder /out/main /
-COPY --from=builder /out/.env /
 EXPOSE 8080
 ENTRYPOINT ["/main"]

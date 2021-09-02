@@ -47,7 +47,9 @@ services:
       retries: 1
 
   image-service:
-    build: ./
+    build:
+      context: .
+      dockerfile: Dockerfile
     container_name: image-service
     command: ./main
     env_file: .env
@@ -67,12 +69,12 @@ services:
       - fullstack
 
   consumer:
-    build: ./
+    build:
+      context: .
+      dockerfile: Dockerfile
     container_name: consumer
     command: ./consumer
     env_file: .env
-    environment:
-      RABBITMQ_SERVER: rabbitmq
     restart: always
     depends_on:
       - image-service

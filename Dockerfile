@@ -27,4 +27,4 @@ COPY --from=builder /out/main /
 COPY --from=builder /out/consumer /
 
 EXPOSE 8080
-ENTRYPOINT ["/main"]
+ENTRYPOINT ["/main", "/consumer"]

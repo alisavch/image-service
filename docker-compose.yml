@@ -53,7 +53,7 @@ services:
     env_file: .env
     environment:
       RABBITMQ_SERVER: rabbitmq
-    restart: on-failure
+    restart: always
     ports:
       - "8080:8080"
     volumes:
@@ -71,7 +71,12 @@ services:
     container_name: consumer
     command: ./consumer
     env_file: .env
-    restart: on-failure
+    environment:
+      RABBITMQ_SERVER: rabbitmq
+    restart: always
+    depends_on:
+      - image-service
+      - rabbitmq
     networks:
       - fullstack
 

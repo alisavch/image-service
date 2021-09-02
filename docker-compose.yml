@@ -56,9 +56,9 @@ services:
     restart: on-failure
     ports:
       - "8080:8080"
-#    volumes:
-#      - ./uploads:/var/lib/docker...
-#      - ./results:/var/lib/docker...
+    volumes:
+      - ./uploads://uploads
+      - ./results://results
     depends_on:
       - postgresql
       - rabbitmq

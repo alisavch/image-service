@@ -1,15 +1,15 @@
-package model
+package models
 
 // User contains information about user.
 //
 // A user is the security principal for this application.
 //
-// swagger:model
+// swagger:model User
 type User struct {
 	// the ID for this user
 	//
 	// required: false
-	ID int `json:"id,omitempty"`
+	ID int `json:"id"`
 
 	// the username for this user
 	//

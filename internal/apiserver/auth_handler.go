@@ -4,13 +4,13 @@ import (
 	"encoding/json"
 	"net/http"
 
-	"github.com/alisavch/image-service/internal/utils"
+	"github.com/alisavch/image-service/internal/models"
 
-	"github.com/alisavch/image-service/internal/model"
+	"github.com/alisavch/image-service/internal/utils"
 )
 
 type signUpRequest struct {
-	model.User
+	models.User
 }
 
 // Build builds a request to sign up.

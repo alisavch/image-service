@@ -8,9 +8,9 @@ import (
 
 	"github.com/sirupsen/logrus"
 
+	"github.com/alisavch/image-service/internal/models"
 	"github.com/alisavch/image-service/internal/utils"
 
-	"github.com/alisavch/image-service/internal/model"
 	"github.com/gorilla/mux"
 )
 
@@ -22,7 +22,7 @@ const (
 )
 
 type findUserHistoryRequest struct {
-	model.User
+	models.User
 }
 
 // Build builds a request to find history.
@@ -61,8 +61,8 @@ func (s *Server) findUserHistory() http.HandlerFunc {
 }
 
 type uploadImageRequest struct {
-	model.UploadedImage
-	User  model.User
+	models.UploadedImage
+	User  models.User
 	Width int
 }
 
@@ -116,12 +116,12 @@ func (s *Server) compressImage() http.HandlerFunc {
 			logrus.Fatalf("%s: %s", "Failed to controls messages", err)
 		}
 
-		err = s.mq.Publish("", q.Name, string(model.Queued))
+		err = s.mq.Publish("", q.Name, string(models.Queued))
 		if err != nil {
 			logrus.Fatalf("%s: %s", "Failed to publish a message", err)
 		}
 
-		err = s.mq.Publish("", q.Name, string(model.Processing))
+		err = s.mq.Publish("", q.Name, string(models.Processing))
 		if err != nil {
 			logrus.Fatalf("%s: %s", "Failed to publish a message", err)
 		}
@@ -132,24 +132,24 @@ func (s *Server) compressImage() http.HandlerFunc {
 			return
 		}
 
-		err = s.mq.Publish("", q.Name, string(model.Done))
+		err = s.mq.Publish("", q.Name, string(models.Done))
 		if err != nil {
 			logrus.Fatalf("%s: %s", "Failed to publish a message", err)
 		}
 
 		endOfExecution := time.Now()
-		resultedImage.Service = model.Compression
+		resultedImage.Service = models.Compression
 
 		requestID, err := s.service.CreateRequest(
 			r.Context(),
 			req.User,
 			newUploadedImage,
 			resultedImage,
-			model.UserImage{
+			models.UserImage{
 				UserAccountID:   req.User.ID,
 				UploadedImageID: newUploadedImage.ID,
-				Status:          model.Done},
-			model.Request{
+				Status:          models.Done},
+			models.Request{
 				TimeStart: startOfExecution,
 				EndOfTime: endOfExecution,
 			})
@@ -163,8 +163,8 @@ func (s *Server) compressImage() http.HandlerFunc {
 }
 
 type findCompressedImageRequest struct {
-	model.ResultedImage
-	User         model.User
+	models.ResultedImage
+	User         models.User
 	CompressedID int
 }
 
@@ -201,7 +201,7 @@ func (s *Server) findCompressedImage() http.HandlerFunc {
 			return
 		}
 
-		resultedImage, err := s.service.Image.FindTheResultingImage(r.Context(), req.CompressedID, model.Compression)
+		resultedImage, err := s.service.Image.FindTheResultingImage(r.Context(), req.CompressedID, models.Compression)
 		if err != nil {
 			s.errorJSON(w, r, http.StatusInternalServerError, utils.ErrFindImage)
 			return
@@ -224,8 +224,8 @@ func (s *Server) findCompressedImage() http.HandlerFunc {
 }
 
 type convertImageRequest struct {
-	model.UploadedImage
-	User model.User
+	models.UploadedImage
+	User models.User
 }
 
 // Build builds a request to convert image.
@@ -272,12 +272,12 @@ func (s *Server) convertImage() http.HandlerFunc {
 			logrus.Fatalf("%s: %s", "Failed to controls messages", err)
 		}
 
-		err = s.mq.Publish("", q.Name, string(model.Queued))
+		err = s.mq.Publish("", q.Name, string(models.Queued))
 		if err != nil {
 			logrus.Fatalf("%s: %s", "Failed to publish a message", err)
 		}
 
-		err = s.mq.Publish("", q.Name, string(model.Processing))
+		err = s.mq.Publish("", q.Name, string(models.Processing))
 		if err != nil {
 			logrus.Fatalf("%s: %s", "Failed to publish a message", err)
 		}
@@ -288,24 +288,24 @@ func (s *Server) convertImage() http.HandlerFunc {
 			return
 		}
 
-		err = s.mq.Publish("", q.Name, string(model.Done))
+		err = s.mq.Publish("", q.Name, string(models.Done))
 		if err != nil {
 			logrus.Fatalf("%s: %s", "Failed to publish a message", err)
 		}
 
 		endOfExecution := time.Now()
-		resultedImage.Service = model.Conversion
+		resultedImage.Service = models.Conversion
 
 		requestID, err := s.service.CreateRequest(
 			r.Context(),
 			req.User,
 			newUploadedImage,
 			resultedImage,
-			model.UserImage{
+			models.UserImage{
 				UserAccountID:   req.User.ID,
 				UploadedImageID: newUploadedImage.ID,
-				Status:          model.Done},
-			model.Request{
+				Status:          models.Done},
+			models.Request{
 				TimeStart: startOfExecution,
 				EndOfTime: endOfExecution,
 			})
@@ -319,8 +319,8 @@ func (s *Server) convertImage() http.HandlerFunc {
 }
 
 type findConvertedImageRequest struct {
-	model.ResultedImage
-	User      model.User
+	models.ResultedImage
+	User      models.User
 	requestID int
 }
 
@@ -362,7 +362,7 @@ func (s *Server) findConvertedImage() http.HandlerFunc {
 			return
 		}
 
-		resultedImage, err := s.service.Image.FindTheResultingImage(r.Context(), req.requestID, model.Conversion)
+		resultedImage, err := s.service.Image.FindTheResultingImage(r.Context(), req.requestID, models.Conversion)
 		if err != nil {
 			s.errorJSON(w, r, http.StatusInternalServerError, utils.ErrFindImage)
 			return

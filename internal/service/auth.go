@@ -6,7 +6,7 @@ import (
 
 	"github.com/alisavch/image-service/internal/utils"
 
-	"github.com/alisavch/image-service/internal/model"
+	"github.com/alisavch/image-service/internal/models"
 	"github.com/alisavch/image-service/internal/repository"
 	"github.com/dgrijalva/jwt-go"
 	"golang.org/x/crypto/bcrypt"
@@ -32,7 +32,7 @@ func NewAuthService(repo repository.Authorization) *AuthService {
 }
 
 // CreateUser creates user.
-func (s *AuthService) CreateUser(ctx context.Context, user model.User) (id int, err error) {
+func (s *AuthService) CreateUser(ctx context.Context, user models.User) (id int, err error) {
 	user.Password, err = generatePasswordHash(user.Password)
 	if err != nil {
 		return 0, err

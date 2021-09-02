@@ -17,48 +17,34 @@ func (s *Server) newAPIRouter() {
 	// summary: Registers a user.
 	// description: Could be any user.
 	// parameters:
-	// - name: username
+	// - name: user
 	//   in: body
-	//   description: user object
-	//   required: true
-	//   schema:
-	//     "$ref": "#/definitions/User"
-	// - name: password
-	//   in: body
-	//   description: user object
-	//   required: true
-	//   schema:
-	//     "$ref": "#/definitions/User"
-	// responses:
-	//   "200":
-	//     "$ref": "#/responses/ok"
-	//   "400":
-	//     "$ref": "#/responses/badReq"
-	//   "500":
-	//     "$ref": "#/responses/internal"
-	apiRouter.HandleFunc("/sign-up", s.signUp()).Methods(http.MethodPost)
-	// swagger:operation POST /api/sign-in sign-in sign-in
-	// ---
-	// summary: Authorizes the user.
-	// description: Only authorized user has access.
-	// parameters:
-	// - name: username
-	//   in: body
-	//   description: user object
-	//   required: true
-	//   schema:
-	//     "$ref": "#/definitions/User"
-	// - name: password
-	//   in: body
-	//   description: user object
-	//   required: true
+	//   description: the user to create
 	//   schema:
 	//     "$ref": "#/definitions/User"
 	// responses:
 	//   "200":
 	//     description: successful operation
 	//   "400":
-	//     description: successful bad request
+	//     description: bad request
+	//   "500":
+	//     description: internal server error
+	apiRouter.HandleFunc("/sign-up", s.signUp()).Methods(http.MethodPost)
+	// swagger:operation POST /api/sign-in sign-in sign-in
+	// ---
+	// summary: Authorizes the user.
+	// description: Only authorized user has access.
+	// parameters:
+	// - name: user
+	//   in: body
+	//   description: the user to create
+	//   schema:
+	//     "$ref": "#/definitions/User"
+	// responses:
+	//   "200":
+	//     description: successful operation
+	//   "400":
+	//     description: bad request
 	//   "500":
 	//     description: internal server error
 	apiRouter.HandleFunc("/sign-in", s.signIn()).Methods(http.MethodPost)
@@ -80,7 +66,7 @@ func (s *Server) newUserRouter() {
 	//   "200":
 	//     description: successful operation
 	//   "400":
-	//     description: successful bad request
+	//     description: bad request
 	//   "500":
 	//     description: internal server error
 	userRouter.HandleFunc("/{userID}/history", s.authorize(s.findUserHistory())).Methods(http.MethodGet)
@@ -107,7 +93,7 @@ func (s *Server) newUserRouter() {
 	//   "200":
 	//     description: successful operation
 	//   "400":
-	//     description: successful bad request
+	//     description: bad request
 	//   "500":
 	//     description: internal server error
 	userRouter.HandleFunc("/{userID}/compress", s.authorize(s.compressImage())).Methods(http.MethodPost)
@@ -127,27 +113,22 @@ func (s *Server) newUserRouter() {
 	//   required: true
 	//   type: integer
 	// - name: original
-	//   in: path
-	//   description: compressedID to filter by id
-	//   required: true
-	//   type: integer
+	//   in: query
+	//   type: boolean
+	//   required: false
+	//   description: If true - the original will be saved
 	// - name: uploadFile
 	//   in: body
 	//   required: true
 	//   schema:
 	//     "$ref": "#/definitions/UploadedImage"
-	// - name: original
-	//   in: query
-	//   schema:
-	//     type: boolean
-	//   description: If true - the original will be saved
 	// responses:
 	//   "200":
-	//     "$ref": "#/responses/ok"
+	//     description: successful operation
 	//   "400":
-	//     "$ref": "#/responses/badReq"
+	//     description: bad request
 	//   "500":
-	//     "$ref": "#/responses/internal"
+	//     description: internal server error
 	userRouter.HandleFunc("/{userID}/compress/{compressedID}", s.authorize(s.findCompressedImage())).Methods(http.MethodGet)
 	// swagger:operation POST /api/user/{userID}/convert convert convert
 	// ---
@@ -166,11 +147,11 @@ func (s *Server) newUserRouter() {
 	//     "$ref": "#/definitions/UploadedImage"
 	// responses:
 	//   "200":
-	//     "$ref": "#/responses/ok"
+	//     description: successful operation
 	//   "400":
-	//     "$ref": "#/responses/badReq"
+	//     description: bad request
 	//   "500":
-	//     "$ref": "#/responses/internal"
+	//     description: internal server error
 	userRouter.HandleFunc("/{userID}/convert", s.authorize(s.convertImage())).Methods(http.MethodPost)
 	// swagger:operation POST /api/user/{userID}/convert/{convertedID} findConverted
 	// ---
@@ -182,22 +163,27 @@ func (s *Server) newUserRouter() {
 	//   description: userID to filter by id
 	//   required: true
 	//   type: integer
+	// - name: convertedID
+	//   in: path
+	//   description: convertedID to filter by id
+	//   required: true
+	//   type: integer
+	// - name: original
+	//   in: query
+	//   type: boolean
+	//   required: false
+	//   description: If true - the original will be saved
 	// - name: uploadFile
 	//   in: body
 	//   required: true
 	//   schema:
 	//     "$ref": "#/definitions/UploadedImage"
-	// - name: original
-	//   in: query
-	//   schema:
-	//     type: boolean
-	//   description: If true - the original will be saved
 	// responses:
 	//   "200":
-	//     "$ref": "#/responses/ok"
+	//     description: successful operation
 	//   "400":
-	//     "$ref": "#/responses/badReq"
+	//     description: bad request
 	//   "500":
-	//     "$ref": "#/responses/internal"
+	//     description: internal server error
 	userRouter.HandleFunc("/{userID}/convert/{convertedID}", s.authorize(s.findConvertedImage())).Methods(http.MethodGet)
 }

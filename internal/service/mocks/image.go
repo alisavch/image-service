@@ -5,7 +5,7 @@ package mocks
 import (
 	context "context"
 
-	model "github.com/alisavch/image-service/internal/model"
+	model "github.com/alisavch/image-service/internal/models"
 	mock "github.com/stretchr/testify/mock"
 )
 

@@ -5,7 +5,7 @@ import (
 	"testing"
 
 	"github.com/DATA-DOG/go-sqlmock"
-	"github.com/alisavch/image-service/internal/model"
+	"github.com/alisavch/image-service/internal/models"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -21,7 +21,7 @@ func TestAuthRepository_CreateUser(t *testing.T) {
 	tests := []struct {
 		name  string
 		mock  func()
-		input model.User
+		input models.User
 		want  int
 		isOk  bool
 	}{
@@ -33,7 +33,7 @@ func TestAuthRepository_CreateUser(t *testing.T) {
 				mock.ExpectQuery("INSERT INTO image_service.user_account").
 					WithArgs("mock", "12345").WillReturnRows(rows)
 			},
-			input: model.User{
+			input: models.User{
 				Username: "mock",
 				Password: "12345",
 			},
@@ -47,7 +47,7 @@ func TestAuthRepository_CreateUser(t *testing.T) {
 				mock.ExpectQuery("INSERT INTO image_service.user_account").
 					WithArgs("mock", "").WillReturnRows(rows)
 			},
-			input: model.User{
+			input: models.User{
 				Username: "mock",
 				Password: "",
 			},
@@ -83,7 +83,7 @@ func TestAuthRepository_GetUser(t *testing.T) {
 		name  string
 		mock  func()
 		input string
-		want  model.User
+		want  models.User
 		isOk  bool
 	}{
 		{
@@ -95,7 +95,7 @@ func TestAuthRepository_GetUser(t *testing.T) {
 					WithArgs("mock").WillReturnRows(rows)
 			},
 			input: "mock",
-			want: model.User{
+			want: models.User{
 				ID:       1,
 				Password: "12345",
 			},

@@ -3,26 +3,26 @@ package service
 import (
 	"context"
 
-	"github.com/alisavch/image-service/internal/model"
+	"github.com/alisavch/image-service/internal/models"
 	"github.com/alisavch/image-service/internal/repository"
 )
 
 // Authorization contains methods for authorizing users.
 type Authorization interface {
-	CreateUser(ctx context.Context, user model.User) (id int, err error)
+	CreateUser(ctx context.Context, user models.User) (id int, err error)
 	GenerateToken(ctx context.Context, username, password string) (string, error)
 	ParseToken(token string) (int, error)
 }
 
 // Image contains methods for working with images.
 type Image interface {
-	UploadImage(ctx context.Context, image model.UploadedImage) (int, error)
-	ConvertToType(uploadedImage model.UploadedImage) (model.ResultedImage, error)
-	CompressImage(quality int, uploadedImage model.UploadedImage) (model.ResultedImage, error)
-	CreateRequest(ctx context.Context, user model.User, uplImg model.UploadedImage, resImg model.ResultedImage, uI model.UserImage, r model.Request) (int, error)
-	FindTheResultingImage(ctx context.Context, id int, service model.Service) (model.ResultedImage, error)
-	FindOriginalImage(ctx context.Context, id int) (model.UploadedImage, error)
-	FindUserHistoryByID(ctx context.Context, id int) ([]model.History, error)
+	UploadImage(ctx context.Context, image models.UploadedImage) (int, error)
+	ConvertToType(uploadedImage models.UploadedImage) (models.ResultedImage, error)
+	CompressImage(quality int, uploadedImage models.UploadedImage) (models.ResultedImage, error)
+	CreateRequest(ctx context.Context, user models.User, uplImg models.UploadedImage, resImg models.ResultedImage, uI models.UserImage, r models.Request) (int, error)
+	FindTheResultingImage(ctx context.Context, id int, service models.Service) (models.ResultedImage, error)
+	FindOriginalImage(ctx context.Context, id int) (models.UploadedImage, error)
+	FindUserHistoryByID(ctx context.Context, id int) ([]models.History, error)
 	SaveImage(filename, folder, resultedFilename string) error
 }
 

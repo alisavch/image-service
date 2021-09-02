@@ -14,7 +14,7 @@ import (
 
 	"github.com/alisavch/image-service/internal/utils"
 
-	"github.com/alisavch/image-service/internal/model"
+	"github.com/alisavch/image-service/internal/models"
 	"github.com/google/uuid"
 )
 
@@ -110,28 +110,28 @@ func (req uploaded) Validate() error {
 	return nil
 }
 
-func (s *Server) uploadImage(r *http.Request, uploadedImage model.UploadedImage) (model.UploadedImage, error) {
+func (s *Server) uploadImage(r *http.Request, uploadedImage models.UploadedImage) (models.UploadedImage, error) {
 	var req uploaded
 	err := ParseRequest(r, &req)
 	if err != nil {
-		return model.UploadedImage{}, err
+		return models.UploadedImage{}, err
 	}
 	req.handler.Filename = strings.Replace(uuid.New().String(), "-", "", -1) + req.handler.Filename
 
 	err = service.EnsureBaseDir("./uploads/")
 	if err != nil {
-		return model.UploadedImage{}, err
+		return models.UploadedImage{}, err
 	}
 
 	out, err := os.Create(fmt.Sprintf("./uploads/%s", req.handler.Filename))
 	if err != nil {
-		return model.UploadedImage{}, utils.ErrCreateFile
+		return models.UploadedImage{}, utils.ErrCreateFile
 	}
 	defer out.Close()
 
 	_, err = io.Copy(out, req.file)
 	if err != nil {
-		return model.UploadedImage{}, utils.ErrCopyFile
+		return models.UploadedImage{}, utils.ErrCopyFile
 	}
 
 	uploadedImage.Name = req.handler.Filename
@@ -139,7 +139,7 @@ func (s *Server) uploadImage(r *http.Request, uploadedImage model.UploadedImage)
 	uploadedImage.Location = currentDir + "/uploads/"
 	uploadedID, err := s.service.Image.UploadImage(r.Context(), uploadedImage)
 	if err != nil {
-		return model.UploadedImage{}, utils.ErrUpload
+		return models.UploadedImage{}, utils.ErrUpload
 	}
 	uploadedImage.ID = uploadedID
 

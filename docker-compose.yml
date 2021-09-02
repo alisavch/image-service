@@ -1,22 +1,6 @@
 version: '3.8'
 
 services:
-  image-service:
-    build: ./
-    container_name: image-service
-    command: ./main
-    env_file: .env
-    environment:
-      RABBITMQ_SERVER: rabbitmq
-    restart: on-failure
-    ports:
-      - "8080:8080"
-    depends_on:
-      - postgresql
-      - rabbitmq
-    networks:
-      - fullstack
-
   postgresql:
     image: postgres:latest
     restart: always
@@ -61,6 +45,34 @@ services:
       interval: 5s
       timeout: 15s
       retries: 1
+
+  image-service:
+    build: ./
+    container_name: image-service
+    command: ./main
+    env_file: .env
+    environment:
+      RABBITMQ_SERVER: rabbitmq
+    restart: on-failure
+    ports:
+      - "8080:8080"
+#    volumes:
+#      - ./uploads:/var/lib/docker...
+#      - ./results:/var/lib/docker...
+    depends_on:
+      - postgresql
+      - rabbitmq
+    networks:
+      - fullstack
+
+  consumer:
+    build: ./
+    container_name: consumer
+    command: ./consumer
+    env_file: .env
+    restart: on-failure
+    networks:
+      - fullstack
 
 volumes:
   api:

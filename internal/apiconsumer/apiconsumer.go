@@ -2,6 +2,7 @@ package apiconsumer
 
 import (
 	"github.com/alisavch/image-service/internal/broker"
+	"github.com/joho/godotenv"
 	"github.com/sirupsen/logrus"
 )
 
@@ -9,7 +10,12 @@ import (
 func Consume() {
 	rabbit := new(broker.RabbitMQ)
 
-	err := rabbit.Connect()
+	err := godotenv.Load(".env")
+	if err != nil {
+		logrus.Fatalf("%s:%s", "Error loading .env file", err)
+	}
+
+	err = rabbit.Connect()
 	if err != nil {
 		logrus.Fatalf("%s: %s", "Failed to open a channel", err)
 	}

@@ -7,7 +7,7 @@ import (
 	"time"
 
 	"github.com/DATA-DOG/go-sqlmock"
-	"github.com/alisavch/image-service/internal/model"
+	"github.com/alisavch/image-service/internal/models"
 	"github.com/stretchr/testify/require"
 )
 
@@ -33,7 +33,7 @@ func TestImageRepository_FindUserHistoryByID(t *testing.T) {
 		name  string
 		mock  func()
 		input int
-		want  []model.History
+		want  []models.History
 		isOk  bool
 	}{
 		{
@@ -44,7 +44,7 @@ func TestImageRepository_FindUserHistoryByID(t *testing.T) {
 				mock.ExpectQuery("SELECT (.+) from image_service.request r INNER JOIN image_service.user_image ui on r.user_image_id = ui.id INNER JOIN image_service.uploaded_image upi on ui.uploaded_image_id = upi.id INNER JOIN image_service.resulted_image ri on ri.id = ui.resulting_image_id INNER JOIN image_service.user_account ua on ua.id = ui.user_account_id").
 					WithArgs(1).WillReturnRows(rows)
 			},
-			want: []model.History(nil),
+			want: []models.History(nil),
 			isOk: true,
 		},
 	}
@@ -77,13 +77,13 @@ func TestImageRepository_UploadImage(t *testing.T) {
 	tests := []struct {
 		name  string
 		mock  func()
-		input model.UploadedImage
+		input models.UploadedImage
 		want  int
 		isOk  bool
 	}{
 		{
 			name: "Test with correct values",
-			input: model.UploadedImage{
+			input: models.UploadedImage{
 				Name:     "filename",
 				Location: "location",
 			},
@@ -102,7 +102,7 @@ func TestImageRepository_UploadImage(t *testing.T) {
 				mock.ExpectQuery("INSERT INTO image_service.uploaded_image").
 					WithArgs("", "location").WillReturnRows(rows)
 			},
-			input: model.UploadedImage{
+			input: models.UploadedImage{
 				Name:     "",
 				Location: "location",
 			},
@@ -136,11 +136,11 @@ func TestImageRepository_CreateRequest(t *testing.T) {
 	repo := NewImageRepository(db)
 
 	type args struct {
-		user          model.User
-		uploadedImage model.UploadedImage
-		resultedImage model.ResultedImage
-		userImage     model.UserImage
-		request       model.Request
+		user          models.User
+		uploadedImage models.UploadedImage
+		resultedImage models.ResultedImage
+		userImage     models.UserImage
+		request       models.Request
 	}
 
 	tests := []struct {
@@ -157,30 +157,30 @@ func TestImageRepository_CreateRequest(t *testing.T) {
 
 				resRows := sqlmock.NewRows([]string{"id"}).AddRow(1)
 				mock.ExpectQuery("INSERT INTO image_service.resulted_image").
-					WithArgs("filename", "location", model.Compression).WillReturnRows(resRows)
+					WithArgs("filename", "location", models.Compression).WillReturnRows(resRows)
 				uiRows := sqlmock.NewRows([]string{"id"}).AddRow(1)
 				mock.ExpectQuery("INSERT INTO image_service.user_image").
-					WithArgs(1, 1, 1, model.Queued).WillReturnRows(uiRows)
+					WithArgs(1, 1, 1, models.Queued).WillReturnRows(uiRows)
 				mock.ExpectExec("INSERT INTO image_service.request").
 					WithArgs(1, AnyTime{}, AnyTime{}).WillReturnResult(sqlmock.NewResult(1, 1))
 				mock.ExpectCommit()
 			},
 			input: args{
-				user: model.User{
+				user: models.User{
 					ID: 1,
 				},
-				uploadedImage: model.UploadedImage{
+				uploadedImage: models.UploadedImage{
 					ID: 1,
 				},
-				resultedImage: model.ResultedImage{
+				resultedImage: models.ResultedImage{
 					Name:     "filename",
 					Location: "location",
-					Service:  model.Compression,
+					Service:  models.Compression,
 				},
-				userImage: model.UserImage{
-					Status: model.Queued,
+				userImage: models.UserImage{
+					Status: models.Queued,
 				},
-				request: model.Request{
+				request: models.Request{
 					TimeStart: time.Now(),
 					EndOfTime: time.Now(),
 				},
@@ -194,25 +194,25 @@ func TestImageRepository_CreateRequest(t *testing.T) {
 				mock.ExpectBegin()
 				resRows := sqlmock.NewRows([]string{"id"})
 				mock.ExpectQuery("INSERT INTO image_service.resulted_image").
-					WithArgs("", "", model.Compression).WillReturnRows(resRows)
+					WithArgs("", "", models.Compression).WillReturnRows(resRows)
 				mock.ExpectRollback()
 			},
 			input: args{
-				user: model.User{
+				user: models.User{
 					ID: 1,
 				},
-				uploadedImage: model.UploadedImage{
+				uploadedImage: models.UploadedImage{
 					ID: 1,
 				},
-				resultedImage: model.ResultedImage{
+				resultedImage: models.ResultedImage{
 					Name:     "",
 					Location: "",
-					Service:  model.Compression,
+					Service:  models.Compression,
 				},
-				userImage: model.UserImage{
-					Status: model.Queued,
+				userImage: models.UserImage{
+					Status: models.Queued,
 				},
-				request: model.Request{
+				request: models.Request{
 					TimeStart: time.Now(),
 					EndOfTime: time.Now(),
 				},
@@ -248,7 +248,7 @@ func TestImageRepository_FindTheResultingImage(t *testing.T) {
 
 	type args struct {
 		id      int
-		service model.Service
+		service models.Service
 	}
 
 	type mockBehavior func(args args)
@@ -257,14 +257,14 @@ func TestImageRepository_FindTheResultingImage(t *testing.T) {
 		name  string
 		mock  mockBehavior
 		input args
-		want  model.ResultedImage
+		want  models.ResultedImage
 		isOk  bool
 	}{
 		{
 			name: "Test with correct values",
 			input: args{
 				id:      1,
-				service: model.Conversion,
+				service: models.Conversion,
 			},
 			mock: func(args args) {
 				rows := sqlmock.NewRows([]string{"resulted_name", "resulted_location"}).
@@ -272,7 +272,7 @@ func TestImageRepository_FindTheResultingImage(t *testing.T) {
 				mock.ExpectQuery("SELECT (.+) FROM image_service.resulted_image").
 					WithArgs(args.id, args.service).WillReturnRows(rows)
 			},
-			want: model.ResultedImage{
+			want: models.ResultedImage{
 				Name:     "filename",
 				Location: "location",
 			},
@@ -287,7 +287,7 @@ func TestImageRepository_FindTheResultingImage(t *testing.T) {
 			},
 			input: args{
 				id:      0,
-				service: model.Compression,
+				service: models.Compression,
 			},
 			isOk: false,
 		},
@@ -326,7 +326,7 @@ func TestImageRepository_FindOriginalImage(t *testing.T) {
 		name  string
 		mock  func()
 		input args
-		want  model.UploadedImage
+		want  models.UploadedImage
 		isOk  bool
 	}{
 		{
@@ -340,7 +340,7 @@ func TestImageRepository_FindOriginalImage(t *testing.T) {
 			input: args{
 				id: 1,
 			},
-			want: model.UploadedImage{
+			want: models.UploadedImage{
 				Name:     "filename",
 				Location: "location",
 			},

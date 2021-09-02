@@ -27,19 +27,9 @@
         "operationId": "sign-in",
         "parameters": [
           {
-            "description": "user object",
-            "name": "username",
+            "description": "the user to create",
+            "name": "user",
             "in": "body",
-            "required": true,
-            "schema": {
-              "$ref": "#/definitions/User"
-            }
-          },
-          {
-            "description": "user object",
-            "name": "password",
-            "in": "body",
-            "required": true,
             "schema": {
               "$ref": "#/definitions/User"
             }
@@ -50,7 +40,7 @@
             "description": "successful operation"
           },
           "400": {
-            "description": "successful bad request"
+            "description": "bad request"
           },
           "500": {
             "description": "internal server error"
@@ -68,19 +58,9 @@
         "operationId": "sign-up",
         "parameters": [
           {
-            "description": "user object",
-            "name": "username",
+            "description": "the user to create",
+            "name": "user",
             "in": "body",
-            "required": true,
-            "schema": {
-              "$ref": "#/definitions/User"
-            }
-          },
-          {
-            "description": "user object",
-            "name": "password",
-            "in": "body",
-            "required": true,
             "schema": {
               "$ref": "#/definitions/User"
             }
@@ -88,13 +68,13 @@
         ],
         "responses": {
           "200": {
-            "$ref": "#/responses/ok"
+            "description": "successful operation"
           },
           "400": {
-            "$ref": "#/responses/badReq"
+            "description": "bad request"
           },
           "500": {
-            "$ref": "#/responses/internal"
+            "description": "internal server error"
           }
         }
       }
@@ -134,7 +114,7 @@
             "description": "successful operation"
           },
           "400": {
-            "description": "successful bad request"
+            "description": "bad request"
           },
           "500": {
             "description": "internal server error"
@@ -163,11 +143,10 @@
             "required": true
           },
           {
-            "type": "integer",
-            "description": "compressedID to filter by id",
+            "type": "boolean",
+            "description": "If true - the original will be saved",
             "name": "original",
-            "in": "path",
-            "required": true
+            "in": "query"
           },
           {
             "name": "uploadFile",
@@ -176,25 +155,17 @@
             "schema": {
               "$ref": "#/definitions/UploadedImage"
             }
-          },
-          {
-            "description": "If true - the original will be saved",
-            "name": "original",
-            "in": "query",
-            "schema": {
-              "type": "boolean"
-            }
           }
         ],
         "responses": {
           "200": {
-            "$ref": "#/responses/ok"
+            "description": "successful operation"
           },
           "400": {
-            "$ref": "#/responses/badReq"
+            "description": "bad request"
           },
           "500": {
-            "$ref": "#/responses/internal"
+            "description": "internal server error"
           }
         }
       }
@@ -226,13 +197,13 @@
         ],
         "responses": {
           "200": {
-            "$ref": "#/responses/ok"
+            "description": "successful operation"
           },
           "400": {
-            "$ref": "#/responses/badReq"
+            "description": "bad request"
           },
           "500": {
-            "$ref": "#/responses/internal"
+            "description": "internal server error"
           }
         }
       }
@@ -251,31 +222,36 @@
             "required": true
           },
           {
+            "type": "integer",
+            "description": "convertedID to filter by id",
+            "name": "convertedID",
+            "in": "path",
+            "required": true
+          },
+          {
+            "type": "boolean",
+            "description": "If true - the original will be saved",
+            "name": "original",
+            "in": "query"
+          },
+          {
             "name": "uploadFile",
             "in": "body",
             "required": true,
             "schema": {
               "$ref": "#/definitions/UploadedImage"
             }
-          },
-          {
-            "description": "If true - the original will be saved",
-            "name": "original",
-            "in": "query",
-            "schema": {
-              "type": "boolean"
-            }
           }
         ],
         "responses": {
           "200": {
-            "$ref": "#/responses/ok"
+            "description": "successful operation"
           },
           "400": {
-            "$ref": "#/responses/badReq"
+            "description": "bad request"
           },
           "500": {
-            "$ref": "#/responses/internal"
+            "description": "internal server error"
           }
         }
       }
@@ -299,13 +275,71 @@
             "description": "successful operation"
           },
           "400": {
-            "description": "successful bad request"
+            "description": "bad request"
           },
           "500": {
             "description": "internal server error"
           }
         }
       }
+    }
+  },
+  "definitions": {
+    "User": {
+      "description": "A user is the security principal for this application.",
+      "type": "object",
+      "title": "User contains information about user.",
+      "required": [
+        "username",
+        "password"
+      ],
+      "properties": {
+        "id": {
+          "description": "the ID for this user",
+          "type": "integer",
+          "format": "int",
+          "x-go-name": "ID"
+        },
+        "password": {
+          "description": "the password for this user",
+          "type": "string",
+          "x-go-name": "Password"
+        },
+        "username": {
+          "description": "the username for this user",
+          "type": "string",
+          "x-go-name": "Username"
+        }
+      },
+      "x-go-package": "github.com/alisavch/image-service/internal/models"
+    },
+    "UploadedImage": {
+      "description": "Uploaded image is the general information.",
+      "type": "object",
+      "title": "UploadedImage contains information about uploaded image.",
+      "required": [
+        "uploaded_name",
+        "uploaded_location"
+      ],
+      "properties": {
+        "id": {
+          "description": "the ID for this uploaded image",
+          "type": "integer",
+          "format": "int",
+          "x-go-name": "ID"
+        },
+        "uploaded_name": {
+          "description": "the Name for this uploaded image",
+          "type": "string",
+          "x-go-name": "Name"
+        },
+        "uploaded_location": {
+          "description": "the Location for this uploaded image",
+          "type": "string",
+          "x-go-name": "Location"
+        }
+      },
+      "x-go-package": "github.com/alisavch/image-service/internal/models"
     }
   },
   "securityDefinitions": {

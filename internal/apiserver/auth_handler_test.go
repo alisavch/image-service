@@ -8,7 +8,7 @@ import (
 
 	"github.com/stretchr/testify/mock"
 
-	"github.com/alisavch/image-service/internal/model"
+	"github.com/alisavch/image-service/internal/models"
 	"github.com/alisavch/image-service/internal/service"
 	"github.com/alisavch/image-service/internal/service/mocks"
 	"github.com/gorilla/mux"
@@ -16,12 +16,12 @@ import (
 )
 
 func TestHandler_signUp(t *testing.T) {
-	type fnBehavior func(mockAuthorization *mocks.Authorization, user model.User)
+	type fnBehavior func(mockAuthorization *mocks.Authorization, user models.User)
 
 	tests := []struct {
 		name                 string
 		inputBody            string
-		inputUser            model.User
+		inputUser            models.User
 		fn                   fnBehavior
 		expectedStatusCode   int
 		expectedResponseBody string
@@ -29,11 +29,11 @@ func TestHandler_signUp(t *testing.T) {
 		{
 			name:      "Test with correct values",
 			inputBody: `{"username": "username", "password": "12345"}`,
-			inputUser: model.User{
+			inputUser: models.User{
 				Username: "username",
 				Password: "12345",
 			},
-			fn: func(mockAuthorization *mocks.Authorization, user model.User) {
+			fn: func(mockAuthorization *mocks.Authorization, user models.User) {
 				mockAuthorization.On("CreateUser", mock.Anything, user).Return(1, nil)
 			},
 			expectedStatusCode:   200,

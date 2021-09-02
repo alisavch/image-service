@@ -59,6 +59,7 @@ services:
     volumes:
       - ./uploads://uploads
       - ./results://results
+      - $HOME/Downloads://root/Downloads
     depends_on:
       - postgresql
       - rabbitmq

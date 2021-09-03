@@ -48,7 +48,7 @@ services:
   image-service:
     build:
       context: .
-      dockerfile: Dockerfile-service
+      dockerfile: Dockerfile
     container_name: image-service
     env_file: .env
     restart: always

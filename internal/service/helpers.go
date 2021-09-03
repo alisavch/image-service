@@ -46,10 +46,9 @@ func Encode(w io.Writer, img image.Image, format string, opts ...EncodeOption) e
 	for _, option := range opts {
 		option(&cfg)
 	}
-	var err error
 	switch format {
 	case "jpeg":
-		err = png.Encode(w, img)
+		return png.Encode(w, img)
 	case "png":
 		var rgba *image.RGBA
 		if nrgba, ok := img.(*image.NRGBA); ok {
@@ -62,14 +61,13 @@ func Encode(w io.Writer, img image.Image, format string, opts ...EncodeOption) e
 			}
 		}
 		if rgba != nil {
-			err = jpeg.Encode(w, rgba, &jpeg.Options{Quality: cfg.jpegQuality})
+			return jpeg.Encode(w, rgba, &jpeg.Options{Quality: cfg.jpegQuality})
 		} else {
-			err = jpeg.Encode(w, img, &jpeg.Options{Quality: cfg.jpegQuality})
+			return jpeg.Encode(w, img, &jpeg.Options{Quality: cfg.jpegQuality})
 		}
 	default:
-		err = utils.ErrUnsupportedFormat
+		return utils.ErrUnsupportedFormat
 	}
-	return err
 }
 
 // SaveToDownloads saves the image to download folder on your computer.

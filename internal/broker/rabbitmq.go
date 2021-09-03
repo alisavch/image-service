@@ -9,7 +9,7 @@ import (
 	"github.com/streadway/amqp"
 )
 
-// RabbitMQ Operate Wrapper
+// RabbitMQ Operate Wrapper.
 type RabbitMQ struct {
 	conn *amqp.Connection
 	ch   *amqp.Channel

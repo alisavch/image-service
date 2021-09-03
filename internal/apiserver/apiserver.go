@@ -15,8 +15,7 @@ import (
 
 // Start starts the server.
 func Start() error {
-	conf := utils.NewConfig(".env")
-	user, pass, host, port, dbname, err := utils.GetDBEnvironments(conf)
+	user, pass, host, port, dbname, err := utils.GetDBEnvironments(utils.NewConfig(".env"))
 	if err != nil {
 		logrus.Fatalf("%s: %s", "Failed to find variables", err)
 	}

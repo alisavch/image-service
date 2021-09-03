@@ -27,7 +27,6 @@ services:
     image: rabbitmq:management
     restart: always
     container_name: rabbitmq
-    env_file: .env
     environment:
       - RABBITMQ_DEFAULT_PASS=test
       - RABBITMQ_DEFAULT_USER=test
@@ -49,12 +48,9 @@ services:
   image-service:
     build:
       context: .
-      dockerfile: Dockerfile
+      dockerfile: Dockerfile-service
     container_name: image-service
-    command: ./main
     env_file: .env
-    environment:
-      RABBITMQ_SERVER: rabbitmq
     restart: always
     ports:
       - "8080:8080"
@@ -71,10 +67,10 @@ services:
   consumer:
     build:
       context: .
-      dockerfile: Dockerfile
+      dockerfile: Dockerfile-consumer
     container_name: consumer
-    command: ./consumer
-    env_file: .env
+    environment:
+      - RABBITMQ_URL=amqp://test:test@rabbitmq:5672
     restart: always
     depends_on:
       - image-service

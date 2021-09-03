@@ -27,6 +27,7 @@ services:
     image: rabbitmq:management
     restart: always
     container_name: rabbitmq
+    env_file: .env
     environment:
       - RABBITMQ_DEFAULT_PASS=test
       - RABBITMQ_DEFAULT_USER=test

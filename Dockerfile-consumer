@@ -19,6 +19,5 @@ RUN go build -o consumer ./cmd/consumer/main.go
 FROM alpine:latest
 RUN apk --no-cache add ca-certificates
 COPY --from=builder ["/app/consumer", "/"]
-COPY .env /
 
 ENTRYPOINT ["/consumer"]

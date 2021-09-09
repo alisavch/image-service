@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 	"image"
-	"io"
 	"os"
 
 	"github.com/alisavch/image-service/internal/utils"
@@ -147,26 +146,36 @@ func (s *ImageService) FindOriginalImage(ctx context.Context, id int) (models.Up
 }
 
 // SaveImage saves image to users machine.
-func (s *ImageService) SaveImage(filename, folder, resultedFilename string) error {
+func (s *ImageService) SaveImage(filename, folder string) (*models.Image, error) {
 	currentDir, err := os.Getwd()
 	if err != nil {
-		return err
+		return &models.Image{}, nil
 	}
+
+	img := models.Image{Filename: filename}
 
 	file, err := os.Open(currentDir + folder + filename)
 	if err != nil {
-		return err
+		return &models.Image{}, err
+	}
+	img.File = file
+
+	img.ContentType, err = GetFileContentType(file)
+	if err != nil {
+		return &models.Image{}, nil
 	}
 
-	out, err := SaveToDownloads(resultedFilename)
+	fileInfo, err := file.Stat()
 	if err != nil {
-		return err
+		return &models.Image{}, err
 	}
-	defer out.Close()
 
-	_, err = io.Copy(out, file)
+	img.Filesize = fileInfo.Size()
+
+	_, err = file.Seek(0, 0)
 	if err != nil {
-		return err
+		return nil, err
 	}
-	return nil
+
+	return &img, nil
 }

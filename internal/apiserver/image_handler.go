@@ -1,7 +1,6 @@
 package apiserver
 
 import (
-	"fmt"
 	"net/http"
 	"strconv"
 	"time"
@@ -31,7 +30,23 @@ func (req *findUserHistoryRequest) Build(r *http.Request) error {
 	if !ok {
 		return utils.ErrFailedConvert
 	}
+
+	vars := mux.Vars(r)
+	paramID, ok := vars["userID"]
+	if !ok {
+		return utils.ErrMissingParams
+	}
+
+	intParamID, err := strconv.Atoi(paramID)
+	if err != nil {
+		return utils.ErrAtoi
+	}
+
+	if id != intParamID {
+		return utils.ErrPrivacy
+	}
 	req.User.ID = id
+
 	return nil
 }
 
@@ -46,7 +61,7 @@ func (s *Server) findUserHistory() http.HandlerFunc {
 
 		err := ParseRequest(r, &req)
 		if err != nil {
-			s.errorJSON(w, r, http.StatusBadRequest, err)
+			s.errorJSON(w, r, http.StatusUnauthorized, err)
 			return
 		}
 
@@ -60,17 +75,32 @@ func (s *Server) findUserHistory() http.HandlerFunc {
 	}
 }
 
-type uploadImageRequest struct {
+type compressImageRequest struct {
 	models.UploadedImage
 	User  models.User
 	Width int
 }
 
 // Build builds a request to compress image.
-func (req *uploadImageRequest) Build(r *http.Request) error {
+func (req *compressImageRequest) Build(r *http.Request) error {
 	id, ok := r.Context().Value(userCtx).(int)
 	if !ok {
 		return utils.ErrFailedConvert
+	}
+
+	vars := mux.Vars(r)
+	paramID, ok := vars["userID"]
+	if !ok {
+		return utils.ErrMissingParams
+	}
+
+	intParamID, err := strconv.Atoi(paramID)
+	if err != nil {
+		return utils.ErrAtoi
+	}
+
+	if id != intParamID {
+		return utils.ErrPrivacy
 	}
 	req.User.ID = id
 
@@ -78,23 +108,28 @@ func (req *uploadImageRequest) Build(r *http.Request) error {
 	if width == "" {
 		width = DefaultWidth
 	}
-	req.Width, _ = strconv.Atoi(width)
+
+	convertedID, err := strconv.Atoi(width)
+	if err != nil {
+		return utils.ErrAtoi
+	}
+	req.Width = convertedID
 
 	return nil
 }
 
 // Validate validates request to compress image.
-func (req uploadImageRequest) Validate() error {
+func (req compressImageRequest) Validate() error {
 	return nil
 }
 
 func (s *Server) compressImage() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		var req uploadImageRequest
+		var req compressImageRequest
 
 		err := ParseRequest(r, &req)
 		if err != nil {
-			s.errorJSON(w, r, http.StatusBadRequest, err)
+			s.errorJSON(w, r, http.StatusUnauthorized, err)
 			return
 		}
 
@@ -158,31 +193,61 @@ func (s *Server) compressImage() http.HandlerFunc {
 			return
 		}
 
-		s.respondJSON(w, r, http.StatusOK, requestID)
+		s.respondFormData(w, r, http.StatusOK, requestID)
 	}
 }
 
 type findCompressedImageRequest struct {
 	models.ResultedImage
-	User         models.User
-	CompressedID int
+	User       models.User
+	requestID  int
+	isOriginal bool
 }
 
 // Build builds a request to find compressed image.
 func (req *findCompressedImageRequest) Build(r *http.Request) error {
 	id, ok := r.Context().Value(userCtx).(int)
 	if !ok {
-		return fmt.Errorf("failed convert to int userID")
+		return utils.ErrFailedConvert
 	}
 	req.User.ID = id
 
 	vars := mux.Vars(r)
 	compressedImageID, ok := vars["compressedID"]
 	if !ok {
-		return fmt.Errorf("incorrect request")
+		return utils.ErrMissingParams
 	}
 
-	req.CompressedID, _ = strconv.Atoi(compressedImageID)
+	paramID, ok := vars["userID"]
+	if !ok {
+		return utils.ErrMissingParams
+	}
+
+	intParamID, err := strconv.Atoi(paramID)
+	if err != nil {
+		return utils.ErrAtoi
+	}
+
+	if id != intParamID {
+		return utils.ErrPrivacy
+	}
+	req.User.ID = id
+
+	originalImage := r.FormValue("original")
+	if originalImage == "" {
+		originalImage = DefaultOriginal
+	}
+
+	convertedID, err := strconv.Atoi(compressedImageID)
+	if err != nil {
+		return utils.ErrAtoi
+	}
+	convertedBool, err := strconv.ParseBool(originalImage)
+	if err != nil {
+		return err
+	}
+	req.requestID = convertedID
+	req.isOriginal = convertedBool
 	return nil
 }
 
@@ -197,29 +262,40 @@ func (s *Server) findCompressedImage() http.HandlerFunc {
 
 		err := ParseRequest(r, &req)
 		if err != nil {
-			s.errorJSON(w, r, http.StatusBadRequest, err)
+			s.errorJSON(w, r, http.StatusUnauthorized, err)
 			return
 		}
 
-		resultedImage, err := s.service.Image.FindTheResultingImage(r.Context(), req.CompressedID, models.Compression)
+		if req.isOriginal {
+			uploaded, err := s.service.Image.FindOriginalImage(r.Context(), req.requestID)
+			if err != nil {
+				s.errorJSON(w, r, http.StatusInternalServerError, utils.ErrFindImage)
+				return
+			}
+
+			file, err := s.service.Image.SaveImage(uploaded.Name, "/uploads/")
+			if err != nil {
+				s.errorJSON(w, r, http.StatusInternalServerError, utils.ErrSaveImage)
+				return
+			}
+
+			s.respondImage(w, file)
+			return
+		}
+
+		resultedImage, err := s.service.Image.FindTheResultingImage(r.Context(), req.requestID, models.Compression)
 		if err != nil {
 			s.errorJSON(w, r, http.StatusInternalServerError, utils.ErrFindImage)
 			return
 		}
 
-		err = s.service.Image.SaveImage(resultedImage.Name, "/results/", resultedImage.Name)
+		file, err := s.service.Image.SaveImage(resultedImage.Name, "/results/")
 		if err != nil {
 			s.errorJSON(w, r, http.StatusInternalServerError, utils.ErrSaveImage)
 			return
 		}
 
-		err = s.findOriginalImage(r, req.CompressedID)
-		if err != nil {
-			s.errorJSON(w, r, http.StatusInternalServerError, err)
-			return
-		}
-
-		s.respondJSON(w, r, http.StatusOK, "successfully saved")
+		s.respondImage(w, file)
 	}
 }
 
@@ -232,8 +308,24 @@ type convertImageRequest struct {
 func (req *convertImageRequest) Build(r *http.Request) error {
 	id, ok := r.Context().Value(userCtx).(int)
 	if !ok {
-		return fmt.Errorf("failed convert to int userID")
+		return utils.ErrFailedConvert
 	}
+
+	vars := mux.Vars(r)
+	paramID, ok := vars["userID"]
+	if !ok {
+		return utils.ErrMissingParams
+	}
+
+	intParamID, err := strconv.Atoi(paramID)
+	if err != nil {
+		return utils.ErrAtoi
+	}
+
+	if id != intParamID {
+		return utils.ErrPrivacy
+	}
+
 	req.User.ID = id
 
 	return nil
@@ -250,7 +342,7 @@ func (s *Server) convertImage() http.HandlerFunc {
 
 		err := ParseRequest(r, &req)
 		if err != nil {
-			s.errorJSON(w, r, http.StatusBadRequest, err)
+			s.errorJSON(w, r, http.StatusUnauthorized, err)
 			return
 		}
 
@@ -314,14 +406,15 @@ func (s *Server) convertImage() http.HandlerFunc {
 			return
 		}
 
-		s.respondJSON(w, r, http.StatusOK, requestID)
+		s.respondFormData(w, r, http.StatusOK, requestID)
 	}
 }
 
 type findConvertedImageRequest struct {
 	models.ResultedImage
-	User      models.User
-	requestID int
+	User       models.User
+	requestID  int
+	isOriginal bool
 }
 
 // Build builds a request to find converted image.
@@ -338,11 +431,35 @@ func (req *findConvertedImageRequest) Build(r *http.Request) error {
 		return utils.ErrRequest
 	}
 
+	paramID, ok := vars["userID"]
+	if !ok {
+		return utils.ErrMissingParams
+	}
+
+	intParamID, err := strconv.Atoi(paramID)
+	if err != nil {
+		return utils.ErrAtoi
+	}
+
+	if id != intParamID {
+		return utils.ErrPrivacy
+	}
+	req.User.ID = id
+
 	convertedID, err := strconv.Atoi(convertedImageID)
+	if err != nil {
+		return utils.ErrAtoi
+	}
+	req.requestID = convertedID
+
+	originalImage := r.FormValue("original")
+	if originalImage == "" {
+		originalImage = DefaultOriginal
+	}
+	req.isOriginal, err = strconv.ParseBool(originalImage)
 	if err != nil {
 		return err
 	}
-	req.requestID = convertedID
 
 	return nil
 }
@@ -358,7 +475,23 @@ func (s *Server) findConvertedImage() http.HandlerFunc {
 
 		err := ParseRequest(r, &req)
 		if err != nil {
-			s.errorJSON(w, r, http.StatusBadRequest, err)
+			s.errorJSON(w, r, http.StatusUnauthorized, err)
+			return
+		}
+
+		if req.isOriginal {
+			uploaded, err := s.service.Image.FindOriginalImage(r.Context(), req.requestID)
+			if err != nil {
+				s.errorJSON(w, r, http.StatusInternalServerError, utils.ErrFindImage)
+				return
+			}
+
+			file, err := s.service.Image.SaveImage(uploaded.Name, "/uploads/")
+			if err != nil {
+				s.errorJSON(w, r, http.StatusInternalServerError, utils.ErrSaveImage)
+				return
+			}
+			s.respondImage(w, file)
 			return
 		}
 
@@ -368,18 +501,12 @@ func (s *Server) findConvertedImage() http.HandlerFunc {
 			return
 		}
 
-		err = s.service.Image.SaveImage(resultedImage.Name, "/results/", resultedImage.Name)
+		file, err := s.service.Image.SaveImage(resultedImage.Name, "/results/")
 		if err != nil {
 			s.errorJSON(w, r, http.StatusInternalServerError, utils.ErrSaveImage)
 			return
 		}
 
-		err = s.findOriginalImage(r, req.requestID)
-		if err != nil {
-			s.errorJSON(w, r, http.StatusInternalServerError, err)
-			return
-		}
-
-		s.respondJSON(w, r, http.StatusOK, "successfully saved")
+		s.respondImage(w, file)
 	}
 }

@@ -5,6 +5,7 @@ import (
 	"image/jpeg"
 	"image/png"
 	"io"
+	"net/http"
 	"os"
 	"path"
 	"strings"
@@ -37,7 +38,7 @@ func ChangeFormat(filename string) (string, error) {
 	return "", utils.ErrUnsupportedFormat
 }
 
-// EncodeOption sets an optional parameter for the Encode and Save functions.
+// EncodeOption sets an optional parameter for to Encode and Save functions.
 type EncodeOption func(config *EncodeConfig)
 
 // Encode encodes the image from jpeg to png and vice versa.
@@ -70,12 +71,6 @@ func Encode(w io.Writer, img image.Image, format string, opts ...EncodeOption) e
 	}
 }
 
-// SaveToDownloads saves the image to download folder on your computer.
-func SaveToDownloads(name string) (*os.File, error) {
-	userprofile := os.Getenv("HOME")
-	return os.Create(userprofile + "/Downloads/" + name)
-}
-
 // CompressJPEG allows you to compress the JPEG image in width while maintaining the aspect ratio.
 func CompressJPEG(imgSrc image.Image, width int, newImgFile *os.File) error {
 	if width < 0 || width > imgSrc.Bounds().Max.X {
@@ -102,4 +97,15 @@ func EnsureBaseDir(filepath string) error {
 		return nil
 	}
 	return os.MkdirAll(baseDir, 0755)
+}
+
+// GetFileContentType checks the content type of the file.
+func GetFileContentType(out *os.File) (string, error) {
+	buffer := make([]byte, 512)
+	_, err := out.Read(buffer)
+	if err != nil {
+		return "", err
+	}
+	contentType := http.DetectContentType(buffer)
+	return contentType, err
 }

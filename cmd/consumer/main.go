@@ -3,7 +3,7 @@ package main
 import (
 	"flag"
 
-	"github.com/alisavch/image-service/internal/apiconsumer"
+	"github.com/alisavch/image-service/internal/consumer"
 
 	_ "github.com/alisavch/image-service/internal/log"
 	"github.com/sirupsen/logrus"
@@ -12,5 +12,5 @@ import (
 func main() {
 	flag.Parse()
 	logrus.Info("The consumer is running")
-	apiconsumer.Consume()
+	consumer.Consume()
 }

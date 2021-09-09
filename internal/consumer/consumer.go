@@ -1,4 +1,4 @@
-package apiconsumer
+package consumer
 
 import (
 	"github.com/alisavch/image-service/internal/broker"

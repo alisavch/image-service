@@ -29,6 +29,6 @@ test:
 
 .PHONY: generate-spec
 generate-spec:
-	swagger generate spec -o swagger.json
+	swagger generate spec -m -o swagger.yaml
 
 .DEFAULT_GOAL := test

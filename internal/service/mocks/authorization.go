@@ -5,7 +5,7 @@ package mocks
 import (
 	context "context"
 
-	model "github.com/alisavch/image-service/internal/models"
+	models "github.com/alisavch/image-service/internal/models"
 	mock "github.com/stretchr/testify/mock"
 )
 
@@ -15,18 +15,18 @@ type Authorization struct {
 }
 
 // CreateUser provides a mock function with given fields: ctx, user
-func (_m *Authorization) CreateUser(ctx context.Context, user model.User) (int, error) {
+func (_m *Authorization) CreateUser(ctx context.Context, user models.User) (int, error) {
 	ret := _m.Called(ctx, user)
 
 	var r0 int
-	if rf, ok := ret.Get(0).(func(context.Context, model.User) int); ok {
+	if rf, ok := ret.Get(0).(func(context.Context, models.User) int); ok {
 		r0 = rf(ctx, user)
 	} else {
 		r0 = ret.Get(0).(int)
 	}
 
 	var r1 error
-	if rf, ok := ret.Get(1).(func(context.Context, model.User) error); ok {
+	if rf, ok := ret.Get(1).(func(context.Context, models.User) error); ok {
 		r1 = rf(ctx, user)
 	} else {
 		r1 = ret.Error(1)

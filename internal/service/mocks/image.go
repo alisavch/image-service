@@ -5,7 +5,7 @@ package mocks
 import (
 	context "context"
 
-	model "github.com/alisavch/image-service/internal/models"
+	models "github.com/alisavch/image-service/internal/models"
 	mock "github.com/stretchr/testify/mock"
 )
 
@@ -15,18 +15,18 @@ type Image struct {
 }
 
 // CompressImage provides a mock function with given fields: quality, uploadedImage
-func (_m *Image) CompressImage(quality int, uploadedImage model.UploadedImage) (model.ResultedImage, error) {
+func (_m *Image) CompressImage(quality int, uploadedImage models.UploadedImage) (models.ResultedImage, error) {
 	ret := _m.Called(quality, uploadedImage)
 
-	var r0 model.ResultedImage
-	if rf, ok := ret.Get(0).(func(int, model.UploadedImage) model.ResultedImage); ok {
+	var r0 models.ResultedImage
+	if rf, ok := ret.Get(0).(func(int, models.UploadedImage) models.ResultedImage); ok {
 		r0 = rf(quality, uploadedImage)
 	} else {
-		r0 = ret.Get(0).(model.ResultedImage)
+		r0 = ret.Get(0).(models.ResultedImage)
 	}
 
 	var r1 error
-	if rf, ok := ret.Get(1).(func(int, model.UploadedImage) error); ok {
+	if rf, ok := ret.Get(1).(func(int, models.UploadedImage) error); ok {
 		r1 = rf(quality, uploadedImage)
 	} else {
 		r1 = ret.Error(1)
@@ -36,18 +36,18 @@ func (_m *Image) CompressImage(quality int, uploadedImage model.UploadedImage) (
 }
 
 // ConvertToType provides a mock function with given fields: uploadedImage
-func (_m *Image) ConvertToType(uploadedImage model.UploadedImage) (model.ResultedImage, error) {
+func (_m *Image) ConvertToType(uploadedImage models.UploadedImage) (models.ResultedImage, error) {
 	ret := _m.Called(uploadedImage)
 
-	var r0 model.ResultedImage
-	if rf, ok := ret.Get(0).(func(model.UploadedImage) model.ResultedImage); ok {
+	var r0 models.ResultedImage
+	if rf, ok := ret.Get(0).(func(models.UploadedImage) models.ResultedImage); ok {
 		r0 = rf(uploadedImage)
 	} else {
-		r0 = ret.Get(0).(model.ResultedImage)
+		r0 = ret.Get(0).(models.ResultedImage)
 	}
 
 	var r1 error
-	if rf, ok := ret.Get(1).(func(model.UploadedImage) error); ok {
+	if rf, ok := ret.Get(1).(func(models.UploadedImage) error); ok {
 		r1 = rf(uploadedImage)
 	} else {
 		r1 = ret.Error(1)
@@ -57,18 +57,18 @@ func (_m *Image) ConvertToType(uploadedImage model.UploadedImage) (model.Resulte
 }
 
 // CreateRequest provides a mock function with given fields: ctx, user, uplImg, resImg, uI, r
-func (_m *Image) CreateRequest(ctx context.Context, user model.User, uplImg model.UploadedImage, resImg model.ResultedImage, uI model.UserImage, r model.Request) (int, error) {
+func (_m *Image) CreateRequest(ctx context.Context, user models.User, uplImg models.UploadedImage, resImg models.ResultedImage, uI models.UserImage, r models.Request) (int, error) {
 	ret := _m.Called(ctx, user, uplImg, resImg, uI, r)
 
 	var r0 int
-	if rf, ok := ret.Get(0).(func(context.Context, model.User, model.UploadedImage, model.ResultedImage, model.UserImage, model.Request) int); ok {
+	if rf, ok := ret.Get(0).(func(context.Context, models.User, models.UploadedImage, models.ResultedImage, models.UserImage, models.Request) int); ok {
 		r0 = rf(ctx, user, uplImg, resImg, uI, r)
 	} else {
 		r0 = ret.Get(0).(int)
 	}
 
 	var r1 error
-	if rf, ok := ret.Get(1).(func(context.Context, model.User, model.UploadedImage, model.ResultedImage, model.UserImage, model.Request) error); ok {
+	if rf, ok := ret.Get(1).(func(context.Context, models.User, models.UploadedImage, models.ResultedImage, models.UserImage, models.Request) error); ok {
 		r1 = rf(ctx, user, uplImg, resImg, uI, r)
 	} else {
 		r1 = ret.Error(1)
@@ -78,14 +78,14 @@ func (_m *Image) CreateRequest(ctx context.Context, user model.User, uplImg mode
 }
 
 // FindOriginalImage provides a mock function with given fields: ctx, id
-func (_m *Image) FindOriginalImage(ctx context.Context, id int) (model.UploadedImage, error) {
+func (_m *Image) FindOriginalImage(ctx context.Context, id int) (models.UploadedImage, error) {
 	ret := _m.Called(ctx, id)
 
-	var r0 model.UploadedImage
-	if rf, ok := ret.Get(0).(func(context.Context, int) model.UploadedImage); ok {
+	var r0 models.UploadedImage
+	if rf, ok := ret.Get(0).(func(context.Context, int) models.UploadedImage); ok {
 		r0 = rf(ctx, id)
 	} else {
-		r0 = ret.Get(0).(model.UploadedImage)
+		r0 = ret.Get(0).(models.UploadedImage)
 	}
 
 	var r1 error
@@ -99,18 +99,18 @@ func (_m *Image) FindOriginalImage(ctx context.Context, id int) (model.UploadedI
 }
 
 // FindTheResultingImage provides a mock function with given fields: ctx, id, _a2
-func (_m *Image) FindTheResultingImage(ctx context.Context, id int, _a2 model.Service) (model.ResultedImage, error) {
+func (_m *Image) FindTheResultingImage(ctx context.Context, id int, _a2 models.Service) (models.ResultedImage, error) {
 	ret := _m.Called(ctx, id, _a2)
 
-	var r0 model.ResultedImage
-	if rf, ok := ret.Get(0).(func(context.Context, int, model.Service) model.ResultedImage); ok {
+	var r0 models.ResultedImage
+	if rf, ok := ret.Get(0).(func(context.Context, int, models.Service) models.ResultedImage); ok {
 		r0 = rf(ctx, id, _a2)
 	} else {
-		r0 = ret.Get(0).(model.ResultedImage)
+		r0 = ret.Get(0).(models.ResultedImage)
 	}
 
 	var r1 error
-	if rf, ok := ret.Get(1).(func(context.Context, int, model.Service) error); ok {
+	if rf, ok := ret.Get(1).(func(context.Context, int, models.Service) error); ok {
 		r1 = rf(ctx, id, _a2)
 	} else {
 		r1 = ret.Error(1)
@@ -120,15 +120,15 @@ func (_m *Image) FindTheResultingImage(ctx context.Context, id int, _a2 model.Se
 }
 
 // FindUserHistoryByID provides a mock function with given fields: ctx, id
-func (_m *Image) FindUserHistoryByID(ctx context.Context, id int) ([]model.History, error) {
+func (_m *Image) FindUserHistoryByID(ctx context.Context, id int) ([]models.History, error) {
 	ret := _m.Called(ctx, id)
 
-	var r0 []model.History
-	if rf, ok := ret.Get(0).(func(context.Context, int) []model.History); ok {
+	var r0 []models.History
+	if rf, ok := ret.Get(0).(func(context.Context, int) []models.History); ok {
 		r0 = rf(ctx, id)
 	} else {
 		if ret.Get(0) != nil {
-			r0 = ret.Get(0).([]model.History)
+			r0 = ret.Get(0).([]models.History)
 		}
 	}
 
@@ -142,33 +142,42 @@ func (_m *Image) FindUserHistoryByID(ctx context.Context, id int) ([]model.Histo
 	return r0, r1
 }
 
-// SaveImage provides a mock function with given fields: filename, folder, resultedFilename
-func (_m *Image) SaveImage(filename string, folder string, resultedFilename string) error {
-	ret := _m.Called(filename, folder, resultedFilename)
+// SaveImage provides a mock function with given fields: filename, folder
+func (_m *Image) SaveImage(filename string, folder string) (*models.Image, error) {
+	ret := _m.Called(filename, folder)
 
-	var r0 error
-	if rf, ok := ret.Get(0).(func(string, string, string) error); ok {
-		r0 = rf(filename, folder, resultedFilename)
+	var r0 *models.Image
+	if rf, ok := ret.Get(0).(func(string, string) *models.Image); ok {
+		r0 = rf(filename, folder)
 	} else {
-		r0 = ret.Error(0)
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).(*models.Image)
+		}
 	}
 
-	return r0
+	var r1 error
+	if rf, ok := ret.Get(1).(func(string, string) error); ok {
+		r1 = rf(filename, folder)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
 }
 
 // UploadImage provides a mock function with given fields: ctx, image
-func (_m *Image) UploadImage(ctx context.Context, image model.UploadedImage) (int, error) {
+func (_m *Image) UploadImage(ctx context.Context, image models.UploadedImage) (int, error) {
 	ret := _m.Called(ctx, image)
 
 	var r0 int
-	if rf, ok := ret.Get(0).(func(context.Context, model.UploadedImage) int); ok {
+	if rf, ok := ret.Get(0).(func(context.Context, models.UploadedImage) int); ok {
 		r0 = rf(ctx, image)
 	} else {
 		r0 = ret.Get(0).(int)
 	}
 
 	var r1 error
-	if rf, ok := ret.Get(1).(func(context.Context, model.UploadedImage) error); ok {
+	if rf, ok := ret.Get(1).(func(context.Context, models.UploadedImage) error); ok {
 		r1 = rf(ctx, image)
 	} else {
 		r1 = ret.Error(1)

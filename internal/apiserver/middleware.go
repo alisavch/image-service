@@ -7,7 +7,6 @@ import (
 	"mime/multipart"
 	"net/http"
 	"os"
-	"strconv"
 	"strings"
 
 	"github.com/alisavch/image-service/internal/service"
@@ -46,6 +45,7 @@ type authorization struct {
 	token       string
 }
 
+// Build builds a request to authorize.
 func (req *authorization) Build(r *http.Request) error {
 	req.header = r.Header.Get(string(authorizationHeader))
 	if req.header == "" {
@@ -56,9 +56,10 @@ func (req *authorization) Build(r *http.Request) error {
 	return nil
 }
 
+// Validate validates request to authorize.
 func (req authorization) Validate() error {
 	if len(req.headerParts) != 2 || req.headerParts[0] != "Bearer" {
-		return fmt.Errorf("auth header is invalid")
+		return utils.ErrInvalidAuthHeader
 	}
 	if len(req.token) == 0 {
 		return utils.ErrEmptyToken
@@ -90,19 +91,23 @@ type uploaded struct {
 	handler *multipart.FileHeader
 }
 
+// Build builds a request to load an image.
 func (req *uploaded) Build(r *http.Request) error {
 	err := r.ParseMultipartForm(32 << 20)
 	if err != nil {
-		return utils.ErrMultipartForm
+		return err
 	}
+
 	req.file, req.handler, err = r.FormFile("uploadFile")
 	if err != nil {
-		return utils.ErrUpload
+		return err
 	}
 	defer req.file.Close()
+
 	return nil
 }
 
+// Validate builds a request to validate the upload of an image.
 func (req uploaded) Validate() error {
 	if !(req.handler.Header["Content-Type"][0] == "image/jpeg" || req.handler.Header["Content-Type"][0] == "image/png") {
 		return utils.ErrAllowedFormat
@@ -144,30 +149,4 @@ func (s *Server) uploadImage(r *http.Request, uploadedImage models.UploadedImage
 	uploadedImage.ID = uploadedID
 
 	return uploadedImage, nil
-}
-
-func (s *Server) findOriginalImage(r *http.Request, id int) error {
-	originalImage := r.FormValue("original")
-	if originalImage == "" {
-		originalImage = DefaultOriginal
-	}
-	isOriginal, err := strconv.ParseBool(originalImage)
-
-	if err != nil {
-		return err
-	}
-
-	if !isOriginal {
-		return nil
-	}
-
-	uploaded, err := s.service.Image.FindOriginalImage(r.Context(), id)
-	if err != nil {
-		return utils.ErrFindImage
-	}
-
-	if err = s.service.Image.SaveImage(uploaded.Name, "/uploads/", "orig"+uploaded.Name); err != nil {
-		return utils.ErrSaveImage
-	}
-	return nil
 }

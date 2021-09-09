@@ -39,7 +39,7 @@ func (s *Server) signUp() http.HandlerFunc {
 
 		err := ParseRequest(r, &req)
 		if err != nil {
-			s.errorJSON(w, r, http.StatusBadRequest, err)
+			s.errorJSON(w, r, http.StatusUnauthorized, err)
 			return
 		}
 
@@ -48,7 +48,7 @@ func (s *Server) signUp() http.HandlerFunc {
 			s.errorJSON(w, r, http.StatusInternalServerError, err)
 			return
 		}
-		s.respondJSON(w, r, http.StatusOK, id)
+		s.respondJSON(w, r, http.StatusCreated, id)
 	}
 }
 
@@ -82,7 +82,7 @@ func (s *Server) signIn() http.HandlerFunc {
 		var req signInRequest
 		err := ParseRequest(r, &req)
 		if err != nil {
-			s.errorJSON(w, r, http.StatusBadRequest, err)
+			s.errorJSON(w, r, http.StatusForbidden, err)
 			return
 		}
 

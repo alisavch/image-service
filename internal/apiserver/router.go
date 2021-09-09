@@ -23,10 +23,10 @@ func (s *Server) newAPIRouter() {
 	//   schema:
 	//     "$ref": "#/definitions/User"
 	// responses:
-	//   "200":
-	//     description: successful operation
-	//   "400":
-	//     description: bad request
+	//   "201":
+	//     description: user created successfully
+	//   "401":
+	//     description: unauthorized user
 	//   "500":
 	//     description: internal server error
 	apiRouter.HandleFunc("/sign-up", s.signUp()).Methods(http.MethodPost)
@@ -43,8 +43,8 @@ func (s *Server) newAPIRouter() {
 	// responses:
 	//   "200":
 	//     description: successful operation
-	//   "400":
-	//     description: bad request
+	//   "403":
+	//     description: not enough right
 	//   "500":
 	//     description: internal server error
 	apiRouter.HandleFunc("/sign-in", s.signIn()).Methods(http.MethodPost)
@@ -117,11 +117,6 @@ func (s *Server) newUserRouter() {
 	//   type: boolean
 	//   required: false
 	//   description: If true - the original will be saved
-	// - name: uploadFile
-	//   in: body
-	//   required: true
-	//   schema:
-	//     "$ref": "#/definitions/UploadedImage"
 	// responses:
 	//   "200":
 	//     description: successful operation
@@ -153,7 +148,7 @@ func (s *Server) newUserRouter() {
 	//   "500":
 	//     description: internal server error
 	userRouter.HandleFunc("/{userID}/convert", s.authorize(s.convertImage())).Methods(http.MethodPost)
-	// swagger:operation POST /api/user/{userID}/convert/{convertedID} findConverted
+	// swagger:operation GET /api/user/{userID}/convert/{convertedID} findConverted
 	// ---
 	// summary: Finds the converted image.
 	// description: Downloads the converted image and original if required.
@@ -173,11 +168,6 @@ func (s *Server) newUserRouter() {
 	//   type: boolean
 	//   required: false
 	//   description: If true - the original will be saved
-	// - name: uploadFile
-	//   in: body
-	//   required: true
-	//   schema:
-	//     "$ref": "#/definitions/UploadedImage"
 	// responses:
 	//   "200":
 	//     description: successful operation

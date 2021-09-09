@@ -1,8 +1,14 @@
 package apiserver
 
 import (
+	"bytes"
 	"encoding/json"
+	"io"
+	"mime/multipart"
 	"net/http"
+	"strconv"
+
+	"github.com/alisavch/image-service/internal/models"
 
 	"github.com/alisavch/image-service/internal/broker"
 
@@ -41,5 +47,24 @@ func (s *Server) respondJSON(w http.ResponseWriter, r *http.Request, code int, d
 	w.Header().Set("Content-Type", "application/json")
 	if data != nil {
 		_ = json.NewEncoder(w).Encode(data)
+	}
+}
+
+func (s *Server) respondFormData(w http.ResponseWriter, r *http.Request, code int, id int) {
+	body := &bytes.Buffer{}
+	writer := multipart.NewWriter(body)
+	defer writer.Close()
+	w.Header().Set("Content-Type", writer.FormDataContentType())
+	s.respondJSON(w, r, code, map[string]int{"Image ID": id})
+}
+
+func (s *Server) respondImage(w http.ResponseWriter, image *models.Image) {
+	w.WriteHeader(http.StatusOK)
+	w.Header().Set("Content-Disposition", "attachment; filename="+image.Filename)
+	w.Header().Set("Content-Type", image.ContentType)
+	w.Header().Set("Content-Length", strconv.FormatInt(image.Filesize, 10))
+	_, err := io.Copy(w, image.File)
+	if err != nil {
+		return
 	}
 }

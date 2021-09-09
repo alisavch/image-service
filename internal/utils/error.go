@@ -9,6 +9,8 @@ var (
 	ErrRequest = errors.New("incorrect request")
 	// ErrEmptyHeader checks empty header.
 	ErrEmptyHeader = errors.New("auth header is empty")
+	// ErrInvalidAuthHeader checks invalid header.
+	ErrInvalidAuthHeader = errors.New("auth header is invalid")
 	// ErrEmptyToken checks token.
 	ErrEmptyToken = errors.New("token is empty")
 	// ErrUpload checks file upload.
@@ -39,6 +41,12 @@ var (
 	ErrEmptyPassword = errors.New("password must not be empty")
 	// ErrIncorrectRatio checks input ratio.
 	ErrIncorrectRatio = errors.New("it is only possible to compress the image. enter correct size")
-	// ErrFindVariable find variable in .env file.
+	// ErrFindVariable finds variable in .env file.
 	ErrFindVariable = errors.New("could not find variable")
+	// ErrMissingParams checks id in params.
+	ErrMissingParams = errors.New("id is missing in parameters")
+	// ErrPrivacy checks for equality of user ids from context and from parameters.
+	ErrPrivacy = errors.New("you can only view your data")
+	// ErrAtoi checks to convert to type int.
+	ErrAtoi = errors.New("int conversion error")
 )

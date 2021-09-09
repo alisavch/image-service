@@ -11,10 +11,10 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// AnyTime ...
+// AnyTime if structure for the right time.
 type AnyTime struct{}
 
-// Match satisfies sqlmock.Argument interface
+// Match satisfies sqlmock.Argument interface.
 func (a AnyTime) Match(v driver.Value) bool {
 	_, ok := v.(time.Time)
 	return ok
@@ -46,6 +46,13 @@ func TestImageRepository_FindUserHistoryByID(t *testing.T) {
 			},
 			want: []models.History(nil),
 			isOk: true,
+		},
+		{
+			name: "Test with incorrect values",
+			mock: func() {
+			},
+			input: 1,
+			isOk:  false,
 		},
 	}
 

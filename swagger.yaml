@@ -1,0 +1,226 @@
+basePath: /
+consumes:
+- application/json
+definitions:
+  UploadedImage:
+    description: Uploaded image is the general information.
+    properties:
+      id:
+        description: the ID for this uploaded image
+        format: int64
+        type: integer
+        x-go-name: ID
+      uploaded_location:
+        description: the Location for this uploaded image
+        type: string
+        x-go-name: Location
+      uploaded_name:
+        description: the Name for this uploaded image
+        type: string
+        x-go-name: Name
+    title: UploadedImage contains information about uploaded image.
+    type: object
+    x-go-package: github.com/alisavch/image-service/internal/models
+  User:
+    description: A user is the security principal for this application.
+    properties:
+      id:
+        description: the ID for this user
+        format: int64
+        type: integer
+        x-go-name: ID
+      password:
+        description: the password for this user
+        type: string
+        x-go-name: Password
+      username:
+        description: the username for this user
+        type: string
+        x-go-name: Username
+    required:
+    - username
+    - password
+    title: User contains information about user.
+    type: object
+    x-go-package: github.com/alisavch/image-service/internal/models
+host: localhost:8080
+info:
+  description: Documentation of our awesome API
+  title: Golang SwaggerUI image-service
+  version: 1.0.0
+paths:
+  /api/sign-in:
+    post:
+      description: Only authorized user has access.
+      operationId: sign-in
+      parameters:
+      - description: the user to create
+        in: body
+        name: user
+        schema:
+          $ref: '#/definitions/User'
+      responses:
+        "200":
+          description: successful operation
+        "403":
+          description: not enough right
+        "500":
+          description: internal server error
+      summary: Authorizes the user.
+      tags:
+      - sign-in
+  /api/sign-up:
+    post:
+      description: Could be any user.
+      operationId: sign-up
+      parameters:
+      - description: the user to create
+        in: body
+        name: user
+        schema:
+          $ref: '#/definitions/User'
+      responses:
+        "201":
+          description: user created successfully
+        "401":
+          description: unauthorized user
+        "500":
+          description: internal server error
+      summary: Registers a user.
+      tags:
+      - sign-up
+  /api/user/{userID}/compress:
+    post:
+      description: Receives an image from an input form and compresses it, also allows
+        you to enter width in the query string.
+      operationId: compress
+      parameters:
+      - description: userID to filter by id
+        in: path
+        name: userID
+        required: true
+        type: integer
+      - in: query
+        name: width
+        type: integer
+      - in: body
+        name: uploadFile
+        required: true
+        schema:
+          $ref: '#/definitions/UploadedImage'
+      responses:
+        "200":
+          description: successful operation
+        "400":
+          description: bad request
+        "500":
+          description: internal server error
+      summary: Compresses the image.
+      tags:
+      - compress
+  /api/user/{userID}/compress/{compressedID}:
+    get:
+      description: Downloads the compressed image and original if required.
+      operationId: findCompressed
+      parameters:
+      - description: userID to filter by id
+        in: path
+        name: userID
+        required: true
+        type: integer
+      - description: compressedID to filter by id
+        in: path
+        name: compressedID
+        required: true
+        type: integer
+      - description: If true - the original will be saved
+        in: query
+        name: original
+        type: boolean
+      responses:
+        "200":
+          description: successful operation
+        "400":
+          description: bad request
+        "500":
+          description: internal server error
+      summary: Finds the compressed image.
+  /api/user/{userID}/convert:
+    post:
+      description: Receives an image from an input form and converts it PNG to JPG
+        and vice versa.
+      operationId: convert
+      parameters:
+      - description: userID to filter by id
+        in: path
+        name: userID
+        required: true
+        type: integer
+      - in: body
+        name: uploadFile
+        required: true
+        schema:
+          $ref: '#/definitions/UploadedImage'
+      responses:
+        "200":
+          description: successful operation
+        "400":
+          description: bad request
+        "500":
+          description: internal server error
+      summary: Converts the image.
+      tags:
+      - convert
+  /api/user/{userID}/convert/{convertedID}:
+    get:
+      description: Downloads the converted image and original if required.
+      operationId: findConverted
+      parameters:
+      - description: userID to filter by id
+        in: path
+        name: userID
+        required: true
+        type: integer
+      - description: convertedID to filter by id
+        in: path
+        name: convertedID
+        required: true
+        type: integer
+      - description: If true - the original will be saved
+        in: query
+        name: original
+        type: boolean
+      responses:
+        "200":
+          description: successful operation
+        "400":
+          description: bad request
+        "500":
+          description: internal server error
+      summary: Finds the converted image.
+  /api/user/{userID}/history:
+    get:
+      description: Lists all queries created by user.
+      operationId: history
+      parameters:
+      - description: userID to filter by id
+        in: path
+        name: userID
+        required: true
+        type: integer
+      responses:
+        "200":
+          description: successful operation
+        "400":
+          description: bad request
+        "500":
+          description: internal server error
+      summary: Finds users history.
+produces:
+- application/json
+schemes:
+- http
+securityDefinitions:
+  basic:
+    type: basic
+swagger: "2.0"

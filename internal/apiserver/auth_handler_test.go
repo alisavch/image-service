@@ -2,9 +2,12 @@ package apiserver
 
 import (
 	"bytes"
+	"fmt"
 	"net/http"
 	"net/http/httptest"
 	"testing"
+
+	"github.com/alisavch/image-service/internal/utils"
 
 	"github.com/stretchr/testify/mock"
 
@@ -36,8 +39,73 @@ func TestHandler_signUp(t *testing.T) {
 			fn: func(mockAuthorization *mocks.Authorization, user models.User) {
 				mockAuthorization.On("CreateUser", mock.Anything, user).Return(1, nil)
 			},
-			expectedStatusCode:   200,
+			expectedStatusCode:   201,
 			expectedResponseBody: "1\n",
+		},
+		{
+			name:      "Test with incorrect values",
+			inputBody: `{"username": "uuu", "password": ""}`,
+			inputUser: models.User{
+				Username: "username",
+				Password: "12345",
+			},
+			fn: func(mockAuthorization *mocks.Authorization, user models.User) {
+				mockAuthorization.On("CreateUser", mock.Anything, user).Return(1, nil)
+			},
+			expectedStatusCode:   401,
+			expectedResponseBody: "{\"error\":\"password must not be empty\"}\n",
+		},
+		{
+			name:      "Test with incorrect values",
+			inputBody: `{"username": "uuu", "password": "ppp"}`,
+			inputUser: models.User{
+				Username: "uuu",
+				Password: "ppp",
+			},
+			fn: func(mockAuthorization *mocks.Authorization, user models.User) {
+				mockAuthorization.On("CreateUser", mock.Anything, mock.Anything).Return(0, utils.ErrEmptyHeader)
+			},
+			expectedStatusCode:   500,
+			expectedResponseBody: "{\"error\":\"auth header is empty\"}\n",
+		},
+		{
+			name:      "Test with empty username",
+			inputBody: `{"username": "", "password": "ppp"}`,
+			inputUser: models.User{
+				Username: "uuu",
+				Password: "ppp",
+			},
+			fn: func(mockAuthorization *mocks.Authorization, user models.User) {
+				mockAuthorization.On("CreateUser", mock.Anything, mock.Anything).Return(0, utils.ErrEmptyUsername)
+			},
+			expectedStatusCode:   401,
+			expectedResponseBody: "{\"error\":\"username must not be empty\"}\n",
+		},
+		{
+			name:      "Test with empty password",
+			inputBody: `{"username": "uuu", "password": ""}`,
+			inputUser: models.User{
+				Username: "uuu",
+				Password: "ppp",
+			},
+			fn: func(mockAuthorization *mocks.Authorization, user models.User) {
+				mockAuthorization.On("CreateUser", mock.Anything, mock.Anything).Return(0, utils.ErrEmptyPassword)
+			},
+			expectedStatusCode:   401,
+			expectedResponseBody: "{\"error\":\"password must not be empty\"}\n",
+		},
+		{
+			name:      "Test with json error",
+			inputBody: "",
+			inputUser: models.User{
+				Username: "uuu",
+				Password: "ppp",
+			},
+			fn: func(mockAuthorization *mocks.Authorization, user models.User) {
+				mockAuthorization.On("CreateUser", mock.Anything, mock.Anything).Return(0, fmt.Errorf("EOF"))
+			},
+			expectedStatusCode:   401,
+			expectedResponseBody: "{\"error\":\"EOF\"}\n",
 		},
 	}
 
@@ -85,6 +153,55 @@ func TestHandler_singIn(t *testing.T) {
 			},
 			expectedStatusCode:   200,
 			expectedResponseBody: "\"token\"\n",
+		},
+		{
+			name:      "Test with incorrect values",
+			inputBody: `{"username": "uuu", "password": ""}`,
+			fn: func(mockAuthorization *mocks.Authorization, username string, password string) {
+				mockAuthorization.On("GenerateToken", mock.Anything, username, password).Return("", utils.ErrEmptyPassword)
+			},
+			expectedStatusCode:   403,
+			expectedResponseBody: "{\"error\":\"password must not be empty\"}\n",
+		},
+		{
+			name:      "Test with incorrect values",
+			inputBody: `{"username": "uuu", "password": "ppp"}`,
+			inputUser: user{username: "uuu", password: "ppp"},
+			fn: func(mockAuthorization *mocks.Authorization, username string, password string) {
+				mockAuthorization.On("GenerateToken", mock.Anything, username, password).Return("", utils.ErrEmptyHeader)
+			},
+			expectedStatusCode:   500,
+			expectedResponseBody: "{\"error\":\"auth header is empty\"}\n",
+		},
+		{
+			name:      "Test with empty username",
+			inputBody: `{"username": "", "password": "12345"}`,
+			inputUser: user{username: "username", password: "12345"},
+			fn: func(mockAuthorization *mocks.Authorization, username string, password string) {
+				mockAuthorization.On("GenerateToken", mock.Anything, username, password).Return("token", nil)
+			},
+			expectedStatusCode:   403,
+			expectedResponseBody: "{\"error\":\"username must not be empty\"}\n",
+		},
+		{
+			name:      "Test with empty password",
+			inputBody: `{"username": "username", "password": ""}`,
+			inputUser: user{username: "username", password: "12345"},
+			fn: func(mockAuthorization *mocks.Authorization, username string, password string) {
+				mockAuthorization.On("GenerateToken", mock.Anything, username, password).Return("token", nil)
+			},
+			expectedStatusCode:   403,
+			expectedResponseBody: "{\"error\":\"password must not be empty\"}\n",
+		},
+		{
+			name:      "Test with json error",
+			inputBody: "",
+			inputUser: user{username: "username", password: "12345"},
+			fn: func(mockAuthorization *mocks.Authorization, username string, password string) {
+				mockAuthorization.On("GenerateToken", mock.Anything, username, password).Return("token", nil)
+			},
+			expectedStatusCode:   403,
+			expectedResponseBody: "{\"error\":\"EOF\"}\n",
 		},
 	}
 

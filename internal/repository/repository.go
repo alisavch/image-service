@@ -20,6 +20,7 @@ type Image interface {
 	CreateRequest(ctx context.Context, user models.User, uplImg models.UploadedImage, resImg models.ResultedImage, uI models.UserImage, r models.Request) (int, error)
 	FindTheResultingImage(ctx context.Context, id int, service models.Service) (models.ResultedImage, error)
 	FindOriginalImage(ctx context.Context, id int) (models.UploadedImage, error)
+	UpdateStatus(ctx context.Context, id int, status models.Status) error
 }
 
 // Repository unites interfaces.

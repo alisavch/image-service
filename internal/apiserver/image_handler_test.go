@@ -190,11 +190,13 @@ func TestHandler_compressImage(t *testing.T) {
 	//		req.Body = ioutil.NopCloser(bytes.NewBuffer(body))
 	//
 	//		req.Header.Set("Content-Type", "image/jpeg")
-	//
-	//		tt.fn(mockAuthorization, mockImage, tt.token, tt.params.quantity, tt.inputImage)
-	//
+	//		mockAuthorization.On("ParseToken", "token").Return(1, nil)
 	//		req.Header.Set("Authorization", "Bearer token")
-	//		req.Header.Set("Content-Type", `multipart/form-data; boundary="foo123"`)
+	//
+	//		mockImage.On("UploadImage", mock.Anything, mock.Anything).Return(1, nil)
+	//		req.Header.Set("Content-Type", `multipart/form-data; boundary=--------------------------762947039056775518904286"`)
+	//
+	//		//tt.fn(mockAuthorization, mockImage, tt.token, tt.params.quantity, tt.inputImage)
 	//
 	//		fmt.Println(req.Body)
 	//

@@ -179,3 +179,8 @@ func (s *ImageService) SaveImage(filename, folder string) (*models.Image, error)
 
 	return &img, nil
 }
+
+// UpdateStatus updates the status of image processing.
+func (s *ImageService) UpdateStatus(ctx context.Context, id int, status models.Status) error {
+	return s.repo.UpdateStatus(ctx, id, status)
+}

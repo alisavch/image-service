@@ -156,12 +156,24 @@ func (s *Server) compressImage() http.HandlerFunc {
 			logrus.Fatalf("%s: %s", "Failed to publish a message", err)
 		}
 
+		err = s.service.Image.UpdateStatus(r.Context(), newUploadedImage.ID, models.Processing)
+		if err != nil {
+			s.errorJSON(w, r, http.StatusInternalServerError, err)
+			return
+		}
+
 		err = s.mq.Publish("", q.Name, string(models.Processing))
 		if err != nil {
 			logrus.Fatalf("%s: %s", "Failed to publish a message", err)
 		}
 
 		resultedImage, err := s.service.Image.CompressImage(req.Width, newUploadedImage)
+		if err != nil {
+			s.errorJSON(w, r, http.StatusInternalServerError, err)
+			return
+		}
+
+		err = s.service.Image.UpdateStatus(r.Context(), newUploadedImage.ID, models.Done)
 		if err != nil {
 			s.errorJSON(w, r, http.StatusInternalServerError, err)
 			return
@@ -369,6 +381,12 @@ func (s *Server) convertImage() http.HandlerFunc {
 			logrus.Fatalf("%s: %s", "Failed to publish a message", err)
 		}
 
+		err = s.service.Image.UpdateStatus(r.Context(), newUploadedImage.ID, models.Processing)
+		if err != nil {
+			s.errorJSON(w, r, http.StatusInternalServerError, err)
+			return
+		}
+
 		err = s.mq.Publish("", q.Name, string(models.Processing))
 		if err != nil {
 			logrus.Fatalf("%s: %s", "Failed to publish a message", err)
@@ -377,6 +395,12 @@ func (s *Server) convertImage() http.HandlerFunc {
 		resultedImage, err := s.service.Image.ConvertToType(newUploadedImage)
 		if err != nil {
 			s.errorJSON(w, r, http.StatusInternalServerError, utils.ErrConvert)
+			return
+		}
+
+		err = s.service.Image.UpdateStatus(r.Context(), newUploadedImage.ID, models.Done)
+		if err != nil {
+			s.errorJSON(w, r, http.StatusInternalServerError, err)
 			return
 		}
 

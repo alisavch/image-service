@@ -24,6 +24,7 @@ type Image interface {
 	FindOriginalImage(ctx context.Context, id int) (models.UploadedImage, error)
 	FindUserHistoryByID(ctx context.Context, id int) ([]models.History, error)
 	SaveImage(filename, folder string) (*models.Image, error)
+	UpdateStatus(ctx context.Context, id int, status models.Status) error
 }
 
 // Service contains interfaces.

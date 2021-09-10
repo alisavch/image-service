@@ -3,6 +3,7 @@ package repository
 import (
 	"context"
 	"database/sql/driver"
+	"fmt"
 	"testing"
 	"time"
 
@@ -376,6 +377,72 @@ func TestImageRepository_FindOriginalImage(t *testing.T) {
 			if tt.isOk {
 				require.NoError(t, err)
 				require.Equal(t, tt.want, got)
+			} else {
+				require.Error(t, err)
+			}
+			require.NoError(t, mock.ExpectationsWereMet())
+		})
+	}
+}
+
+func TestImageRepository_UpdateStatus(t *testing.T) {
+	db, mock, err := sqlmock.New()
+	if err != nil {
+		t.Fatalf("an error '%s' was not expected wher opening a stub database connection", err)
+	}
+	defer db.Close()
+
+	repo := NewImageRepository(db)
+
+	type args struct {
+		id     int
+		status string
+	}
+
+	tests := []struct {
+		name  string
+		mock  func()
+		input args
+		want  error
+		isOk  bool
+	}{
+		{
+			name: "Test with correct values",
+			mock: func() {
+				mock.ExpectExec("UPDATE image_service.user_image SET status").
+					WithArgs("processing", 1).WillReturnResult(sqlmock.NewResult(0, 1))
+			},
+			input: args{
+				id:     1,
+				status: string(models.Processing),
+			},
+			want: nil,
+			isOk: true,
+		},
+		{
+			name: "Test with incorrect values",
+			mock: func() {
+				mock.ExpectExec("UPDATE image_service.user_image SET status").
+					WithArgs("processing", 1).WillReturnError(fmt.Errorf("cannot update image status"))
+			},
+			input: args{
+				id:     1,
+				status: string(models.Processing),
+			},
+			want: fmt.Errorf("cannot update image status"),
+			isOk: false,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			tt.mock()
+
+			err := repo.UpdateStatus(context.TODO(), tt.input.id, models.Status(tt.input.status))
+			if tt.isOk {
+				fmt.Println(err)
+				require.NoError(t, err)
+				require.Equal(t, tt.want, err)
 			} else {
 				require.Error(t, err)
 			}

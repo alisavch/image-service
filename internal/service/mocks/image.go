@@ -165,6 +165,20 @@ func (_m *Image) SaveImage(filename string, folder string) (*models.Image, error
 	return r0, r1
 }
 
+// UpdateStatus provides a mock function with given fields: ctx, id, status
+func (_m *Image) UpdateStatus(ctx context.Context, id int, status models.Status) error {
+	ret := _m.Called(ctx, id, status)
+
+	var r0 error
+	if rf, ok := ret.Get(0).(func(context.Context, int, models.Status) error); ok {
+		r0 = rf(ctx, id, status)
+	} else {
+		r0 = ret.Error(0)
+	}
+
+	return r0
+}
+
 // UploadImage provides a mock function with given fields: ctx, image
 func (_m *Image) UploadImage(ctx context.Context, image models.UploadedImage) (int, error) {
 	ret := _m.Called(ctx, image)

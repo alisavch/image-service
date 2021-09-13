@@ -109,11 +109,11 @@ func (req *compressImageRequest) Build(r *http.Request) error {
 		width = DefaultWidth
 	}
 
-	convertedID, err := strconv.Atoi(width)
+	convertedWidth, err := strconv.Atoi(width)
 	if err != nil {
 		return utils.ErrAtoi
 	}
-	req.Width = convertedID
+	req.Width = convertedWidth
 
 	return nil
 }

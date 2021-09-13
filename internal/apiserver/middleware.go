@@ -109,6 +109,7 @@ func (req *uploaded) Build(r *http.Request) error {
 
 // Validate builds a request to validate the upload of an image.
 func (req uploaded) Validate() error {
+	//fmt.Println(req.handler.Header)
 	if !(req.handler.Header["Content-Type"][0] == "image/jpeg" || req.handler.Header["Content-Type"][0] == "image/png") {
 		return utils.ErrAllowedFormat
 	}

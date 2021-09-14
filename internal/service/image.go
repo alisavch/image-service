@@ -43,39 +43,39 @@ func (s *ImageService) CompressImage(width int, uploadedImage models.UploadedIma
 	var result models.ResultedImage
 	currentDir, err := os.Getwd()
 	if err != nil {
-		return models.ResultedImage{}, err
+		return models.ResultedImage{}, utils.ErrGetDir
 	}
 
 	imgFile, err := os.Open(uploadedImage.Location + uploadedImage.Name)
 	if err != nil {
-		return models.ResultedImage{}, err
+		return models.ResultedImage{}, utils.ErrOpen
 	}
 	defer imgFile.Close()
 
 	imgSrc, format, err := image.Decode(imgFile)
 	if err != nil {
-		return models.ResultedImage{}, err
+		return models.ResultedImage{}, utils.ErrDecode
 	}
 
 	err = EnsureBaseDir("./results/")
 	if err != nil {
-		return models.ResultedImage{}, err
+		return models.ResultedImage{}, utils.ErrEnsureDir
 	}
 
 	newImgFile, err := os.Create(fmt.Sprintf("./results/%s", uploadedImage.Name))
 	if err != nil {
-		return models.ResultedImage{}, err
+		return models.ResultedImage{}, utils.ErrCreateFile
 	}
 	defer newImgFile.Close()
 
 	switch format {
 	case "jpeg":
 		if err := CompressJPEG(imgSrc, width, newImgFile); err != nil {
-			return models.ResultedImage{}, err
+			return models.ResultedImage{}, fmt.Errorf("%s %s", utils.ErrCompress, "JPEG")
 		}
 	case "png":
 		if err := CompressPNG(imgSrc, width, newImgFile); err != nil {
-			return models.ResultedImage{}, err
+			return models.ResultedImage{}, fmt.Errorf("%s %s", utils.ErrCompress, "PNG")
 		}
 	}
 	result.Name = uploadedImage.Name
@@ -89,28 +89,28 @@ func (s *ImageService) ConvertToType(uploadedImage models.UploadedImage) (models
 	var result models.ResultedImage
 	currentDir, err := os.Getwd()
 	if err != nil {
-		return models.ResultedImage{}, err
+		return models.ResultedImage{}, utils.ErrGetDir
 	}
 
 	file, err := os.Open(uploadedImage.Location + uploadedImage.Name)
 	if err != nil {
-		return models.ResultedImage{}, err
+		return models.ResultedImage{}, utils.ErrOpen
 	}
 	defer file.Close()
 
 	img, format, err := image.Decode(file)
 	if err != nil {
-		return models.ResultedImage{}, err
+		return models.ResultedImage{}, utils.ErrDecode
 	}
 
 	convertedName, err := ChangeFormat(uploadedImage.Name)
 	if err != nil {
-		return models.ResultedImage{}, err
+		return models.ResultedImage{}, utils.ErrChangeFormat
 	}
 
 	err = EnsureBaseDir("./results/")
 	if err != nil {
-		return models.ResultedImage{}, err
+		return models.ResultedImage{}, utils.ErrEnsureDir
 	}
 
 	newImg, err := os.Create(fmt.Sprintf("./results/%s", convertedName))
@@ -156,18 +156,18 @@ func (s *ImageService) SaveImage(filename, folder string) (*models.Image, error)
 
 	file, err := os.Open(currentDir + folder + filename)
 	if err != nil {
-		return &models.Image{}, err
+		return &models.Image{}, utils.ErrOpen
 	}
 	img.File = file
 
 	img.ContentType, err = GetFileContentType(file)
 	if err != nil {
-		return &models.Image{}, nil
+		return &models.Image{}, err
 	}
 
 	fileInfo, err := file.Stat()
 	if err != nil {
-		return &models.Image{}, err
+		return &models.Image{}, utils.ErrFileStat
 	}
 
 	img.Filesize = fileInfo.Size()

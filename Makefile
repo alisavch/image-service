@@ -18,6 +18,7 @@ run:
 .PHONY: mocks
 mocks:
 	mockery --case underscore --dir ./internal/service/ --output ./internal/service/mocks --all --disable-version-string
+	mockery --case underscore --dir ./internal/broker/ --output ./internal/broker/mocks --all --disable-version-string
 
 .PHONY: lint
 lint:

@@ -20,11 +20,11 @@ import (
 type Server struct {
 	router  *mux.Router
 	service *service.Service
-	mq      *broker.RabbitMQ
+	mq      *broker.AMQPBroker
 }
 
 // NewServer configures server.
-func NewServer(service *service.Service, mq *broker.RabbitMQ) *Server {
+func NewServer(service *service.Service, mq *broker.AMQPBroker) *Server {
 	s := &Server{
 		router:  mux.NewRouter(),
 		service: service,

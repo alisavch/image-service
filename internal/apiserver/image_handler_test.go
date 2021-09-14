@@ -11,6 +11,11 @@ import (
 	"strconv"
 	"testing"
 
+	"github.com/streadway/amqp"
+
+	"github.com/alisavch/image-service/internal/broker"
+	mocks2 "github.com/alisavch/image-service/internal/broker/mocks"
+
 	"github.com/alisavch/image-service/internal/utils"
 
 	"github.com/stretchr/testify/mock"
@@ -30,6 +35,7 @@ func TestHandler_findUserHistory(t *testing.T) {
 		headerName           string
 		headerValue          string
 		token                string
+		userID               string
 		fn                   fnBehavior
 		expectedStatusCode   int
 		expectedResponseBody string
@@ -39,6 +45,7 @@ func TestHandler_findUserHistory(t *testing.T) {
 			headerName:  "Authorization",
 			headerValue: "Bearer token",
 			token:       "token",
+			userID:      "1",
 			fn: func(mockAuthorization *mocks.Authorization, mockImage *mocks.Image, token string, r *http.Request) {
 				mockAuthorization.On("ParseToken", token).Return(1, nil)
 				mockImage.On("FindUserHistoryByID", mock.Anything, 1).Return([]models.History{}, nil)
@@ -47,62 +54,46 @@ func TestHandler_findUserHistory(t *testing.T) {
 			expectedResponseBody: "[]\n",
 		},
 		{
-			name:        "Test with failed conversion",
+			name:        "Inequality of identifiers",
 			headerName:  "Authorization",
 			headerValue: "Bearer token",
 			token:       "token",
+			userID:      "11",
 			fn: func(mockAuthorization *mocks.Authorization, mockImage *mocks.Image, token string, r *http.Request) {
-				mockAuthorization.On("ParseToken", token).Return(1, utils.ErrFailedConvert)
-			},
-			expectedStatusCode:   401,
-			expectedResponseBody: "{\"error\":\"failed convert to int userID\"}\n",
-		},
-		{
-			name:        "Test with missing user ID",
-			headerName:  "Authorization",
-			headerValue: "Bearer token",
-			token:       "token",
-			fn: func(mockAuthorization *mocks.Authorization, mockImage *mocks.Image, token string, r *http.Request) {
-				mockAuthorization.On("ParseToken", token).Return(1, utils.ErrMissingParams)
-			},
-			expectedStatusCode:   401,
-			expectedResponseBody: "{\"error\":\"id is missing in parameters\"}\n",
-		},
-		{
-			name:        "Test with failed conversion userID",
-			headerName:  "Authorization",
-			headerValue: "Bearer token",
-			token:       "token",
-			fn: func(mockAuthorization *mocks.Authorization, mockImage *mocks.Image, token string, r *http.Request) {
-				mockAuthorization.On("ParseToken", token).Return(1, utils.ErrAtoi)
-			},
-			expectedStatusCode:   401,
-			expectedResponseBody: "{\"error\":\"int conversion error\"}\n",
-		},
-		{
-			name:        "Inequality test",
-			headerName:  "Authorization",
-			headerValue: "Bearer token",
-			token:       "token",
-			fn: func(mockAuthorization *mocks.Authorization, mockImage *mocks.Image, token string, r *http.Request) {
-				mockAuthorization.On("ParseToken", token).Return(1, utils.ErrPrivacy)
+				mockAuthorization.On("ParseToken", token).Return(1, nil)
 			},
 			expectedStatusCode:   401,
 			expectedResponseBody: "{\"error\":\"you can only view your data\"}\n",
 		},
 		{
-			name:        "Test with incorrect values",
+			name:        "Invalid user ID",
 			headerName:  "Authorization",
 			headerValue: "Bearer token",
 			token:       "token",
+			userID:      "a",
 			fn: func(mockAuthorization *mocks.Authorization, mockImage *mocks.Image, token string, r *http.Request) {
 				mockAuthorization.On("ParseToken", token).Return(1, nil)
-				mockImage.On("FindUserHistoryByID", mock.Anything, 1).Return([]models.History{}, fmt.Errorf(""))
+			},
+			expectedStatusCode:   401,
+			expectedResponseBody: "{\"error\":\"int conversion error\"}\n",
+		},
+		{
+			name:        "Cannot complete request to get history",
+			headerName:  "Authorization",
+			headerValue: "Bearer token",
+			token:       "token",
+			userID:      "1",
+			fn: func(mockAuthorization *mocks.Authorization, mockImage *mocks.Image, token string, r *http.Request) {
+				mockAuthorization.On("ParseToken", token).Return(1, nil)
+				mockImage.On("FindUserHistoryByID", mock.Anything, 1).Return([]models.History{}, fmt.Errorf("cannot complete request to get history"))
 			},
 			expectedStatusCode:   500,
-			expectedResponseBody: "{\"error\":\"\"}\n",
+			expectedResponseBody: "{\"error\":\"cannot complete request to get history\"}\n",
 		},
 	}
+
+	historyURL := "/api/user/%s/history"
+
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			mockAuthorization := new(mocks.Authorization)
@@ -111,11 +102,11 @@ func TestHandler_findUserHistory(t *testing.T) {
 			services := &service.Service{Authorization: mockAuthorization, Image: mockImage}
 			s := Server{router: mux.NewRouter(), service: services}
 
-			s.router.HandleFunc("/api/user/{userID}/history",
+			s.router.HandleFunc(fmt.Sprintf(historyURL, "{userID}"),
 				s.authorize(s.findUserHistory())).Methods(http.MethodGet)
 
 			w := httptest.NewRecorder()
-			req := httptest.NewRequest(http.MethodGet, "/api/user/1/history", nil)
+			req := httptest.NewRequest(http.MethodGet, fmt.Sprintf(historyURL, tt.userID), nil)
 
 			tt.fn(mockAuthorization, mockImage, tt.token, req)
 
@@ -134,14 +125,16 @@ func TestHandler_compressImage(t *testing.T) {
 		name     string
 		quantity int
 	}
-	//
+
 	uplImg := models.UploadedImage{
-		ID:       0,
+		ID:       1,
 		Name:     "filename.jpeg",
 		Location: "location",
 	}
 
-	type fnBehavior func(mockAuthorization *mocks.Authorization, mockImage *mocks.Image, token string, uplImg models.UploadedImage)
+	q := amqp.Queue{Name: "", Messages: 1, Consumers: 1}
+
+	type fnBehavior func(mockAuthorization *mocks.Authorization, mockImage *mocks.Image, mockAMQP *mocks2.AMQP, token string, uplImg models.UploadedImage)
 
 	tests := []struct {
 		name                 string
@@ -150,104 +143,173 @@ func TestHandler_compressImage(t *testing.T) {
 		inputImage           models.UploadedImage
 		params               params
 		token                string
+		userID               string
 		fn                   fnBehavior
 		expectedStatusCode   int
 		expectedResponseBody string
 	}{
 		{
-			name:         "Test with invalid token",
-			headerNames:  []string{"Authorization"},
-			headerValues: []string{"Bearer token"},
+			name:         "Test with correct values",
+			headerNames:  []string{"Authorization", "Content-Type"},
+			headerValues: []string{"Bearer token", "image/jpeg", `multipart/form-data; boundary="foo123"`},
+			params:       params{name: "width", quantity: 100},
 			token:        "token",
-			fn: func(mockAuthorization *mocks.Authorization, mockImage *mocks.Image, token string, uplImg models.UploadedImage) {
-				mockAuthorization.On("ParseToken", token).Return(1, utils.ErrFailedConvert)
+			userID:       "1",
+			fn: func(mockAuthorization *mocks.Authorization, mockImage *mocks.Image, mockAMQP *mocks2.AMQP, token string, uplImg models.UploadedImage) {
+				mockAuthorization.On("ParseToken", token).Return(1, nil)
+				mockImage.On("UploadImage", mock.Anything, mock.Anything).Return(1, nil)
+				mockAMQP.On("DeclareQueue", "publisher").Return(q, nil)
+				mockAMQP.On("QosQueue").Return(nil)
+				mockAMQP.On("Publish", "", q.Name, string(models.Queued)).Return(nil).Return(nil)
+				mockImage.On("UpdateStatus", mock.Anything, 1, models.Processing).Return(nil)
+				mockAMQP.On("Publish", "", q.Name, string(models.Processing)).Return(nil).Return(nil)
+				mockImage.On("CompressImage", 100, mock.Anything).Return(models.ResultedImage{ID: 1, Name: "name", Location: "location"}, nil)
+				mockImage.On("UpdateStatus", mock.Anything, 1, models.Done).Return(nil)
+				mockAMQP.On("Publish", "", q.Name, string(models.Done)).Return(nil).Return(nil)
+				mockImage.On("CreateRequest", mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(1, nil)
 			},
-			expectedStatusCode:   401,
-			expectedResponseBody: "{\"error\":\"failed convert to int userID\"}\n",
+			expectedStatusCode:   200,
+			expectedResponseBody: "{\"Image ID\":1}\n",
 		},
 		{
-			name:         "Test with missing user ID",
+			name:         "Invalid user ID",
 			headerNames:  []string{"Authorization"},
 			headerValues: []string{"Bearer token"},
 			token:        "token",
-			fn: func(mockAuthorization *mocks.Authorization, mockImage *mocks.Image, token string, uplImg models.UploadedImage) {
-				mockAuthorization.On("ParseToken", token).Return(1, utils.ErrMissingParams)
-			},
-			expectedStatusCode:   401,
-			expectedResponseBody: "{\"error\":\"id is missing in parameters\"}\n",
-		},
-		{
-			name:         "Test with failed conversion userID",
-			headerNames:  []string{"Authorization"},
-			headerValues: []string{"Bearer token"},
-			token:        "token",
-			fn: func(mockAuthorization *mocks.Authorization, mockImage *mocks.Image, token string, uplImg models.UploadedImage) {
-				mockAuthorization.On("ParseToken", token).Return(1, utils.ErrAtoi)
+			userID:       "a",
+			fn: func(mockAuthorization *mocks.Authorization, mockImage *mocks.Image, mockAMQP *mocks2.AMQP, token string, uplImg models.UploadedImage) {
+				mockAuthorization.On("ParseToken", token).Return(1, nil)
 			},
 			expectedStatusCode:   401,
 			expectedResponseBody: "{\"error\":\"int conversion error\"}\n",
 		},
 		{
-			name:         "Inequality test",
+			name:         "Inequality of identifiers",
 			headerNames:  []string{"Authorization"},
 			headerValues: []string{"Bearer token"},
 			token:        "token",
-			fn: func(mockAuthorization *mocks.Authorization, mockImage *mocks.Image, token string, uplImg models.UploadedImage) {
-				mockAuthorization.On("ParseToken", token).Return(1, utils.ErrPrivacy)
+			userID:       "2",
+			fn: func(mockAuthorization *mocks.Authorization, mockImage *mocks.Image, mockAMQP *mocks2.AMQP, token string, uplImg models.UploadedImage) {
+				mockAuthorization.On("ParseToken", token).Return(1, nil)
 			},
 			expectedStatusCode:   401,
 			expectedResponseBody: "{\"error\":\"you can only view your data\"}\n",
 		},
 		{
-			name:         "Transform width error test",
-			headerNames:  []string{"Authorization"},
-			headerValues: []string{"Bearer token"},
+			name:         "Error upload file",
+			headerNames:  []string{"Authorization", "Content-Type"},
+			headerValues: []string{"Bearer token", "image/jpeg", `multipart/form-data; boundary="foo123"`},
+			params:       params{name: "width", quantity: 100},
 			token:        "token",
-			fn: func(mockAuthorization *mocks.Authorization, mockImage *mocks.Image, token string, uplImg models.UploadedImage) {
-				mockAuthorization.On("ParseToken", token).Return(1, utils.ErrAtoi)
+			userID:       "1",
+			fn: func(mockAuthorization *mocks.Authorization, mockImage *mocks.Image, mockAMQP *mocks2.AMQP, token string, uplImg models.UploadedImage) {
+				mockAuthorization.On("ParseToken", token).Return(1, nil)
+				mockImage.On("UploadImage", mock.Anything, mock.Anything).Return(uplImg.ID, fmt.Errorf("unable to insert image into database")).Once()
 			},
-			expectedStatusCode:   401,
-			expectedResponseBody: "{\"error\":\"int conversion error\"}\n",
+			expectedStatusCode:   500,
+			expectedResponseBody: "{\"error\":\"error upload file\"}\n",
 		},
-		//{
-		//	name:         "Test with correct values",
-		//	headerNames:  []string{"Authorization", "Content-Type"},
-		//	headerValues: []string{"Bearer token", "image/jpeg", `multipart/form-data; boundary="foo123"`},
-		//	params:       params{name: "width", quantity: 100},
-		//	token:        "token",
-		//	fn: func(mockAuthorization *mocks.Authorization, mockImage *mocks.Image, token string, uplImg models.UploadedImage) {
-		//		mockAuthorization.On("ParseToken", token).Return(1, nil)
-		//		mockImage.On("UploadImage", mock.Anything, uplImg).Return(1, nil)
-		//		//mockImage.On("UpdateStatus", mock.Anything, 1, models.Processing).Return(nil)
-		//		//mockImage.On("CompressImage", 100, models.UploadedImage{Name: "filename", Location: "location"}).Return(models.ResultedImage{Name: "nnn", Location: "lll"}, nil)
-		//		//
-		//		//mockImage.On("UpdateStatus", mock.Anything, 1, models.Done).Return(nil)
-		//		//mockImage.On("CreateRequest", models.User{Username: "u", Password: "p"},
-		//		//	models.UploadedImage{ID: 1, Name: "n", Location: "l"},
-		//		//	models.ResultedImage{ID: 1, Name: "n", Location: "l", Service: "s"},
-		//		//	models.UserImage{ID: 1, UserAccountID: 1, UploadedImageID: 1, ResultedImageID: 1, Status: "s"},
-		//		//	models.Request{ID: 1, UserImageID: 1}).Return(1, nil)
-		//
-		//	},
-		//	expectedStatusCode:   200,
-		//	expectedResponseBody: "{\"error\":\"token claims is invalid\"}\n",
-		//},
+		{
+			name:         "Failed update status",
+			headerNames:  []string{"Authorization", "Content-Type"},
+			headerValues: []string{"Bearer token", "image/jpeg", `multipart/form-data; boundary="foo123"`},
+			params:       params{name: "width", quantity: 100},
+			token:        "token",
+			userID:       "1",
+			fn: func(mockAuthorization *mocks.Authorization, mockImage *mocks.Image, mockAMQP *mocks2.AMQP, token string, uplImg models.UploadedImage) {
+				mockAuthorization.On("ParseToken", token).Return(1, nil)
+				mockImage.On("UploadImage", mock.Anything, mock.Anything).Return(1, nil)
+				mockAMQP.On("DeclareQueue", "publisher").Return(q, nil)
+				mockAMQP.On("QosQueue").Return(nil)
+				mockAMQP.On("Publish", "", q.Name, string(models.Queued)).Return(nil).Return(nil)
+				mockImage.On("UpdateStatus", mock.Anything, 1, models.Processing).Return(fmt.Errorf("cannot update image status"))
+			},
+			expectedStatusCode:   500,
+			expectedResponseBody: "{\"error\":\"cannot update image status\"}\n",
+		},
+		{
+			name:         "Failed compress image",
+			headerNames:  []string{"Authorization", "Content-Type"},
+			headerValues: []string{"Bearer token", "image/jpeg", `multipart/form-data; boundary="foo123"`},
+			params:       params{name: "width", quantity: 100},
+			token:        "token",
+			userID:       "1",
+			fn: func(mockAuthorization *mocks.Authorization, mockImage *mocks.Image, mockAMQP *mocks2.AMQP, token string, uplImg models.UploadedImage) {
+				mockAuthorization.On("ParseToken", token).Return(1, nil)
+				mockImage.On("UploadImage", mock.Anything, mock.Anything).Return(1, nil)
+				mockAMQP.On("DeclareQueue", "publisher").Return(q, nil)
+				mockAMQP.On("QosQueue").Return(nil)
+				mockAMQP.On("Publish", "", q.Name, string(models.Queued)).Return(nil).Return(nil)
+				mockImage.On("UpdateStatus", mock.Anything, 1, models.Processing).Return(nil)
+				mockAMQP.On("Publish", "", q.Name, string(models.Processing)).Return(nil).Return(nil)
+				mockImage.On("CompressImage", 100, mock.Anything).Return(models.ResultedImage{}, fmt.Errorf("cannot open image"))
+			},
+			expectedStatusCode:   500,
+			expectedResponseBody: "{\"error\":\"cannot open image\"}\n",
+		},
+		{
+			name:         "Failed convert image 2",
+			headerNames:  []string{"Authorization", "Content-Type"},
+			headerValues: []string{"Bearer token", "image/jpeg", `multipart/form-data; boundary="foo123"`},
+			token:        "token",
+			userID:       "1",
+			fn: func(mockAuthorization *mocks.Authorization, mockImage *mocks.Image, mockAMQP *mocks2.AMQP, token string, uplImg models.UploadedImage) {
+				mockAuthorization.On("ParseToken", token).Return(1, nil)
+				mockImage.On("UploadImage", mock.Anything, mock.Anything).Return(1, nil)
+				mockAMQP.On("DeclareQueue", "publisher").Return(q, nil)
+				mockAMQP.On("QosQueue").Return(nil)
+				mockAMQP.On("Publish", "", q.Name, string(models.Queued)).Return(nil).Return(nil)
+				mockImage.On("UpdateStatus", mock.Anything, 1, models.Processing).Return(nil)
+				mockAMQP.On("Publish", "", q.Name, string(models.Processing)).Return(nil).Return(nil)
+				mockImage.On("CompressImage", 150, mock.Anything).Return(models.ResultedImage{ID: 1, Name: "name", Location: "location"}, nil)
+				mockImage.On("UpdateStatus", mock.Anything, 1, models.Done).Return(fmt.Errorf("cannot update image status"))
+			},
+			expectedStatusCode:   500,
+			expectedResponseBody: "{\"error\":\"cannot update image status\"}\n",
+		},
+		{
+			name:         "Failed create request",
+			headerNames:  []string{"Authorization", "Content-Type"},
+			headerValues: []string{"Bearer token", "image/jpeg", `multipart/form-data; boundary="foo123"`},
+			params:       params{name: "width", quantity: 100},
+			token:        "token",
+			userID:       "1",
+			fn: func(mockAuthorization *mocks.Authorization, mockImage *mocks.Image, mockAMQP *mocks2.AMQP, token string, uplImg models.UploadedImage) {
+				mockAuthorization.On("ParseToken", token).Return(1, nil)
+				mockImage.On("UploadImage", mock.Anything, mock.Anything).Return(1, nil)
+				mockAMQP.On("DeclareQueue", "publisher").Return(q, nil)
+				mockAMQP.On("QosQueue").Return(nil)
+				mockAMQP.On("Publish", "", q.Name, string(models.Queued)).Return(nil).Return(nil)
+				mockImage.On("UpdateStatus", mock.Anything, 1, models.Processing).Return(nil)
+				mockAMQP.On("Publish", "", q.Name, string(models.Processing)).Return(nil).Return(nil)
+				mockImage.On("CompressImage", 100, mock.Anything).Return(models.ResultedImage{ID: 1, Name: "name", Location: "location"}, nil)
+				mockImage.On("UpdateStatus", mock.Anything, 1, models.Done).Return(nil)
+				mockAMQP.On("Publish", "", q.Name, string(models.Done)).Return(nil).Return(nil)
+				mockImage.On("CreateRequest", mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(0, fmt.Errorf("unable to insert resulted image into database"))
+			},
+			expectedStatusCode:   500,
+			expectedResponseBody: "{\"error\":\"unable to insert resulted image into database\"}\n",
+		},
 	}
+
+	compressURL := "/api/user/%s/compress"
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			mockAuthorization := new(mocks.Authorization)
 			mockImage := new(mocks.Image)
+			mockAMQP := new(mocks2.AMQP)
 
-			tt.fn(mockAuthorization, mockImage, tt.token, uplImg)
+			tt.fn(mockAuthorization, mockImage, mockAMQP, tt.token, uplImg)
 
 			services := &service.Service{Authorization: mockAuthorization, Image: mockImage}
-			s := Server{router: mux.NewRouter(), service: services}
+			mq := &broker.AMQPBroker{AMQP: mockAMQP}
+			s := Server{router: mux.NewRouter(), service: services, mq: mq}
 
-			s.router.HandleFunc("/api/user/{userID}/compress",
+			s.router.HandleFunc(fmt.Sprintf(compressURL, "{userID}"),
 				s.authorize(s.compressImage())).Methods(http.MethodPost)
 
-			imageBytes := []byte("1111")
+			imageBytes := []byte("uploadFile: undefined")
 			buf := &bytes.Buffer{}
 			writer := multipart.NewWriter(buf)
 			header := make(textproto.MIMEHeader)
@@ -256,11 +318,12 @@ func TestHandler_compressImage(t *testing.T) {
 			part, err := writer.CreatePart(header)
 			require.NoError(t, err)
 			_, err = part.Write(imageBytes)
+			require.NoError(t, err)
 			err = writer.Close()
 			require.NoError(t, err)
 
 			w := httptest.NewRecorder()
-			req := httptest.NewRequest(http.MethodPost, "/api/user/1/compress", buf)
+			req := httptest.NewRequest(http.MethodPost, fmt.Sprintf(compressURL, tt.userID), buf)
 
 			body, err := ioutil.ReadAll(req.Body)
 			require.NoError(t, err)
@@ -268,6 +331,12 @@ func TestHandler_compressImage(t *testing.T) {
 
 			req.Header.Set("Authorization", "Bearer token")
 			req.Header.Set("Content-Type", writer.FormDataContentType())
+			req.Header.Set("Content-Length", "1000")
+
+			q := req.URL.Query()
+			q.Add(tt.params.name, strconv.Itoa(tt.params.quantity))
+			req.URL.RawQuery = q.Encode()
+
 			err = req.Body.Close()
 			require.NoError(t, err)
 			s.ServeHTTP(w, req)
@@ -297,9 +366,10 @@ func TestHandler_findCompressedImage(t *testing.T) {
 		name                 string
 		headerName           []string
 		headerValue          []string
-		compressedID         int
 		params               params
 		token                string
+		compressedID         string
+		userID               string
 		fn                   fnBehavior
 		expectedStatusCode   int
 		expectedResponseBody string
@@ -308,8 +378,9 @@ func TestHandler_findCompressedImage(t *testing.T) {
 			name:         "Test with correct saving the image",
 			headerName:   []string{"Authorization", "Content-Type"},
 			headerValue:  []string{"Bearer token"},
-			compressedID: 1,
+			compressedID: "1",
 			token:        "token",
+			userID:       "1",
 			params:       params{name: "original", isOriginal: false},
 			fn: func(mockAuthorization *mocks.Authorization, mockImage *mocks.Image, token string, compressedID int, isOriginal bool) {
 				mockAuthorization.On("ParseToken", token).Return(1, nil)
@@ -320,78 +391,38 @@ func TestHandler_findCompressedImage(t *testing.T) {
 			expectedResponseBody: "",
 		},
 		{
-			name:        "Test with failed conversion userID",
-			headerName:  []string{"Authorization", "Content-Type"},
-			headerValue: []string{"Bearer token"},
-			token:       "token",
+			name:         "Invalid user ID\"",
+			headerName:   []string{"Authorization", "Content-Type"},
+			headerValue:  []string{"Bearer token"},
+			token:        "token",
+			userID:       "a",
+			compressedID: "1",
 			fn: func(mockAuthorization *mocks.Authorization, mockImage *mocks.Image, token string, compressedID int, isOriginal bool) {
-				mockAuthorization.On("ParseToken", token).Return(1, utils.ErrFailedConvert)
-			},
-			expectedStatusCode:   401,
-			expectedResponseBody: "{\"error\":\"failed convert to int userID\"}\n",
-		},
-		{
-			name:        "Test with missing userID",
-			headerName:  []string{"Authorization", "Content-Type"},
-			headerValue: []string{"Bearer token"},
-			token:       "token",
-			fn: func(mockAuthorization *mocks.Authorization, mockImage *mocks.Image, token string, compressedID int, isOriginal bool) {
-				mockAuthorization.On("ParseToken", token).Return(1, utils.ErrMissingParams)
-			},
-			expectedStatusCode:   401,
-			expectedResponseBody: "{\"error\":\"id is missing in parameters\"}\n",
-		},
-		{
-			name:        "Test with missing compressedID",
-			headerName:  []string{"Authorization", "Content-Type"},
-			headerValue: []string{"Bearer token"},
-			token:       "token",
-			fn: func(mockAuthorization *mocks.Authorization, mockImage *mocks.Image, token string, compressedID int, isOriginal bool) {
-				mockAuthorization.On("ParseToken", token).Return(1, utils.ErrMissingParams)
-			},
-			expectedStatusCode:   401,
-			expectedResponseBody: "{\"error\":\"id is missing in parameters\"}\n",
-		},
-		{
-			name:        "Test with failed conversion userID",
-			headerName:  []string{"Authorization", "Content-Type"},
-			headerValue: []string{"Bearer token"},
-			token:       "token",
-			fn: func(mockAuthorization *mocks.Authorization, mockImage *mocks.Image, token string, compressedID int, isOriginal bool) {
-				mockAuthorization.On("ParseToken", token).Return(1, utils.ErrAtoi)
+				mockAuthorization.On("ParseToken", token).Return(1, nil)
 			},
 			expectedStatusCode:   401,
 			expectedResponseBody: "{\"error\":\"int conversion error\"}\n",
 		},
 		{
-			name:        "Inequality test",
-			headerName:  []string{"Authorization", "Content-Type"},
-			headerValue: []string{"Bearer token"},
-			token:       "token",
+			name:         "Inequality of identifiers",
+			headerName:   []string{"Authorization", "Content-Type"},
+			headerValue:  []string{"Bearer token"},
+			token:        "token",
+			userID:       "12",
+			compressedID: "1",
 			fn: func(mockAuthorization *mocks.Authorization, mockImage *mocks.Image, token string, compressedID int, isOriginal bool) {
-				mockAuthorization.On("ParseToken", token).Return(1, utils.ErrPrivacy)
+				mockAuthorization.On("ParseToken", token).Return(1, nil)
 			},
 			expectedStatusCode:   401,
 			expectedResponseBody: "{\"error\":\"you can only view your data\"}\n",
 		},
 		{
-			name:        "Test with failed conversion compressedImageID",
-			headerName:  []string{"Authorization", "Content-Type"},
-			headerValue: []string{"Bearer token"},
-			token:       "token",
-			fn: func(mockAuthorization *mocks.Authorization, mockImage *mocks.Image, token string, compressedID int, isOriginal bool) {
-				mockAuthorization.On("ParseToken", token).Return(1, utils.ErrAtoi)
-			},
-			expectedStatusCode:   401,
-			expectedResponseBody: "{\"error\":\"int conversion error\"}\n",
-		},
-
-		{
-			name:         "Test with incorrect finding the image",
+			name:         "Wrong to find image",
 			headerName:   []string{"Authorization", "Content-Type"},
 			headerValue:  []string{"Bearer token"},
-			compressedID: 1,
+			compressedID: "1",
 			token:        "token",
+			userID:       "1",
 			fn: func(mockAuthorization *mocks.Authorization, mockImage *mocks.Image, token string, compressedID int, isOriginal bool) {
 				mockAuthorization.On("ParseToken", token).Return(1, nil)
 				mockImage.On("FindTheResultingImage", mock.Anything, compressedID, models.Compression).Return(models.ResultedImage{}, utils.ErrFindImage)
@@ -400,11 +431,12 @@ func TestHandler_findCompressedImage(t *testing.T) {
 			expectedResponseBody: "{\"error\":\"cannot find image\"}\n",
 		},
 		{
-			name:         "Test with incorrect saving the image",
+			name:         "Incorrectly saved image",
 			headerName:   []string{"Authorization", "Content-Type"},
 			headerValue:  []string{"Bearer token"},
-			compressedID: 1,
+			compressedID: "1",
 			token:        "token",
+			userID:       "1",
 			params:       params{name: "original", isOriginal: false},
 			fn: func(mockAuthorization *mocks.Authorization, mockImage *mocks.Image, token string, compressedID int, isOriginal bool) {
 				mockAuthorization.On("ParseToken", token).Return(1, nil)
@@ -415,32 +447,12 @@ func TestHandler_findCompressedImage(t *testing.T) {
 			expectedResponseBody: "{\"error\":\"cannot save image\"}\n",
 		},
 		{
-			name:         "Test with incorrect finding the original image",
+			name:         "Incorrectly saved original image",
 			headerName:   []string{"Authorization", "Content-Type"},
 			headerValue:  []string{"Bearer token"},
-			compressedID: 1,
+			compressedID: "1",
 			token:        "token",
-			params:       params{name: "original", isOriginal: true},
-			fn: func(mockAuthorization *mocks.Authorization, mockImage *mocks.Image, token string, compressedID int, isOriginal bool) {
-				mockAuthorization.On("ParseToken", token).Return(1, nil)
-				if isOriginal {
-					mockImage.On("FindOriginalImage", mock.Anything, 1).Return(models.UploadedImage{
-						ID:       1,
-						Name:     "filename",
-						Location: "location",
-					}, nil)
-					mockImage.On("SaveImage", mock.Anything, "/uploads/").Return(&models.Image{}, utils.ErrSaveImage)
-				}
-			},
-			expectedStatusCode:   500,
-			expectedResponseBody: "{\"error\":\"cannot save image\"}\n",
-		},
-		{
-			name:         "Test with incorrect saving the original image",
-			headerName:   []string{"Authorization", "Content-Type"},
-			headerValue:  []string{"Bearer token"},
-			compressedID: 1,
-			token:        "token",
+			userID:       "1",
 			params:       params{name: "original", isOriginal: true},
 			fn: func(mockAuthorization *mocks.Authorization, mockImage *mocks.Image, token string, compressedID int, isOriginal bool) {
 				mockAuthorization.On("ParseToken", token).Return(1, nil)
@@ -452,11 +464,12 @@ func TestHandler_findCompressedImage(t *testing.T) {
 			expectedResponseBody: "{\"error\":\"cannot find image\"}\n",
 		},
 		{
-			name:         "Test with correct saving the original image",
+			name:         "Wrong to find original image",
 			headerName:   []string{"Authorization", "Content-Type"},
 			headerValue:  []string{"Bearer token"},
-			compressedID: 1,
+			compressedID: "1",
 			token:        "token",
+			userID:       "1",
 			params:       params{name: "original", isOriginal: true},
 			fn: func(mockAuthorization *mocks.Authorization, mockImage *mocks.Image, token string, compressedID int, isOriginal bool) {
 				mockAuthorization.On("ParseToken", token).Return(1, nil)
@@ -469,20 +482,26 @@ func TestHandler_findCompressedImage(t *testing.T) {
 			expectedResponseBody: "",
 		},
 	}
+
+	getCompressedURL := "/api/user/%s/compress/%s"
+
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			mockAuthorization := new(mocks.Authorization)
 			mockImage := new(mocks.Image)
-			tt.fn(mockAuthorization, mockImage, tt.token, tt.compressedID, tt.params.isOriginal)
+			compressInt, err := strconv.Atoi(tt.compressedID)
+			require.NoError(t, err)
 
 			services := &service.Service{Authorization: mockAuthorization, Image: mockImage}
 			s := Server{router: mux.NewRouter(), service: services}
 
-			s.router.HandleFunc("/api/user/{userID}/compress/{compressedID}",
+			s.router.HandleFunc(fmt.Sprintf(getCompressedURL, "{userID}", "{compressedID}"),
 				s.authorize(s.findCompressedImage())).Methods(http.MethodGet)
 
 			w := httptest.NewRecorder()
-			req := httptest.NewRequest(http.MethodGet, "/api/user/1/compress/1", nil)
+			req := httptest.NewRequest(http.MethodGet, fmt.Sprintf(getCompressedURL, tt.userID, tt.compressedID), nil)
+
+			tt.fn(mockAuthorization, mockImage, tt.token, compressInt, tt.params.isOriginal)
 
 			q := req.URL.Query()
 			q.Add(tt.params.name, strconv.FormatBool(tt.params.isOriginal))
@@ -500,7 +519,15 @@ func TestHandler_findCompressedImage(t *testing.T) {
 }
 
 func TestHandler_convertImage(t *testing.T) {
-	type fnBehavior func(mockAuthorization *mocks.Authorization, mockImage *mocks.Image, token string)
+	type fnBehavior func(mockAuthorization *mocks.Authorization, mockImage *mocks.Image, mockAMQP *mocks2.AMQP, token string, uplImg models.UploadedImage)
+
+	uplImg := models.UploadedImage{
+		ID:       0,
+		Name:     "filename.jpeg",
+		Location: "location",
+	}
+
+	q := amqp.Queue{Name: "", Messages: 1, Consumers: 1}
 
 	tests := []struct {
 		name                 string
@@ -509,49 +536,178 @@ func TestHandler_convertImage(t *testing.T) {
 		inputImage           models.UploadedImage
 		contentType          string
 		token                string
+		convertedID          string
+		userID               string
 		fn                   fnBehavior
 		expectedStatusCode   int
 		expectedResponseBody string
 	}{
-		//{
-		//	name:        "Test with incorrect converting",
-		//	headerName:  []string{"Authorization", "Content-Type"},
-		//	headerValue: []string{"Bearer token"},
-		//	inputImage:  models.UploadedImage{Name: "filename", Location: "location"},
-		//	contentType: `multipart/form-data; boundary="foo123"`,
-		//	token:       "token",
-		//	fn: func(mockAuthorization *mocks.Authorization, mockImage *mocks.Image, token string, image models.UploadedImage) {
-		//		mockAuthorization.On("ParseToken", token).Return(1, nil)
-		//		mockImage.On("ConvertToType", mock.Anything).Return(models.ResultedImage{}, fmt.Errorf("cannot convert"))
-		//	},
-		//	expectedStatusCode:   500,
-		//	expectedResponseBody: "{\"error\":\"cannot convert\"}\n",
-		//},
-		//{
-		//	name:        "Test with incorrect creating request",
-		//	headerName:  []string{"Authorization", "Content-Type"},
-		//	headerValue: []string{"Bearer token"},
-		//	inputImage:  models.UploadedImage{Name: "filename", Location: "location"},
-		//	contentType: `multipart/form-data; boundary="foo123"`,
-		//	token:       "token",
-		//	fn: func(mockAuthorization *mocks.Authorization, mockImage *mocks.Image, token string, image models.UploadedImage) {
-		//		mockAuthorization.On("ParseToken", token).Return(1, nil)
-		//		mockImage.On("ConvertToType", mock.Anything).Return(models.ResultedImage{ID:1, Name: "filename", Location: "location", Service: model.Conversion}, nil)
-		//		mockImage.On("CreateRequest", mock.Anything, mock.Anything, mock.Anything, mock.Anything, models.Request{}).Return(0, fmt.Errorf("cannot create request with image"))
-		//	},
-		//	expectedStatusCode:   500,
-		//	expectedResponseBody: "{\"error\":\"cannot create request with image\"}\n",
-		//},
+		{
+			name:         "Test with correct values",
+			headerNames:  []string{"Authorization", "Content-Type"},
+			headerValues: []string{"Bearer token", "image/jpeg", `multipart/form-data; boundary="foo123"`},
+			token:        "token",
+			userID:       "1",
+			fn: func(mockAuthorization *mocks.Authorization, mockImage *mocks.Image, mockAMQP *mocks2.AMQP, token string, uplImg models.UploadedImage) {
+				mockAuthorization.On("ParseToken", token).Return(1, nil)
+				mockImage.On("UploadImage", mock.Anything, mock.Anything).Return(1, nil)
+				mockAMQP.On("DeclareQueue", "publisher").Return(q, nil)
+				mockAMQP.On("QosQueue").Return(nil)
+				mockAMQP.On("Publish", "", q.Name, string(models.Queued)).Return(nil).Return(nil)
+				mockImage.On("UpdateStatus", mock.Anything, 1, models.Processing).Return(nil)
+				mockAMQP.On("Publish", "", q.Name, string(models.Processing)).Return(nil).Return(nil)
+				mockImage.On("ConvertToType", mock.Anything).Return(models.ResultedImage{ID: 1, Name: "name", Location: "location"}, nil)
+				mockImage.On("UpdateStatus", mock.Anything, 1, models.Done).Return(nil)
+				mockAMQP.On("Publish", "", q.Name, string(models.Done)).Return(nil).Return(nil)
+				mockImage.On("CreateRequest", mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(1, nil)
+			},
+			expectedStatusCode:   200,
+			expectedResponseBody: "{\"Image ID\":1}\n",
+		},
+		{
+			name:         "Test with invalid token",
+			headerNames:  []string{"Authorization"},
+			headerValues: []string{"Bearer token"},
+			token:        "token",
+			userID:       "1",
+			fn: func(mockAuthorization *mocks.Authorization, mockImage *mocks.Image, mockAMQP *mocks2.AMQP, token string, uplImg models.UploadedImage) {
+				mockAuthorization.On("ParseToken", token).Return(1, utils.ErrFailedConvert)
+			},
+			expectedStatusCode:   401,
+			expectedResponseBody: "{\"error\":\"failed convert to int userID\"}\n",
+		},
+		{
+			name:         "Invalid user ID",
+			headerNames:  []string{"Authorization"},
+			headerValues: []string{"Bearer token"},
+			token:        "token",
+			userID:       "a",
+			fn: func(mockAuthorization *mocks.Authorization, mockImage *mocks.Image, mockAMQP *mocks2.AMQP, token string, uplImg models.UploadedImage) {
+				mockAuthorization.On("ParseToken", token).Return(1, nil)
+			},
+			expectedStatusCode:   401,
+			expectedResponseBody: "{\"error\":\"int conversion error\"}\n",
+		},
+		{
+			name:         "Inequality of identifiers",
+			headerNames:  []string{"Authorization"},
+			headerValues: []string{"Bearer token"},
+			token:        "token",
+			userID:       "2",
+			fn: func(mockAuthorization *mocks.Authorization, mockImage *mocks.Image, mockAMQP *mocks2.AMQP, token string, uplImg models.UploadedImage) {
+				mockAuthorization.On("ParseToken", token).Return(1, nil)
+			},
+			expectedStatusCode:   401,
+			expectedResponseBody: "{\"error\":\"you can only view your data\"}\n",
+		},
+		{
+			name:         "Failed upload file",
+			headerNames:  []string{"Authorization", "Content-Type"},
+			headerValues: []string{"Bearer token", "image/jpeg", `multipart/form-data; boundary="foo123"`},
+			token:        "token",
+			userID:       "1",
+			fn: func(mockAuthorization *mocks.Authorization, mockImage *mocks.Image, mockAMQP *mocks2.AMQP, token string, uplImg models.UploadedImage) {
+				mockAuthorization.On("ParseToken", token).Return(1, nil)
+				mockImage.On("UploadImage", mock.Anything, mock.Anything).Return(uplImg.ID, fmt.Errorf("unable to insert image into database")).Once()
+			},
+			expectedStatusCode:   500,
+			expectedResponseBody: "{\"error\":\"error upload file\"}\n",
+		},
+		{
+			name:         "Failed update status",
+			headerNames:  []string{"Authorization", "Content-Type"},
+			headerValues: []string{"Bearer token", "image/jpeg", `multipart/form-data; boundary="foo123"`},
+			token:        "token",
+			userID:       "1",
+			fn: func(mockAuthorization *mocks.Authorization, mockImage *mocks.Image, mockAMQP *mocks2.AMQP, token string, uplImg models.UploadedImage) {
+				mockAuthorization.On("ParseToken", token).Return(1, nil)
+				mockImage.On("UploadImage", mock.Anything, mock.Anything).Return(1, nil)
+				mockAMQP.On("DeclareQueue", "publisher").Return(q, nil)
+				mockAMQP.On("QosQueue").Return(nil)
+				mockAMQP.On("Publish", "", q.Name, string(models.Queued)).Return(nil).Return(nil)
+				mockImage.On("UpdateStatus", mock.Anything, 1, models.Processing).Return(fmt.Errorf("cannot update image status"))
+			},
+			expectedStatusCode:   500,
+			expectedResponseBody: "{\"error\":\"cannot update image status\"}\n",
+		},
+		{
+			name:         "Failed convert image",
+			headerNames:  []string{"Authorization", "Content-Type"},
+			headerValues: []string{"Bearer token", "image/jpeg", `multipart/form-data; boundary="foo123"`},
+			token:        "token",
+			userID:       "1",
+			fn: func(mockAuthorization *mocks.Authorization, mockImage *mocks.Image, mockAMQP *mocks2.AMQP, token string, uplImg models.UploadedImage) {
+				mockAuthorization.On("ParseToken", token).Return(1, nil)
+				mockImage.On("UploadImage", mock.Anything, mock.Anything).Return(1, nil)
+				mockAMQP.On("DeclareQueue", "publisher").Return(q, nil)
+				mockAMQP.On("QosQueue").Return(nil)
+				mockAMQP.On("Publish", "", q.Name, string(models.Queued)).Return(nil).Return(nil)
+				mockImage.On("UpdateStatus", mock.Anything, 1, models.Processing).Return(nil)
+				mockAMQP.On("Publish", "", q.Name, string(models.Processing)).Return(nil).Return(nil)
+				mockImage.On("ConvertToType", mock.Anything).Return(models.ResultedImage{}, fmt.Errorf("cannot convert"))
+			},
+			expectedStatusCode:   500,
+			expectedResponseBody: "{\"error\":\"cannot convert\"}\n",
+		},
+		{
+			name:         "Failed convert image 2",
+			headerNames:  []string{"Authorization", "Content-Type"},
+			headerValues: []string{"Bearer token", "image/jpeg", `multipart/form-data; boundary="foo123"`},
+			token:        "token",
+			userID:       "1",
+			fn: func(mockAuthorization *mocks.Authorization, mockImage *mocks.Image, mockAMQP *mocks2.AMQP, token string, uplImg models.UploadedImage) {
+				mockAuthorization.On("ParseToken", token).Return(1, nil)
+				mockImage.On("UploadImage", mock.Anything, mock.Anything).Return(1, nil)
+				mockAMQP.On("DeclareQueue", "publisher").Return(q, nil)
+				mockAMQP.On("QosQueue").Return(nil)
+				mockAMQP.On("Publish", "", q.Name, string(models.Queued)).Return(nil).Return(nil)
+				mockImage.On("UpdateStatus", mock.Anything, 1, models.Processing).Return(nil)
+				mockAMQP.On("Publish", "", q.Name, string(models.Processing)).Return(nil).Return(nil)
+				mockImage.On("ConvertToType", mock.Anything).Return(models.ResultedImage{ID: 1, Name: "name", Location: "location"}, nil)
+				mockImage.On("UpdateStatus", mock.Anything, 1, models.Done).Return(fmt.Errorf("cannot update image status"))
+			},
+			expectedStatusCode:   500,
+			expectedResponseBody: "{\"error\":\"cannot update image status\"}\n",
+		},
+		{
+			name:         "Failed create request",
+			headerNames:  []string{"Authorization", "Content-Type"},
+			headerValues: []string{"Bearer token", "image/jpeg", `multipart/form-data; boundary="foo123"`},
+			token:        "token",
+			userID:       "1",
+			fn: func(mockAuthorization *mocks.Authorization, mockImage *mocks.Image, mockAMQP *mocks2.AMQP, token string, uplImg models.UploadedImage) {
+				mockAuthorization.On("ParseToken", token).Return(1, nil)
+				mockImage.On("UploadImage", mock.Anything, mock.Anything).Return(1, nil)
+				mockAMQP.On("DeclareQueue", "publisher").Return(q, nil)
+				mockAMQP.On("QosQueue").Return(nil)
+				mockAMQP.On("Publish", "", q.Name, string(models.Queued)).Return(nil).Return(nil)
+				mockImage.On("UpdateStatus", mock.Anything, 1, models.Processing).Return(nil)
+				mockAMQP.On("Publish", "", q.Name, string(models.Processing)).Return(nil).Return(nil)
+				mockImage.On("ConvertToType", mock.Anything).Return(models.ResultedImage{ID: 1, Name: "name", Location: "location"}, nil)
+				mockImage.On("UpdateStatus", mock.Anything, 1, models.Done).Return(nil)
+				mockAMQP.On("Publish", "", q.Name, string(models.Done)).Return(nil).Return(nil)
+				mockImage.On("CreateRequest", mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(0, fmt.Errorf("unable to insert resulted image into database"))
+			},
+			expectedStatusCode:   500,
+			expectedResponseBody: "{\"error\":\"unable to insert resulted image into database\"}\n",
+		},
 	}
+
+	convertURL := "/api/user/%s/convert"
+
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			mockAuthorization := new(mocks.Authorization)
 			mockImage := new(mocks.Image)
+			mockAMQP := new(mocks2.AMQP)
+
+			tt.fn(mockAuthorization, mockImage, mockAMQP, tt.token, uplImg)
 
 			services := &service.Service{Authorization: mockAuthorization, Image: mockImage}
-			s := Server{router: mux.NewRouter(), service: services}
+			mq := &broker.AMQPBroker{AMQP: mockAMQP}
+			s := Server{router: mux.NewRouter(), service: services, mq: mq}
 
-			s.router.HandleFunc("/api/user/{userID}/convert",
+			s.router.HandleFunc(fmt.Sprintf(convertURL, "{userID}"),
 				s.authorize(s.convertImage())).Methods(http.MethodPost)
 
 			imageBytes := []byte("1111")
@@ -563,20 +719,20 @@ func TestHandler_convertImage(t *testing.T) {
 			part, err := writer.CreatePart(header)
 			require.NoError(t, err)
 			_, err = part.Write(imageBytes)
+			require.NoError(t, err)
 			err = writer.Close()
 			require.NoError(t, err)
 
 			w := httptest.NewRecorder()
-			req := httptest.NewRequest(http.MethodPost, "/api/user/1/convert",
+			req := httptest.NewRequest(http.MethodPost, fmt.Sprintf(convertURL, tt.userID),
 				buf)
 
 			body, err := ioutil.ReadAll(req.Body)
+			require.NoError(t, err)
 			req.Body = ioutil.NopCloser(bytes.NewBuffer(body))
 
 			req.Header.Set("Authorization", "Bearer token")
 			req.Header.Set("Content-Type", writer.FormDataContentType())
-
-			tt.fn(mockAuthorization, mockImage, tt.token)
 
 			err = req.Body.Close()
 			require.NoError(t, err)
@@ -608,9 +764,10 @@ func TestHandler_findConvertedImage(t *testing.T) {
 		name                 string
 		headerName           []string
 		headerValue          []string
-		convertedID          int
+		convertedID          string
 		params               params
 		token                string
+		userID               string
 		fn                   fnBehavior
 		expectedStatusCode   int
 		expectedResponseBody string
@@ -619,7 +776,8 @@ func TestHandler_findConvertedImage(t *testing.T) {
 			name:        "Test with all correct values",
 			headerName:  []string{"Authorization", "Content-Type"},
 			headerValue: []string{"Bearer token"},
-			convertedID: 1,
+			convertedID: "1",
+			userID:      "1",
 			token:       "token",
 			fn: func(mockAuthorization *mocks.Authorization, mockImage *mocks.Image, token string, convertedID int, isOriginal bool) {
 				mockAuthorization.On("ParseToken", token).Return(1, nil)
@@ -633,7 +791,8 @@ func TestHandler_findConvertedImage(t *testing.T) {
 			name:        "Test with all correct values for original",
 			headerName:  []string{"Authorization", "Content-Type"},
 			headerValue: []string{"Bearer token"},
-			convertedID: 1,
+			convertedID: "1",
+			userID:      "1",
 			token:       "token",
 			params:      params{name: "original", isOriginal: true},
 			fn: func(mockAuthorization *mocks.Authorization, mockImage *mocks.Image, token string, convertedID int, isOriginal bool) {
@@ -647,76 +806,50 @@ func TestHandler_findConvertedImage(t *testing.T) {
 			expectedResponseBody: "",
 		},
 		{
-			name:        "Test with failed conversion userID",
+			name:        "Test with invalid token",
 			headerName:  []string{"Authorization", "Content-Type"},
 			headerValue: []string{"Bearer token"},
 			token:       "token",
+			convertedID: "1",
+			userID:      "1",
 			fn: func(mockAuthorization *mocks.Authorization, mockImage *mocks.Image, token string, compressedID int, isOriginal bool) {
-				mockAuthorization.On("ParseToken", token).Return(1, utils.ErrFailedConvert)
+				mockAuthorization.On("ParseToken", token).Return(1, utils.ErrEmptyToken)
 			},
 			expectedStatusCode:   401,
-			expectedResponseBody: "{\"error\":\"failed convert to int userID\"}\n",
+			expectedResponseBody: "{\"error\":\"token is empty\"}\n",
 		},
 		{
-			name:        "Test with missing query param convertedImageID",
+			name:        "Invalid user ID",
 			headerName:  []string{"Authorization", "Content-Type"},
 			headerValue: []string{"Bearer token"},
 			token:       "token",
+			convertedID: "1",
+			userID:      "a",
 			fn: func(mockAuthorization *mocks.Authorization, mockImage *mocks.Image, token string, compressedID int, isOriginal bool) {
-				mockAuthorization.On("ParseToken", token).Return(1, utils.ErrRequest)
-			},
-			expectedStatusCode:   401,
-			expectedResponseBody: "{\"error\":\"incorrect request\"}\n",
-		},
-		{
-			name:        "Test with missing userID",
-			headerName:  []string{"Authorization", "Content-Type"},
-			headerValue: []string{"Bearer token"},
-			token:       "token",
-			fn: func(mockAuthorization *mocks.Authorization, mockImage *mocks.Image, token string, compressedID int, isOriginal bool) {
-				mockAuthorization.On("ParseToken", token).Return(1, utils.ErrMissingParams)
-			},
-			expectedStatusCode:   401,
-			expectedResponseBody: "{\"error\":\"id is missing in parameters\"}\n",
-		},
-		{
-			name:        "Test with failed conversion userID",
-			headerName:  []string{"Authorization", "Content-Type"},
-			headerValue: []string{"Bearer token"},
-			token:       "token",
-			fn: func(mockAuthorization *mocks.Authorization, mockImage *mocks.Image, token string, compressedID int, isOriginal bool) {
-				mockAuthorization.On("ParseToken", token).Return(1, utils.ErrAtoi)
+				mockAuthorization.On("ParseToken", token).Return(1, nil)
 			},
 			expectedStatusCode:   401,
 			expectedResponseBody: "{\"error\":\"int conversion error\"}\n",
 		},
 		{
-			name:        "Inequality test",
+			name:        "Inequality of identifiers",
 			headerName:  []string{"Authorization", "Content-Type"},
 			headerValue: []string{"Bearer token"},
 			token:       "token",
+			convertedID: "1",
+			userID:      "2",
 			fn: func(mockAuthorization *mocks.Authorization, mockImage *mocks.Image, token string, compressedID int, isOriginal bool) {
-				mockAuthorization.On("ParseToken", token).Return(1, utils.ErrPrivacy)
+				mockAuthorization.On("ParseToken", token).Return(1, nil)
 			},
 			expectedStatusCode:   401,
 			expectedResponseBody: "{\"error\":\"you can only view your data\"}\n",
 		},
 		{
-			name:        "Test with failed conversion convertedImageID",
+			name:        "Failed to find image",
 			headerName:  []string{"Authorization", "Content-Type"},
 			headerValue: []string{"Bearer token"},
-			token:       "token",
-			fn: func(mockAuthorization *mocks.Authorization, mockImage *mocks.Image, token string, compressedID int, isOriginal bool) {
-				mockAuthorization.On("ParseToken", token).Return(1, utils.ErrAtoi)
-			},
-			expectedStatusCode:   401,
-			expectedResponseBody: "{\"error\":\"int conversion error\"}\n",
-		},
-		{
-			name:        "Test with incorrect finding the image",
-			headerName:  []string{"Authorization", "Content-Type"},
-			headerValue: []string{"Bearer token"},
-			convertedID: 1,
+			convertedID: "1",
+			userID:      "1",
 			token:       "token",
 			fn: func(mockAuthorization *mocks.Authorization, mockImage *mocks.Image, token string, convertedID int, isOriginal bool) {
 				mockAuthorization.On("ParseToken", token).Return(1, nil)
@@ -726,10 +859,11 @@ func TestHandler_findConvertedImage(t *testing.T) {
 			expectedResponseBody: "{\"error\":\"cannot find image\"}\n",
 		},
 		{
-			name:        "Test with incorrect saving the image",
+			name:        "Failed to save image",
 			headerName:  []string{"Authorization", "Content-Type"},
 			headerValue: []string{"Bearer token"},
-			convertedID: 1,
+			convertedID: "1",
+			userID:      "1",
 			token:       "token",
 			fn: func(mockAuthorization *mocks.Authorization, mockImage *mocks.Image, token string, convertedID int, isOriginal bool) {
 				mockAuthorization.On("ParseToken", token).Return(1, nil)
@@ -740,10 +874,11 @@ func TestHandler_findConvertedImage(t *testing.T) {
 			expectedResponseBody: "{\"error\":\"cannot save image\"}\n",
 		},
 		{
-			name:        "Test with incorrect finding the original image",
+			name:        "Failed to find original image",
 			headerName:  []string{"Authorization", "Content-Type"},
 			headerValue: []string{"Bearer token"},
-			convertedID: 1,
+			convertedID: "1",
+			userID:      "1",
 			token:       "token",
 			params:      params{name: "original", isOriginal: true},
 			fn: func(mockAuthorization *mocks.Authorization, mockImage *mocks.Image, token string, convertedID int, isOriginal bool) {
@@ -756,10 +891,11 @@ func TestHandler_findConvertedImage(t *testing.T) {
 			expectedResponseBody: "{\"error\":\"cannot find image\"}\n",
 		},
 		{
-			name:        "Test with incorrect saving the original image",
+			name:        "Failed to save original image",
 			headerName:  []string{"Authorization", "Content-Type"},
 			headerValue: []string{"Bearer token"},
-			convertedID: 1,
+			convertedID: "1",
+			userID:      "1",
 			token:       "token",
 			params:      params{name: "original", isOriginal: true},
 			fn: func(mockAuthorization *mocks.Authorization, mockImage *mocks.Image, token string, convertedID int, isOriginal bool) {
@@ -773,20 +909,25 @@ func TestHandler_findConvertedImage(t *testing.T) {
 			expectedResponseBody: "{\"error\":\"cannot save image\"}\n",
 		},
 	}
+
+	getConvertedURL := "/api/user/%s/convert/%s"
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			mockAuthorization := new(mocks.Authorization)
 			mockImage := new(mocks.Image)
-			tt.fn(mockAuthorization, mockImage, tt.token, tt.convertedID, tt.params.isOriginal)
+
+			convertedInt, err := strconv.Atoi(tt.convertedID)
+			require.NoError(t, err)
+			tt.fn(mockAuthorization, mockImage, tt.token, convertedInt, tt.params.isOriginal)
 
 			services := &service.Service{Authorization: mockAuthorization, Image: mockImage}
 			s := Server{router: mux.NewRouter(), service: services}
 
-			s.router.HandleFunc("/api/user/{userID}/convert/{convertedID}",
+			s.router.HandleFunc(fmt.Sprintf(getConvertedURL, "{userID}", "{convertedID}"),
 				s.authorize(s.findConvertedImage())).Methods(http.MethodGet)
 
 			w := httptest.NewRecorder()
-			req := httptest.NewRequest(http.MethodGet, "/api/user/1/convert/1", nil)
+			req := httptest.NewRequest(http.MethodGet, fmt.Sprintf(getConvertedURL, tt.userID, tt.convertedID), nil)
 
 			q := req.URL.Query()
 			q.Add(tt.params.name, strconv.FormatBool(tt.params.isOriginal))

@@ -49,4 +49,18 @@ var (
 	ErrPrivacy = errors.New("you can only view your data")
 	// ErrAtoi checks to convert to type int.
 	ErrAtoi = errors.New("int conversion error")
+	// ErrGetDir finds current location.
+	ErrGetDir = errors.New("cannot get current directory")
+	// ErrOpen opens the image.
+	ErrOpen = errors.New("cannot open image")
+	// ErrDecode decodes the image.
+	ErrDecode = errors.New("cannot decode image")
+	// ErrEnsureDir checks base directory.
+	ErrEnsureDir = errors.New("cannot ensure base directory")
+	// ErrCompress checks to compress the image.
+	ErrCompress = errors.New("cannot compress")
+	// ErrChangeFormat checks to change image format.
+	ErrChangeFormat = errors.New("cannot change image format")
+	// ErrFileStat checks to get information about the file.
+	ErrFileStat = errors.New("cannot get FileInfo")
 )

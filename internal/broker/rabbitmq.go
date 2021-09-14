@@ -16,23 +16,29 @@ type RabbitMQ struct {
 	done chan error
 }
 
+// NewRabbitMQ is constructor of the RabbitMQ.
+func NewRabbitMQ(conn *amqp.Connection, ch *amqp.Channel, done chan error) *RabbitMQ {
+	return &RabbitMQ{conn, ch, done}
+}
+
 // Connect instantiates the RabbitMW instances using configuration defined in environment variables.
-func (r *RabbitMQ) Connect() (err error) {
+func (r *RabbitMQ) Connect() error {
 	url, err := utils.GetRabbitMQURL(utils.NewConfig(".env"))
 	if err != nil {
-		return err
+		logrus.Fatalf("%s: %s", "Failed to find variables", err)
+		return fmt.Errorf("failed to find variables")
 	}
 
 	r.conn, err = amqp.Dial(url)
 	if err != nil {
 		logrus.Fatalf("%s: %s", "Failed to connect to RabbitMQ", err)
-		return err
+		return fmt.Errorf("failed to connect to RabbitMQ")
 	}
 
 	r.ch, err = r.conn.Channel()
 	if err != nil {
 		logrus.Fatalf("%s: %s", "Failed to open a channel", err)
-		return err
+		return fmt.Errorf("failed to open a channel")
 	}
 
 	r.done = make(chan error)
@@ -41,30 +47,31 @@ func (r *RabbitMQ) Connect() (err error) {
 }
 
 // Publish sends data to the queue.
-func (r *RabbitMQ) Publish(exchange, key string, body string) (err error) {
-	err = r.ch.Publish(exchange, key, false, false,
+func (r *RabbitMQ) Publish(exchange, key string, body string) error {
+	err := r.ch.Publish(exchange, key, false, false,
 		amqp.Publishing{
 			ContentType: "application/json",
 			Body:        []byte(body),
 		})
 	if err != nil {
-		return fmt.Errorf("%s:%s", "Failed to publish a message", err)
+		logrus.Fatalf("%s:%s", "Failed to publish a message", err)
+		return fmt.Errorf("failed to publish a message")
 	}
 	return nil
 }
 
 // DeclareQueue declares a queue.
-func (r *RabbitMQ) DeclareQueue(name string) (q amqp.Queue, err error) {
-	q, err = r.ch.QueueDeclare(name, true, false, false, false, nil)
+func (r *RabbitMQ) DeclareQueue(name string) (amqp.Queue, error) {
+	q, err := r.ch.QueueDeclare(name, true, false, false, false, nil)
 	if err != nil {
 		logrus.Fatalf("%s: %s", "Failed to declare a queue", err)
-		return
+		return amqp.Queue{}, fmt.Errorf("failed to declare a queue")
 	}
 	return q, nil
 }
 
 // ConsumeQueue starts delivering queued messages.
-func (r *RabbitMQ) ConsumeQueue(queue string) (err error) {
+func (r *RabbitMQ) ConsumeQueue(queue string) error {
 	deliveries, err := r.ch.Consume(queue, "", false, false, false, false, nil)
 	if err != nil {
 		return fmt.Errorf("%s: %s", "Failed to register consumer", err)
@@ -92,17 +99,8 @@ func (r *RabbitMQ) QosQueue() error {
 		false,
 	)
 	if err != nil {
-		return fmt.Errorf("%s: %s", "Failed qos", err)
+		logrus.Fatalf("%s: %s", "Failed qos", err)
+		return fmt.Errorf("failed qos")
 	}
-	return nil
-}
-
-// Close closes requests.
-func (r *RabbitMQ) Close() (err error) {
-	err = r.conn.Close()
-	if err != nil {
-		return fmt.Errorf("%s: %s", "Failed to close", err)
-	}
-	<-r.done
 	return nil
 }

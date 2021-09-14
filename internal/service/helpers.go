@@ -107,5 +107,5 @@ func GetFileContentType(out *os.File) (string, error) {
 		return "", err
 	}
 	contentType := http.DetectContentType(buffer)
-	return contentType, err
+	return contentType, nil
 }

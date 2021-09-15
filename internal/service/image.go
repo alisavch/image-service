@@ -114,15 +114,20 @@ func (s *ImageService) ConvertToType(uploadedImage models.UploadedImage) (models
 	}
 
 	newImg, err := os.Create(fmt.Sprintf("./results/%s", convertedName))
-	defer file.Close()
 	if err != nil {
 		return models.ResultedImage{}, utils.ErrCreateFile
 	}
 	defer newImg.Close()
 
-	err = Encode(newImg, img, format)
-	if err != nil {
-		return models.ResultedImage{}, err
+	switch format {
+	case "jpeg":
+		if err := ConvertToPNG(newImg, img); err != nil {
+			return models.ResultedImage{}, err
+		}
+	case "png":
+		if err := ConvertToJPEG(newImg, img); err != nil {
+			return models.ResultedImage{}, err
+		}
 	}
 
 	result.Name = convertedName

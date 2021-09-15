@@ -1,6 +1,7 @@
 package service
 
 import (
+	"fmt"
 	"image"
 	"image/jpeg"
 	"image/png"
@@ -41,34 +42,22 @@ func ChangeFormat(filename string) (string, error) {
 // EncodeOption sets an optional parameter for to Encode and Save functions.
 type EncodeOption func(config *EncodeConfig)
 
-// Encode encodes the image from jpeg to png and vice versa.
-func Encode(w io.Writer, img image.Image, format string, opts ...EncodeOption) error {
+// ConvertToPNG converts from JPEG to PNG.
+func ConvertToPNG(w io.Writer, imgSrc image.Image) error {
+	var enc png.Encoder
+	if err := enc.Encode(w, imgSrc); err != nil {
+		return fmt.Errorf("%s to png", utils.ErrConvert)
+	}
+	return nil
+}
+
+// ConvertToJPEG convert from PNG to JPEG.
+func ConvertToJPEG(w io.Writer, imgSrc image.Image) error {
 	cfg := defaultEncodeConfig
-	for _, option := range opts {
-		option(&cfg)
+	if err := jpeg.Encode(w, imgSrc, &jpeg.Options{Quality: cfg.pngCompressionLevel}); err != nil {
+		return fmt.Errorf("%s to jpeg", utils.ErrConvert)
 	}
-	switch format {
-	case "jpeg":
-		return png.Encode(w, img)
-	case "png":
-		var rgba *image.RGBA
-		if nrgba, ok := img.(*image.NRGBA); ok {
-			if nrgba.Opaque() {
-				rgba = &image.RGBA{
-					Pix:    nrgba.Pix,
-					Stride: nrgba.Stride,
-					Rect:   nrgba.Rect,
-				}
-			}
-		}
-		if rgba != nil {
-			return jpeg.Encode(w, rgba, &jpeg.Options{Quality: cfg.jpegQuality})
-		} else {
-			return jpeg.Encode(w, img, &jpeg.Options{Quality: cfg.jpegQuality})
-		}
-	default:
-		return utils.ErrUnsupportedFormat
-	}
+	return nil
 }
 
 // CompressJPEG allows you to compress the JPEG image in width while maintaining the aspect ratio.

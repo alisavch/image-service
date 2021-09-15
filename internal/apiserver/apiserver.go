@@ -5,8 +5,6 @@ import (
 	"fmt"
 	"net/http"
 
-	"github.com/streadway/amqp"
-
 	"github.com/alisavch/image-service/internal/broker"
 	"github.com/alisavch/image-service/internal/repository"
 	"github.com/alisavch/image-service/internal/service"
@@ -35,46 +33,19 @@ func Start() error {
 
 	repos := repository.NewRepository(db)
 	services := service.NewService(repos)
+	rabbit := broker.NewAMQPBroker()
 
-	amqpURL, err := utils.GetRabbitMQURL(utils.NewConfig(".env"))
-	if err != nil {
-		logrus.Fatalf("%s: %s", "Failed to find variables", err)
-	}
-
-	conn, ch, done, err := newAMQP(amqpURL)
+	err = rabbit.Connect()
 	if err != nil {
 		logrus.Fatalf("%s: %s", "Failed to connect rabbitmq", err)
 	}
 
-	rabbit := broker.NewAMQPBroker(conn, ch, done)
-
 	srv := NewServer(services, rabbit)
-
-	err = conn.Close()
-	if err != nil {
-		logrus.Fatalf("%s: %s", "Failed to close", err)
-	}
-	<-done
 
 	return http.ListenAndServe(
 		":8080",
 		srv,
 	)
-}
-
-func newAMQP(amqpURL string) (conn *amqp.Connection, ch *amqp.Channel, done chan error, err error) {
-	conn, err = amqp.Dial(amqpURL)
-	if err != nil {
-		logrus.Fatalf("%s: %s", "Failed to connect RabbitMQ", err)
-	}
-
-	ch, err = conn.Channel()
-	if err != nil {
-		logrus.Fatalf("%s: %s", "Failed to open a channel", err)
-	}
-
-	done = make(chan error)
-	return
 }
 
 func newDB(user, pass, host, port, dbname string) (*sql.DB, error) {

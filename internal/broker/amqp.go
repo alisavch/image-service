@@ -17,8 +17,8 @@ type AMQPBroker struct {
 }
 
 // NewAMQPBroker is the AMQP constructor.
-func NewAMQPBroker(conn *amqp.Connection, ch *amqp.Channel, done chan error) *AMQPBroker {
+func NewAMQPBroker() *AMQPBroker {
 	return &AMQPBroker{
-		AMQP: NewRabbitMQ(conn, ch, done),
+		AMQP: NewRabbitMQ(),
 	}
 }

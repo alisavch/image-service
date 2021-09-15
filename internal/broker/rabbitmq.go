@@ -17,8 +17,8 @@ type RabbitMQ struct {
 }
 
 // NewRabbitMQ is constructor of the RabbitMQ.
-func NewRabbitMQ(conn *amqp.Connection, ch *amqp.Channel, done chan error) *RabbitMQ {
-	return &RabbitMQ{conn, ch, done}
+func NewRabbitMQ() *RabbitMQ {
+	return &RabbitMQ{}
 }
 
 // Connect instantiates the RabbitMW instances using configuration defined in environment variables.

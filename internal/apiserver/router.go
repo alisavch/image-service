@@ -65,8 +65,8 @@ func (s *Server) newUserRouter() {
 	// responses:
 	//   "200":
 	//     description: successful operation
-	//   "400":
-	//     description: bad request
+	//   "401":
+	//     description: unauthorized
 	//   "500":
 	//     description: internal server error
 	userRouter.HandleFunc("/{userID}/history", s.authorize(s.findUserHistory())).Methods(http.MethodGet)
@@ -92,8 +92,8 @@ func (s *Server) newUserRouter() {
 	// responses:
 	//   "200":
 	//     description: successful operation
-	//   "400":
-	//     description: bad request
+	//   "401":
+	//     description: unauthorized
 	//   "500":
 	//     description: internal server error
 	userRouter.HandleFunc("/{userID}/compress", s.authorize(s.compressImage())).Methods(http.MethodPost)
@@ -120,8 +120,8 @@ func (s *Server) newUserRouter() {
 	// responses:
 	//   "200":
 	//     description: successful operation
-	//   "400":
-	//     description: bad request
+	//   "401":
+	//     description: unauthorized user
 	//   "500":
 	//     description: internal server error
 	userRouter.HandleFunc("/{userID}/compress/{compressedID}", s.authorize(s.findCompressedImage())).Methods(http.MethodGet)
@@ -143,8 +143,8 @@ func (s *Server) newUserRouter() {
 	// responses:
 	//   "200":
 	//     description: successful operation
-	//   "400":
-	//     description: bad request
+	//   "401":
+	//     description: unauthorized user
 	//   "500":
 	//     description: internal server error
 	userRouter.HandleFunc("/{userID}/convert", s.authorize(s.convertImage())).Methods(http.MethodPost)
@@ -171,8 +171,8 @@ func (s *Server) newUserRouter() {
 	// responses:
 	//   "200":
 	//     description: successful operation
-	//   "400":
-	//     description: bad request
+	//   "401":
+	//     description: unauthorized user
 	//   "500":
 	//     description: internal server error
 	userRouter.HandleFunc("/{userID}/convert/{convertedID}", s.authorize(s.findConvertedImage())).Methods(http.MethodGet)

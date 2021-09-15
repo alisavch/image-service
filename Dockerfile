@@ -5,12 +5,6 @@ ENV GO111MODULE=on \
     GOARCH=amd64
 RUN apk --no-cache add build-base git gcc make
 
-RUN go get github.com/gorilla/mux
-RUN go get github.com/sirupsen/logrus
-RUN go get github.com/streadway/amqp
-RUN go get github.com/joho/godotenv
-RUN go get github.com/lib/pq
-
 WORKDIR /app
 COPY go.mod .
 COPY go.sum .

@@ -37,7 +37,7 @@ func Start() error {
 
 	err = rabbit.Connect()
 	if err != nil {
-		logrus.Fatalf("%s: %s", "Failed to connect rabbitmq", err)
+		logrus.Fatalf("%s: %s", "Failed to connect to Rabbitmq", err)
 	}
 
 	srv := NewServer(services, rabbit)

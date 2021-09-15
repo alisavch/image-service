@@ -111,8 +111,8 @@ paths:
       responses:
         "200":
           description: successful operation
-        "400":
-          description: bad request
+        "401":
+          description: unauthorized
         "500":
           description: internal server error
       summary: Compresses the image.
@@ -140,8 +140,8 @@ paths:
       responses:
         "200":
           description: successful operation
-        "400":
-          description: bad request
+        "401":
+          description: unauthorized user
         "500":
           description: internal server error
       summary: Finds the compressed image.
@@ -164,8 +164,8 @@ paths:
       responses:
         "200":
           description: successful operation
-        "400":
-          description: bad request
+        "401":
+          description: unauthorized user
         "500":
           description: internal server error
       summary: Converts the image.
@@ -193,8 +193,8 @@ paths:
       responses:
         "200":
           description: successful operation
-        "400":
-          description: bad request
+        "401":
+          description: unauthorized user
         "500":
           description: internal server error
       summary: Finds the converted image.
@@ -211,8 +211,8 @@ paths:
       responses:
         "200":
           description: successful operation
-        "400":
-          description: bad request
+        "401":
+          description: unauthorized
         "500":
           description: internal server error
       summary: Finds users history.

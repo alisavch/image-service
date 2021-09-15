@@ -50,11 +50,8 @@ func (s *AuthService) GenerateToken(ctx context.Context, username, password stri
 	if !match {
 		return "password verification error", err
 	}
-	value, err := utils.GetTokenTTL(utils.NewConfig(".env"))
-	if err != nil {
-		return "", err
-	}
-	jwtTTL, err := time.ParseDuration(value)
+	conf := utils.NewConfig()
+	jwtTTL, err := time.ParseDuration(conf.TokenTTL)
 	if err != nil {
 		return "error getting jwt ttl", nil
 	}

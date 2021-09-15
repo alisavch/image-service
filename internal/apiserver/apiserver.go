@@ -5,6 +5,8 @@ import (
 	"fmt"
 	"net/http"
 
+	"github.com/joho/godotenv"
+
 	"github.com/alisavch/image-service/internal/broker"
 	"github.com/alisavch/image-service/internal/repository"
 	"github.com/alisavch/image-service/internal/service"
@@ -15,12 +17,11 @@ import (
 
 // Start starts the server.
 func Start() error {
-	user, pass, host, port, dbname, err := utils.GetDBEnvironments(utils.NewConfig(".env"))
-	if err != nil {
-		logrus.Fatalf("%s: %s", "Failed to find variables", err)
-	}
+	initEnvironments()
 
-	db, err := newDB(user, pass, host, port, dbname)
+	conf := utils.NewConfig()
+
+	db, err := newDB(conf.DBConfig)
 	if err != nil {
 		logrus.Fatalf("%s: %s", "Failed to initialize database", err)
 	}
@@ -48,8 +49,14 @@ func Start() error {
 	)
 }
 
-func newDB(user, pass, host, port, dbname string) (*sql.DB, error) {
-	URL := fmt.Sprintf("postgres://%s:%s@%s:%s/%s?sslmode=disable", user, pass, host, port, dbname)
+func initEnvironments() {
+	if err := godotenv.Load(); err != nil {
+		logrus.Printf("%s:%s", "Failed to load .env", err)
+	}
+}
+
+func newDB(config utils.DBConfig) (*sql.DB, error) {
+	URL := fmt.Sprintf("postgres://%s:%s@%s:%s/%s?sslmode=disable", config.User, config.Password, config.Host, config.Port, config.Name)
 	db, err := sql.Open("postgres", URL)
 	if err != nil {
 		return nil, fmt.Errorf("failed to open postgres")

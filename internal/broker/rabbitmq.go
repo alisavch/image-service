@@ -23,12 +23,9 @@ func NewRabbitMQ() *RabbitMQ {
 
 // Connect instantiates the RabbitMW instances using configuration defined in environment variables.
 func (r *RabbitMQ) Connect() error {
-	url, err := utils.GetRabbitMQURL(utils.NewConfig(".env"))
-	if err != nil {
-		logrus.Fatalf("%s: %s", "Failed to find variables", err)
-	}
-
-	r.conn, err = amqp.Dial(url)
+	conf := utils.NewConfig()
+	var err error
+	r.conn, err = amqp.Dial(conf.Rabbitmq.RabbitmqURL)
 	if err != nil {
 		logrus.Fatalf("%s: %s", "Failed to connect to RabbitMQ", err)
 	}

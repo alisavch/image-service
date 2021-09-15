@@ -1,40 +1,50 @@
 package utils
 
-import (
-	"fmt"
-	"os"
+import "os"
 
-	"github.com/joho/godotenv"
-	"github.com/sirupsen/logrus"
-)
-
-// ConfigService allows you to interact with the config file.
-type ConfigService interface {
-	GetEnv(string) (string, error)
+// DBConfig includes database variables.
+type DBConfig struct {
+	User     string
+	Password string
+	Host     string
+	Port     string
+	Name     string
 }
 
-// Configure includes a config file.
-type Configure struct {
-	path string
+// RabbitmqConfig includes rabbitmq variables.
+type RabbitmqConfig struct {
+	RabbitmqURL string
 }
 
-// GetEnv gets variables from .env file.
-func (conf Configure) GetEnv(key string) (string, error) {
-	err := godotenv.Load(conf.path)
-	if err != nil {
-		logrus.Fatalf("%s:%s", "Error loading .env file", conf.path)
-	}
-
-	value, ok := os.LookupEnv(key)
-	if !ok {
-		return value, fmt.Errorf("error in fetching value from .env")
-	}
-	return value, nil
+// Config includes config variables.
+type Config struct {
+	DBConfig DBConfig
+	TokenTTL string
+	Rabbitmq RabbitmqConfig
 }
 
-// NewConfig is config constructor.
-func NewConfig(filepath string) ConfigService {
-	return &Configure{
-		path: filepath,
+// NewConfig returns a new Config struct
+func NewConfig() *Config {
+	return &Config{
+		DBConfig: DBConfig{
+			User:     getEnv("DB_USER", ""),
+			Password: getEnv("DB_PASSWORD", ""),
+			Host:     getEnv("DB_HOST", ""),
+			Port:     getEnv("DB_PORT", ""),
+			Name:     getEnv("DB_NAME", ""),
+		},
+		TokenTTL: getEnv("TOKEN_TTL", "12h"),
+		Rabbitmq: RabbitmqConfig{
+			RabbitmqURL: getEnv("RABBITMQ_URL", ""),
+		},
 	}
+}
+
+// Simple helper function to read an environment or return a default value
+func getEnv(key string, defaultVal string) string {
+	if value, ok := os.LookupEnv(key); ok {
+		return value
+	}
+
+	return defaultVal
 }

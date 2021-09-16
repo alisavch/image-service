@@ -4,13 +4,15 @@ import (
 	"flag"
 
 	"github.com/alisavch/image-service/internal/consumer"
+	"github.com/alisavch/image-service/internal/log"
 
 	_ "github.com/alisavch/image-service/internal/log"
-	"github.com/sirupsen/logrus"
 )
 
 func main() {
+	var logger log.Logger = log.NewCustomLogger()
+
 	flag.Parse()
-	logrus.Info("The consumer is running")
+	logger.Info("The consumer is running")
 	consumer.Consume()
 }

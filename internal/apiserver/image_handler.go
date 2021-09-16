@@ -5,8 +5,6 @@ import (
 	"strconv"
 	"time"
 
-	"github.com/sirupsen/logrus"
-
 	"github.com/alisavch/image-service/internal/models"
 	"github.com/alisavch/image-service/internal/utils"
 
@@ -143,17 +141,17 @@ func (s *Server) compressImage() http.HandlerFunc {
 
 		q, err := s.mq.DeclareQueue("publisher")
 		if err != nil {
-			logrus.Fatalf("%s: %s", "Failed to declare a queue", err)
+			logger.Fatalf("%s: %s", "Failed to declare a queue", err)
 		}
 
 		err = s.mq.QosQueue()
 		if err != nil {
-			logrus.Fatalf("%s: %s", "Failed to controls messages", err)
+			logger.Fatalf("%s: %s", "Failed to controls messages", err)
 		}
 
 		err = s.mq.Publish("", q.Name, string(models.Queued))
 		if err != nil {
-			logrus.Fatalf("%s: %s", "Failed to publish a message", err)
+			logger.Fatalf("%s: %s", "Failed to publish a message", err)
 		}
 
 		err = s.service.Image.UpdateStatus(r.Context(), newUploadedImage.ID, models.Processing)
@@ -164,7 +162,7 @@ func (s *Server) compressImage() http.HandlerFunc {
 
 		err = s.mq.Publish("", q.Name, string(models.Processing))
 		if err != nil {
-			logrus.Fatalf("%s: %s", "Failed to publish a message", err)
+			logger.Fatalf("%s: %s", "Failed to publish a message", err)
 		}
 
 		resultedImage, err := s.service.Image.CompressImage(req.Width, newUploadedImage)
@@ -181,7 +179,7 @@ func (s *Server) compressImage() http.HandlerFunc {
 
 		err = s.mq.Publish("", q.Name, string(models.Done))
 		if err != nil {
-			logrus.Fatalf("%s: %s", "Failed to publish a message", err)
+			logger.Fatalf("%s: %s", "Failed to publish a message", err)
 		}
 
 		endOfExecution := time.Now()
@@ -368,17 +366,17 @@ func (s *Server) convertImage() http.HandlerFunc {
 
 		q, err := s.mq.DeclareQueue("publisher")
 		if err != nil {
-			logrus.Fatalf("%s: %s", "Failed to declare a queue", err)
+			logger.Fatalf("%s: %s", "Failed to declare a queue", err)
 		}
 
 		err = s.mq.QosQueue()
 		if err != nil {
-			logrus.Fatalf("%s: %s", "Failed to controls messages", err)
+			logger.Fatalf("%s: %s", "Failed to controls messages", err)
 		}
 
 		err = s.mq.Publish("", q.Name, string(models.Queued))
 		if err != nil {
-			logrus.Fatalf("%s: %s", "Failed to publish a message", err)
+			logger.Fatalf("%s: %s", "Failed to publish a message", err)
 		}
 
 		err = s.service.Image.UpdateStatus(r.Context(), newUploadedImage.ID, models.Processing)
@@ -389,7 +387,7 @@ func (s *Server) convertImage() http.HandlerFunc {
 
 		err = s.mq.Publish("", q.Name, string(models.Processing))
 		if err != nil {
-			logrus.Fatalf("%s: %s", "Failed to publish a message", err)
+			logger.Fatalf("%s: %s", "Failed to publish a message", err)
 		}
 
 		resultedImage, err := s.service.Image.ConvertToType(newUploadedImage)
@@ -406,7 +404,7 @@ func (s *Server) convertImage() http.HandlerFunc {
 
 		err = s.mq.Publish("", q.Name, string(models.Done))
 		if err != nil {
-			logrus.Fatalf("%s: %s", "Failed to publish a message", err)
+			logger.Fatalf("%s: %s", "Failed to publish a message", err)
 		}
 
 		endOfExecution := time.Now()

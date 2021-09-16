@@ -3,11 +3,13 @@ package broker
 import (
 	"fmt"
 
-	"github.com/sirupsen/logrus"
+	"github.com/alisavch/image-service/internal/log"
 
 	"github.com/alisavch/image-service/internal/utils"
 	"github.com/streadway/amqp"
 )
+
+var logger log.Logger = log.NewCustomLogger()
 
 // RabbitMQ Operate Wrapper.
 type RabbitMQ struct {
@@ -27,12 +29,12 @@ func (r *RabbitMQ) Connect() error {
 	var err error
 	r.conn, err = amqp.Dial(conf.Rabbitmq.RabbitmqURL)
 	if err != nil {
-		logrus.Fatalf("%s: %s", "Failed to connect to RabbitMQ", err)
+		logger.Fatalf("%s: %s", "Failed to connect to RabbitMQ", err)
 	}
 
 	r.ch, err = r.conn.Channel()
 	if err != nil {
-		logrus.Fatalf("%s: %s", "Failed to open a channel", err)
+		logger.Fatalf("%s: %s", "Failed to open a channel", err)
 	}
 
 	r.done = make(chan error)
@@ -48,7 +50,7 @@ func (r *RabbitMQ) Publish(exchange, key string, body string) error {
 			Body:        []byte(body),
 		})
 	if err != nil {
-		logrus.Fatalf("%s:%s", "Failed to publish a message", err)
+		logger.Fatalf("%s:%s", "Failed to publish a message", err)
 	}
 	return nil
 }
@@ -57,7 +59,7 @@ func (r *RabbitMQ) Publish(exchange, key string, body string) error {
 func (r *RabbitMQ) DeclareQueue(name string) (amqp.Queue, error) {
 	q, err := r.ch.QueueDeclare(name, true, false, false, false, nil)
 	if err != nil {
-		logrus.Fatalf("%s: %s", "Failed to declare a queue", err)
+		logger.Fatalf("%s: %s", "Failed to declare a queue", err)
 	}
 	return q, nil
 }
@@ -71,11 +73,11 @@ func (r *RabbitMQ) ConsumeQueue(queue string) error {
 	forever := make(chan bool)
 	go func() {
 		for d := range deliveries {
-			logrus.Printf("%s: %s", "Received a message", d.Body)
+			logger.Printf("%s: %s", "Received a message", d.Body)
 
 			err := d.Ack(false)
 			if err != nil {
-				logrus.Printf("%s: %s", "Failed to delegates acknowledgment", d.Body)
+				logger.Printf("%s: %s", "Failed to delegates acknowledgment", d.Body)
 			}
 		}
 	}()
@@ -91,7 +93,7 @@ func (r *RabbitMQ) QosQueue() error {
 		false,
 	)
 	if err != nil {
-		logrus.Fatalf("%s: %s", "Failed qos", err)
+		logger.Fatalf("%s: %s", "Failed qos", err)
 	}
 	return nil
 }

@@ -5,6 +5,8 @@ import (
 	"fmt"
 	"net/http"
 
+	"github.com/alisavch/image-service/internal/log"
+
 	"github.com/joho/godotenv"
 
 	"github.com/alisavch/image-service/internal/broker"
@@ -12,8 +14,9 @@ import (
 	"github.com/alisavch/image-service/internal/service"
 	"github.com/alisavch/image-service/internal/utils"
 	_ "github.com/lib/pq" // Registers database.
-	"github.com/sirupsen/logrus"
 )
+
+var logger log.Logger = log.NewCustomLogger()
 
 // Start starts the server.
 func Start() error {
@@ -23,12 +26,12 @@ func Start() error {
 
 	db, err := newDB(conf.DBConfig)
 	if err != nil {
-		logrus.Fatalf("%s: %s", "Failed to initialize database", err)
+		logger.Fatalf("%s: %s", "Failed to initialize database", err)
 	}
 	defer func(db *sql.DB) {
 		err := db.Close()
 		if err != nil {
-			logrus.Fatalf("%s: %s", "Failed to close database", err)
+			logger.Fatalf("%s: %s", "Failed to close database", err)
 		}
 	}(db)
 
@@ -38,7 +41,7 @@ func Start() error {
 
 	err = rabbit.Connect()
 	if err != nil {
-		logrus.Fatalf("%s: %s", "Failed to connect to Rabbitmq", err)
+		logger.Fatalf("%s: %s", "Failed to connect to Rabbitmq", err)
 	}
 
 	srv := NewServer(services, rabbit)
@@ -51,7 +54,7 @@ func Start() error {
 
 func initEnvironments() {
 	if err := godotenv.Load(); err != nil {
-		logrus.Printf("%s:%s", "Failed to load .env", err)
+		logger.Printf("%s:%s", "Failed to load .env", err)
 	}
 }
 

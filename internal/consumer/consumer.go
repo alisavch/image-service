@@ -2,8 +2,10 @@ package consumer
 
 import (
 	"github.com/alisavch/image-service/internal/broker"
-	"github.com/sirupsen/logrus"
+	"github.com/alisavch/image-service/internal/log"
 )
+
+var logger log.Logger = log.NewCustomLogger()
 
 // Consume starts the message consumer.
 func Consume() {
@@ -11,16 +13,16 @@ func Consume() {
 
 	err := rabbit.Connect()
 	if err != nil {
-		logrus.Fatalf("%s: %s", "Failed to open a channel", err)
+		logger.Fatalf("%s: %s", "Failed to open a channel", err)
 	}
 
 	q, err := rabbit.DeclareQueue("publisher")
 	if err != nil {
-		logrus.Fatalf("%s: %s", "Failed to declare a queue", err)
+		logger.Fatalf("%s: %s", "Failed to declare a queue", err)
 	}
 
 	err = rabbit.ConsumeQueue(q.Name)
 	if err != nil {
-		logrus.Fatalf("%s: %s", "Failed to consume a queue", err)
+		logger.Fatalf("%s: %s", "Failed to consume a queue", err)
 	}
 }

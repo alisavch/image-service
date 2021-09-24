@@ -5,6 +5,8 @@ import (
 	"database/sql"
 	"fmt"
 
+	"github.com/google/uuid"
+
 	"github.com/alisavch/image-service/internal/models"
 )
 
@@ -19,11 +21,11 @@ func NewAuthRepository(db *sql.DB) *AuthRepository {
 }
 
 // CreateUser provides adding new user.
-func (r *AuthRepository) CreateUser(ctx context.Context, user models.User) (id int, err error) {
+func (r *AuthRepository) CreateUser(ctx context.Context, user models.User) (id uuid.UUID, err error) {
 	query := "INSERT INTO image_service.user_account(username, password) VALUES ($1, $2) RETURNING id"
 	row := r.db.QueryRowContext(ctx, query, user.Username, user.Password)
 	if err := row.Scan(&id); err != nil {
-		return 0, fmt.Errorf("cannot insert user into database")
+		return [16]byte{}, fmt.Errorf("cannot insert user into database")
 	}
 	return id, nil
 }

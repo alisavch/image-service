@@ -2,6 +2,10 @@ package service
 
 import (
 	"context"
+	"image"
+	"os"
+
+	"github.com/google/uuid"
 
 	"github.com/alisavch/image-service/internal/models"
 	"github.com/alisavch/image-service/internal/repository"
@@ -9,22 +13,22 @@ import (
 
 // Authorization contains methods for authorizing users.
 type Authorization interface {
-	CreateUser(ctx context.Context, user models.User) (id int, err error)
+	CreateUser(ctx context.Context, user models.User) (id uuid.UUID, err error)
 	GenerateToken(ctx context.Context, username, password string) (string, error)
-	ParseToken(token string) (int, error)
+	ParseToken(token string) (uuid.UUID, error)
 }
 
 // Image contains methods for working with images.
 type Image interface {
-	UploadImage(ctx context.Context, image models.UploadedImage) (int, error)
-	ConvertToType(uploadedImage models.UploadedImage) (models.ResultedImage, error)
-	CompressImage(quality int, uploadedImage models.UploadedImage) (models.ResultedImage, error)
-	CreateRequest(ctx context.Context, user models.User, uplImg models.UploadedImage, resImg models.ResultedImage, uI models.UserImage, r models.Request) (int, error)
-	FindTheResultingImage(ctx context.Context, id int, service models.Service) (models.ResultedImage, error)
-	FindOriginalImage(ctx context.Context, id int) (models.UploadedImage, error)
-	FindUserHistoryByID(ctx context.Context, id int) ([]models.History, error)
-	SaveImage(filename, folder string) (*models.Image, error)
-	UpdateStatus(ctx context.Context, id int, status models.Status) error
+	UploadImage(ctx context.Context, image models.UploadedImage) (uuid.UUID, error)
+	ConvertToType(format string, newImageName string, img image.Image, newImg *os.File, isRemoteStorage bool) (models.ResultedImage, error)
+	CompressImage(width int, format string, resultedName string, img image.Image, newImg *os.File, isRemoteStorage bool) (models.ResultedImage, error)
+	CreateRequest(ctx context.Context, user models.User, uplImg models.UploadedImage, resImg models.ResultedImage, uI models.UserImage, r models.Request) (uuid.UUID, error)
+	FindTheResultingImage(ctx context.Context, id uuid.UUID, service models.Service) (models.ResultedImage, error)
+	FindOriginalImage(ctx context.Context, id uuid.UUID) (models.UploadedImage, error)
+	FindUserHistoryByID(ctx context.Context, id uuid.UUID) ([]models.History, error)
+	SaveImage(filename, location string, isRemoteStorage bool) (*models.Image, error)
+	UpdateStatus(ctx context.Context, id uuid.UUID, status models.Status) error
 }
 
 // Service contains interfaces.

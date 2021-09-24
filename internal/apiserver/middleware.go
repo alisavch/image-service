@@ -3,11 +3,14 @@ package apiserver
 import (
 	"context"
 	"fmt"
+	"image"
 	"io"
 	"mime/multipart"
 	"net/http"
 	"os"
 	"strings"
+
+	"github.com/alisavch/image-service/internal/bucket"
 
 	"github.com/alisavch/image-service/internal/service"
 
@@ -15,9 +18,14 @@ import (
 
 	"github.com/alisavch/image-service/internal/models"
 	"github.com/google/uuid"
+
+	_ "image/jpeg"
+	_ "image/png"
 )
 
 type key string
+
+var remoteStorage = bucket.NewAWS()
 
 const (
 	authorizationHeader key = "Authorization"
@@ -87,8 +95,9 @@ func (s *Server) authorize(next http.Handler) http.HandlerFunc {
 }
 
 type uploaded struct {
-	file    multipart.File
-	handler *multipart.FileHeader
+	file            multipart.File
+	handler         *multipart.FileHeader
+	isRemoteStorage bool
 }
 
 // Build builds a request to load an image.
@@ -102,14 +111,14 @@ func (req *uploaded) Build(r *http.Request) error {
 	if err != nil {
 		return err
 	}
-	defer req.file.Close()
+
+	req.isRemoteStorage = IsRemoteStorage
 
 	return nil
 }
 
 // Validate builds a request to validate the upload of an image.
 func (req uploaded) Validate() error {
-	//fmt.Println(req.handler.Header)
 	if !(req.handler.Header["Content-Type"][0] == "image/jpeg" || req.handler.Header["Content-Type"][0] == "image/png") {
 		return utils.ErrAllowedFormat
 	}
@@ -124,6 +133,25 @@ func (s *Server) uploadImage(r *http.Request, uploadedImage models.UploadedImage
 	}
 	req.handler.Filename = strings.Replace(uuid.New().String(), "-", "", -1) + req.handler.Filename
 
+	if req.isRemoteStorage {
+		imageLocation, err := remoteStorage.UploadToS3Bucket(req.file, req.handler.Filename)
+		if err != nil {
+			return models.UploadedImage{}, err
+		}
+
+		req.file.Close()
+		uploadedImage.Name = req.handler.Filename
+		uploadedImage.Location = imageLocation
+
+		uploadedID, err := s.service.Image.UploadImage(r.Context(), uploadedImage)
+		if err != nil {
+			return models.UploadedImage{}, fmt.Errorf("%s:%s", utils.ErrUpload, err)
+		}
+		uploadedImage.ID = uploadedID
+
+		return uploadedImage, nil
+	}
+
 	err = service.EnsureBaseDir("./uploads/")
 	if err != nil {
 		return models.UploadedImage{}, err
@@ -136,6 +164,7 @@ func (s *Server) uploadImage(r *http.Request, uploadedImage models.UploadedImage
 	defer out.Close()
 
 	_, err = io.Copy(out, req.file)
+	defer req.file.Close()
 	if err != nil {
 		return models.UploadedImage{}, utils.ErrCopyFile
 	}
@@ -150,4 +179,68 @@ func (s *Server) uploadImage(r *http.Request, uploadedImage models.UploadedImage
 	uploadedImage.ID = uploadedID
 
 	return uploadedImage, nil
+}
+
+type prepare struct {
+	isRemoteStorage bool
+}
+
+// Build builds a request to load an image.
+func (req *prepare) Build(r *http.Request) error {
+	req.isRemoteStorage = IsRemoteStorage
+	return nil
+}
+
+// Validate builds a request to validate the preparation of an image.
+func (req prepare) Validate() error {
+	return nil
+}
+
+func (s *Server) prepareImage(r *http.Request, uploadedImage models.UploadedImage, originalImageName string, resultedImageName string) (image.Image, string, string, *os.File, bool, error) {
+	var req prepare
+	err := ParseRequest(r, &req)
+
+	if req.isRemoteStorage {
+		file, err := remoteStorage.DownloadFromS3Bucket(originalImageName)
+		if err != nil {
+			return nil, "", "", nil, req.isRemoteStorage, err
+		}
+
+		img, format, err := image.Decode(file)
+		if err != nil {
+			logger.Fatalf("%s:%s", "Cannot decode file", err)
+			return nil, "", "", nil, req.isRemoteStorage, utils.ErrDecode
+		}
+
+		resultedFile, err := os.Create(resultedImageName)
+		if err != nil {
+			logger.Fatalf("%s:%s", "Cannot create resulted file", err)
+		}
+
+		return img, format, resultedImageName, resultedFile, req.isRemoteStorage, nil
+	}
+
+	file, err := os.Open(uploadedImage.Location + uploadedImage.Name)
+	if err != nil {
+		return nil, "", "", nil, req.isRemoteStorage, utils.ErrOpen
+	}
+
+	img, format, err := image.Decode(file)
+	if err != nil {
+		return nil, "", "", nil, req.isRemoteStorage, utils.ErrDecode
+	}
+
+	file.Close()
+
+	err = service.EnsureBaseDir("./results/")
+	if err != nil {
+		return nil, "", "", nil, req.isRemoteStorage, utils.ErrEnsureDir
+	}
+
+	newImg, err := os.Create(fmt.Sprintf("./results/%s", resultedImageName))
+	if err != nil {
+		return nil, "", "", nil, req.isRemoteStorage, utils.ErrCreateFile
+	}
+
+	return img, format, resultedImageName, newImg, req.isRemoteStorage, nil
 }

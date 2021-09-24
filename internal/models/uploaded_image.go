@@ -1,5 +1,7 @@
 package models
 
+import "github.com/google/uuid"
+
 // UploadedImage contains information about uploaded image.
 //
 // Uploaded image is the general information.
@@ -9,7 +11,7 @@ type UploadedImage struct {
 	// the ID for this uploaded image
 	//
 	// required: false
-	ID int `json:"id"`
+	ID uuid.UUID `gorm:"type:uuid;primary_key;" json:"id"`
 
 	// the Name for this uploaded image
 	//

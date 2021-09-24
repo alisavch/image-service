@@ -16,11 +16,20 @@ type RabbitmqConfig struct {
 	RabbitmqURL string
 }
 
+// BucketConfig includes bucket variables.
+type BucketConfig struct {
+	AWSRegion          string
+	AWSAccessKeyID     string
+	AWSSecretAccessKey string
+	BucketName         string
+}
+
 // Config includes config variables.
 type Config struct {
 	DBConfig DBConfig
 	TokenTTL string
 	Rabbitmq RabbitmqConfig
+	Bucket   BucketConfig
 }
 
 // NewConfig returns a new Config struct
@@ -36,6 +45,12 @@ func NewConfig() *Config {
 		TokenTTL: getEnv("TOKEN_TTL", "12h"),
 		Rabbitmq: RabbitmqConfig{
 			RabbitmqURL: getEnv("RABBITMQ_URL", ""),
+		},
+		Bucket: BucketConfig{
+			AWSRegion:          getEnv("AWS_REGION", ""),
+			AWSAccessKeyID:     getEnv("AWS_ACCESS_KEY_ID", ""),
+			AWSSecretAccessKey: getEnv("AWS_SECRET_ACCESS_KEY", ""),
+			BucketName:         getEnv("BUCKET_NAME", ""),
 		},
 	}
 }

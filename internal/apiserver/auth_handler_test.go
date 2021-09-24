@@ -7,19 +7,22 @@ import (
 	"net/http/httptest"
 	"testing"
 
-	"github.com/alisavch/image-service/internal/utils"
-
-	"github.com/stretchr/testify/mock"
+	"github.com/google/uuid"
 
 	"github.com/alisavch/image-service/internal/models"
 	"github.com/alisavch/image-service/internal/service"
 	"github.com/alisavch/image-service/internal/service/mocks"
+	"github.com/alisavch/image-service/internal/utils"
 	"github.com/gorilla/mux"
+	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
 )
 
 func TestHandler_signUp(t *testing.T) {
 	type fnBehavior func(mockAuthorization *mocks.Authorization, user models.User)
+
+	asString := "00000000-0000-0000-0000-000000000000"
+	s := uuid.MustParse(asString)
 
 	tests := []struct {
 		name                 string
@@ -37,10 +40,11 @@ func TestHandler_signUp(t *testing.T) {
 				Password: "12345",
 			},
 			fn: func(mockAuthorization *mocks.Authorization, user models.User) {
-				mockAuthorization.On("CreateUser", mock.Anything, user).Return(1, nil)
+
+				mockAuthorization.On("CreateUser", mock.Anything, user).Return(s, nil)
 			},
 			expectedStatusCode:   201,
-			expectedResponseBody: "1\n",
+			expectedResponseBody: "\"00000000-0000-0000-0000-000000000000\"\n",
 		},
 		{
 			name:      "Test with incorrect values",
@@ -50,7 +54,7 @@ func TestHandler_signUp(t *testing.T) {
 				Password: "12345",
 			},
 			fn: func(mockAuthorization *mocks.Authorization, user models.User) {
-				mockAuthorization.On("CreateUser", mock.Anything, user).Return(1, nil)
+				mockAuthorization.On("CreateUser", mock.Anything, user).Return(s, nil)
 			},
 			expectedStatusCode:   401,
 			expectedResponseBody: "{\"error\":\"password must not be empty\"}\n",
@@ -63,7 +67,7 @@ func TestHandler_signUp(t *testing.T) {
 				Password: "ppp",
 			},
 			fn: func(mockAuthorization *mocks.Authorization, user models.User) {
-				mockAuthorization.On("CreateUser", mock.Anything, mock.Anything).Return(0, utils.ErrEmptyHeader)
+				mockAuthorization.On("CreateUser", mock.Anything, mock.Anything).Return(s, utils.ErrEmptyHeader)
 			},
 			expectedStatusCode:   500,
 			expectedResponseBody: "{\"error\":\"auth header is empty\"}\n",
@@ -76,7 +80,7 @@ func TestHandler_signUp(t *testing.T) {
 				Password: "ppp",
 			},
 			fn: func(mockAuthorization *mocks.Authorization, user models.User) {
-				mockAuthorization.On("CreateUser", mock.Anything, mock.Anything).Return(0, utils.ErrEmptyUsername)
+				mockAuthorization.On("CreateUser", mock.Anything, mock.Anything).Return(s, utils.ErrEmptyUsername)
 			},
 			expectedStatusCode:   401,
 			expectedResponseBody: "{\"error\":\"username must not be empty\"}\n",
@@ -89,7 +93,7 @@ func TestHandler_signUp(t *testing.T) {
 				Password: "ppp",
 			},
 			fn: func(mockAuthorization *mocks.Authorization, user models.User) {
-				mockAuthorization.On("CreateUser", mock.Anything, mock.Anything).Return(0, utils.ErrEmptyPassword)
+				mockAuthorization.On("CreateUser", mock.Anything, mock.Anything).Return(s, utils.ErrEmptyPassword)
 			},
 			expectedStatusCode:   401,
 			expectedResponseBody: "{\"error\":\"password must not be empty\"}\n",
@@ -102,7 +106,7 @@ func TestHandler_signUp(t *testing.T) {
 				Password: "ppp",
 			},
 			fn: func(mockAuthorization *mocks.Authorization, user models.User) {
-				mockAuthorization.On("CreateUser", mock.Anything, mock.Anything).Return(0, fmt.Errorf("EOF"))
+				mockAuthorization.On("CreateUser", mock.Anything, mock.Anything).Return(s, fmt.Errorf("EOF"))
 			},
 			expectedStatusCode:   401,
 			expectedResponseBody: "{\"error\":\"EOF\"}\n",

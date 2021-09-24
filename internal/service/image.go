@@ -6,168 +6,177 @@ import (
 	"image"
 	"os"
 
+	"github.com/google/uuid"
+
+	"github.com/alisavch/image-service/internal/bucket"
+
 	"github.com/alisavch/image-service/internal/utils"
 
 	"github.com/alisavch/image-service/internal/models"
 	"github.com/alisavch/image-service/internal/repository"
 )
 
-var convertedType = map[string]string{
-	"jpeg": "png",
-	"jpg":  "png",
-	"png":  "jpeg",
-}
+var (
+	convertedType = map[string]string{
+		"jpeg": "png",
+		"jpg":  "png",
+		"png":  "jpeg",
+	}
+	remoteStorage = bucket.NewAWS()
+)
 
 // ImageService provides access to repository.
 type ImageService struct {
 	repo repository.Image
 }
 
-// NewImageService is ImageService constructor.
+// NewImageService is the ImageService constructor.
 func NewImageService(repo repository.Image) *ImageService {
 	return &ImageService{repo: repo}
 }
 
 // FindUserHistoryByID allows to get the history of interaction with the user's service.
-func (s *ImageService) FindUserHistoryByID(ctx context.Context, id int) ([]models.History, error) {
+func (s *ImageService) FindUserHistoryByID(ctx context.Context, id uuid.UUID) ([]models.History, error) {
 	return s.repo.FindUserHistoryByID(ctx, id)
 }
 
 // UploadImage uploads image.
-func (s *ImageService) UploadImage(ctx context.Context, image models.UploadedImage) (int, error) {
+func (s *ImageService) UploadImage(ctx context.Context, image models.UploadedImage) (uuid.UUID, error) {
 	return s.repo.UploadImage(ctx, image)
 }
 
 // CompressImage compress image.
-func (s *ImageService) CompressImage(width int, uploadedImage models.UploadedImage) (models.ResultedImage, error) {
+func (s *ImageService) CompressImage(width int, format string, resultedName string, img image.Image, newImg *os.File, isRemoteStorage bool) (models.ResultedImage, error) {
 	var result models.ResultedImage
+
+	switch format {
+	case "jpeg":
+		if err := CompressJPEG(img, width, newImg); err != nil {
+			return models.ResultedImage{}, fmt.Errorf("%s:%s", utils.ErrCompress, err)
+		}
+	case "png":
+		if err := CompressPNG(img, width, newImg); err != nil {
+			return models.ResultedImage{}, fmt.Errorf("%s:%s", utils.ErrCompress, err)
+		}
+	}
+
+	if isRemoteStorage {
+		fileReader, err := os.Open(resultedName)
+		if err != nil {
+			return models.ResultedImage{}, fmt.Errorf("%s:%s", "unable to open file", err)
+		}
+		defer fileReader.Close()
+
+		imageLocation, err := remoteStorage.UploadToS3Bucket(fileReader, resultedName)
+		if err != nil {
+			return models.ResultedImage{}, fmt.Errorf("%s:%s", "failed to upload to aws", err)
+		}
+
+		result.Name = resultedName
+		result.Location = imageLocation
+
+		return result, nil
+	}
+
 	currentDir, err := os.Getwd()
 	if err != nil {
 		return models.ResultedImage{}, utils.ErrGetDir
 	}
 
-	imgFile, err := os.Open(uploadedImage.Location + uploadedImage.Name)
-	if err != nil {
-		return models.ResultedImage{}, utils.ErrOpen
-	}
-	defer imgFile.Close()
-
-	imgSrc, format, err := image.Decode(imgFile)
-	if err != nil {
-		return models.ResultedImage{}, utils.ErrDecode
-	}
-
-	err = EnsureBaseDir("./results/")
-	if err != nil {
-		return models.ResultedImage{}, utils.ErrEnsureDir
-	}
-
-	newImgFile, err := os.Create(fmt.Sprintf("./results/%s", uploadedImage.Name))
-	if err != nil {
-		return models.ResultedImage{}, utils.ErrCreateFile
-	}
-	defer newImgFile.Close()
-
-	switch format {
-	case "jpeg":
-		if err := CompressJPEG(imgSrc, width, newImgFile); err != nil {
-			return models.ResultedImage{}, fmt.Errorf("%s %s", utils.ErrCompress, "JPEG")
-		}
-	case "png":
-		if err := CompressPNG(imgSrc, width, newImgFile); err != nil {
-			return models.ResultedImage{}, fmt.Errorf("%s %s", utils.ErrCompress, "PNG")
-		}
-	}
-	result.Name = uploadedImage.Name
+	newImg.Close()
+	result.Name = resultedName
 	result.Location = currentDir + "/results/"
 
 	return result, nil
 }
 
 // ConvertToType converts from png to jpeg and vice versa.
-func (s *ImageService) ConvertToType(uploadedImage models.UploadedImage) (models.ResultedImage, error) {
+func (s *ImageService) ConvertToType(format string, resultedName string, img image.Image, newImg *os.File, isRemoteStorage bool) (models.ResultedImage, error) {
 	var result models.ResultedImage
+	switch format {
+	case "jpeg":
+		if err := ConvertToPNG(newImg, img); err != nil {
+			return models.ResultedImage{}, fmt.Errorf("%s:%s", utils.ErrCompress, err)
+		}
+	case "png":
+		if err := ConvertToJPEG(newImg, img); err != nil {
+			return models.ResultedImage{}, fmt.Errorf("%s:%s", utils.ErrCompress, err)
+		}
+	}
+
+	if isRemoteStorage {
+		fileReader, err := os.Open(resultedName)
+		if err != nil {
+			return models.ResultedImage{}, fmt.Errorf("%s:%s", "unable to open file", err)
+		}
+		defer fileReader.Close()
+
+		imageLocation, err := remoteStorage.UploadToS3Bucket(fileReader, resultedName)
+		if err != nil {
+			return models.ResultedImage{}, fmt.Errorf("%s:%s", "failed to upload to aws", err)
+		}
+
+		newImg.Close()
+		result.Name = resultedName
+		result.Location = imageLocation
+
+		return result, nil
+	}
+
 	currentDir, err := os.Getwd()
 	if err != nil {
 		return models.ResultedImage{}, utils.ErrGetDir
 	}
 
-	file, err := os.Open(uploadedImage.Location + uploadedImage.Name)
-	if err != nil {
-		return models.ResultedImage{}, utils.ErrOpen
-	}
-	defer file.Close()
-
-	img, format, err := image.Decode(file)
-	if err != nil {
-		return models.ResultedImage{}, utils.ErrDecode
-	}
-
-	convertedName, err := ChangeFormat(uploadedImage.Name)
-	if err != nil {
-		return models.ResultedImage{}, utils.ErrChangeFormat
-	}
-
-	err = EnsureBaseDir("./results/")
-	if err != nil {
-		return models.ResultedImage{}, utils.ErrEnsureDir
-	}
-
-	newImg, err := os.Create(fmt.Sprintf("./results/%s", convertedName))
-	if err != nil {
-		return models.ResultedImage{}, utils.ErrCreateFile
-	}
-	defer newImg.Close()
-
-	switch format {
-	case "jpeg":
-		if err := ConvertToPNG(newImg, img); err != nil {
-			return models.ResultedImage{}, err
-		}
-	case "png":
-		if err := ConvertToJPEG(newImg, img); err != nil {
-			return models.ResultedImage{}, err
-		}
-	}
-
-	result.Name = convertedName
+	newImg.Close()
+	result.Name = resultedName
 	result.Location = currentDir + "/results/"
+
 	return result, nil
 }
 
 // CreateRequest creates request.
-func (s *ImageService) CreateRequest(ctx context.Context, user models.User, uplImg models.UploadedImage, resImg models.ResultedImage, uI models.UserImage, r models.Request) (int, error) {
+func (s *ImageService) CreateRequest(ctx context.Context, user models.User, uplImg models.UploadedImage, resImg models.ResultedImage, uI models.UserImage, r models.Request) (uuid.UUID, error) {
 	return s.repo.CreateRequest(ctx, user, uplImg, resImg, uI, r)
 }
 
 // FindTheResultingImage finds the resulting image by id.
-func (s *ImageService) FindTheResultingImage(ctx context.Context, id int, service models.Service) (models.ResultedImage, error) {
+func (s *ImageService) FindTheResultingImage(ctx context.Context, id uuid.UUID, service models.Service) (models.ResultedImage, error) {
 	return s.repo.FindTheResultingImage(ctx, id, service)
 }
 
 // FindOriginalImage finds original image by id.
-func (s *ImageService) FindOriginalImage(ctx context.Context, id int) (models.UploadedImage, error) {
+func (s *ImageService) FindOriginalImage(ctx context.Context, id uuid.UUID) (models.UploadedImage, error) {
 	return s.repo.FindOriginalImage(ctx, id)
 }
 
 // SaveImage saves image to users machine.
-func (s *ImageService) SaveImage(filename, folder string) (*models.Image, error) {
-	currentDir, err := os.Getwd()
-	if err != nil {
-		return &models.Image{}, nil
-	}
-
+func (s *ImageService) SaveImage(filename, location string, isRemoteStorage bool) (*models.Image, error) {
+	var file *os.File
+	var err error
 	img := models.Image{Filename: filename}
 
-	file, err := os.Open(currentDir + folder + filename)
-	if err != nil {
-		return &models.Image{}, utils.ErrOpen
+	switch isRemoteStorage {
+	case true:
+		f, err := remoteStorage.DownloadFromS3Bucket(filename)
+		if err != nil {
+			return nil, fmt.Errorf("%s:%s", "cannot download from s3 bucket", err)
+		}
+		file = f
+
+	default:
+		f, err := os.Open(location + filename)
+		if err != nil {
+			return &models.Image{}, utils.ErrOpen
+		}
+		file = f
 	}
+
 	img.File = file
 
 	img.ContentType, err = GetFileContentType(file)
 	if err != nil {
-		return &models.Image{}, err
+		return &models.Image{}, fmt.Errorf("%s:%s", "cannot get file content type", err)
 	}
 
 	fileInfo, err := file.Stat()
@@ -186,6 +195,6 @@ func (s *ImageService) SaveImage(filename, folder string) (*models.Image, error)
 }
 
 // UpdateStatus updates the status of image processing.
-func (s *ImageService) UpdateStatus(ctx context.Context, id int, status models.Status) error {
+func (s *ImageService) UpdateStatus(ctx context.Context, id uuid.UUID, status models.Status) error {
 	return s.repo.UpdateStatus(ctx, id, status)
 }

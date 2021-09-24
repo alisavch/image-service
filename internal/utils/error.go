@@ -3,10 +3,10 @@ package utils
 import "errors"
 
 var (
-	// ErrFailedConvert checks the correctness of the conversion.
-	ErrFailedConvert = errors.New("failed convert to int userID")
+	// ErrGetUserID checks the correctness of the conversion.
+	ErrGetUserID = errors.New("cannot get userID from context")
 	// ErrRequest checks the correctness of the request.
-	ErrRequest = errors.New("incorrect request")
+	ErrRequest = errors.New("invalid path in request")
 	// ErrEmptyHeader checks empty header.
 	ErrEmptyHeader = errors.New("auth header is empty")
 	// ErrInvalidAuthHeader checks invalid header.
@@ -14,11 +14,11 @@ var (
 	// ErrEmptyToken checks token.
 	ErrEmptyToken = errors.New("token is empty")
 	// ErrUpload checks file upload.
-	ErrUpload = errors.New("error upload file")
+	ErrUpload = errors.New("cannot upload the file")
 	// ErrCreateFile checks the correctness of the file.
-	ErrCreateFile = errors.New("error create new file")
+	ErrCreateFile = errors.New("cannot create new file")
 	// ErrCopyFile checks copy file.
-	ErrCopyFile = errors.New("error copy file")
+	ErrCopyFile = errors.New("cannot copy file")
 	// ErrAllowedFormat checks allowed format of the file.
 	ErrAllowedFormat = errors.New("file format is not allowed. Please upload a JPEG or PNG")
 	// ErrSigningMethod checks signing method.
@@ -40,15 +40,13 @@ var (
 	// ErrEmptyPassword checks password.
 	ErrEmptyPassword = errors.New("password must not be empty")
 	// ErrIncorrectRatio checks input ratio.
-	ErrIncorrectRatio = errors.New("it is only possible to compress the image. enter correct size")
-	// ErrFindVariable finds variable in .env file.
-	ErrFindVariable = errors.New("could not find variable")
+	ErrIncorrectRatio = errors.New("input ratio is incorrect. it should not exceed the image size")
 	// ErrMissingParams checks id in params.
 	ErrMissingParams = errors.New("id is missing in parameters")
 	// ErrPrivacy checks for equality of user ids from context and from parameters.
-	ErrPrivacy = errors.New("you can only view your data")
+	ErrPrivacy = errors.New("users IDs do not match")
 	// ErrAtoi checks to convert to type int.
-	ErrAtoi = errors.New("int conversion error")
+	ErrAtoi = errors.New("cannot convert string to int")
 	// ErrGetDir finds current location.
 	ErrGetDir = errors.New("cannot get current directory")
 	// ErrOpen opens the image.
@@ -59,8 +57,8 @@ var (
 	ErrEnsureDir = errors.New("cannot ensure base directory")
 	// ErrCompress checks to compress the image.
 	ErrCompress = errors.New("cannot compress")
-	// ErrChangeFormat checks to change image format.
-	ErrChangeFormat = errors.New("cannot change image format")
 	// ErrFileStat checks to get information about the file.
-	ErrFileStat = errors.New("cannot get FileInfo")
+	ErrFileStat = errors.New("cannot get file info")
+	// ErrCreateRequest verifies the execution of the request.
+	ErrCreateRequest = errors.New("cannot create request")
 )

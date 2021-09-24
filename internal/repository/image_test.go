@@ -7,6 +7,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/google/uuid"
+
 	"github.com/DATA-DOG/go-sqlmock"
 	"github.com/alisavch/image-service/internal/models"
 	"github.com/stretchr/testify/require"
@@ -33,17 +35,18 @@ func TestImageRepository_FindUserHistoryByID(t *testing.T) {
 	tests := []struct {
 		name  string
 		mock  func()
-		input int
+		input uuid.UUID
 		want  []models.History
 		isOk  bool
 	}{
 		{
 			name:  "Test with correct values",
-			input: 1,
+			input: [16]byte{00000000 - 0000 - 0000 - 0000 - 000000000000},
 			mock: func() {
+				asString := "00000000-0000-0000-0000-000000000000"
 				rows := sqlmock.NewRows([]string{"uploaded_name", "resulted_name", "service", "time_start", "end_of_time", "status"}).AddRow("", "", "", "", "", "")
 				mock.ExpectQuery("SELECT (.+) from image_service.request r INNER JOIN image_service.user_image ui on r.user_image_id = ui.id INNER JOIN image_service.uploaded_image upi on ui.uploaded_image_id = upi.id INNER JOIN image_service.resulted_image ri on ri.id = ui.resulting_image_id INNER JOIN image_service.user_account ua on ua.id = ui.user_account_id").
-					WithArgs(1).WillReturnRows(rows)
+					WithArgs(asString).WillReturnRows(rows)
 			},
 			want: []models.History(nil),
 			isOk: true,
@@ -52,8 +55,7 @@ func TestImageRepository_FindUserHistoryByID(t *testing.T) {
 			name: "Test with incorrect values",
 			mock: func() {
 			},
-			input: 1,
-			isOk:  false,
+			input: [16]byte{00000000 - 0000 - 0000 - 0000 - 000000000000},
 		},
 	}
 
@@ -86,7 +88,7 @@ func TestImageRepository_UploadImage(t *testing.T) {
 		name  string
 		mock  func()
 		input models.UploadedImage
-		want  int
+		want  uuid.UUID
 		isOk  bool
 	}{
 		{
@@ -96,11 +98,12 @@ func TestImageRepository_UploadImage(t *testing.T) {
 				Location: "location",
 			},
 			mock: func() {
-				rows := sqlmock.NewRows([]string{"id"}).AddRow(1)
+				asString := "00000000-0000-0000-0000-000000000000"
+				rows := sqlmock.NewRows([]string{"id"}).AddRow(asString)
 				mock.ExpectQuery("INSERT INTO image_service.uploaded_image").
 					WithArgs("filename", "location").WillReturnRows(rows)
 			},
-			want: 1,
+			want: [16]byte{00000000 - 0000 - 0000 - 0000 - 000000000000},
 			isOk: true,
 		},
 		{
@@ -114,7 +117,6 @@ func TestImageRepository_UploadImage(t *testing.T) {
 				Name:     "",
 				Location: "location",
 			},
-			isOk: false,
 		},
 	}
 
@@ -155,30 +157,32 @@ func TestImageRepository_CreateRequest(t *testing.T) {
 		name  string
 		mock  func()
 		input args
-		want  int
+		want  uuid.UUID
 		isOk  bool
 	}{
 		{
 			name: "Test with correct values",
 			mock: func() {
 				mock.ExpectBegin()
-
-				resRows := sqlmock.NewRows([]string{"id"}).AddRow(1)
+				asString := "00000000-0000-0000-0000-000000000000"
+				asStringUserID := "00000000-0000-0000-0000-000000000000"
+				asStringImageID := "00000000-0000-0000-0000-000000000000"
+				resRows := sqlmock.NewRows([]string{"id"}).AddRow(asStringUserID)
 				mock.ExpectQuery("INSERT INTO image_service.resulted_image").
 					WithArgs("filename", "location", models.Compression).WillReturnRows(resRows)
-				uiRows := sqlmock.NewRows([]string{"id"}).AddRow(1)
+				uiRows := sqlmock.NewRows([]string{"id"}).AddRow(asStringImageID)
 				mock.ExpectQuery("INSERT INTO image_service.user_image").
-					WithArgs(1, 1, 1, models.Queued).WillReturnRows(uiRows)
+					WithArgs(asStringUserID, asString, asString, models.Queued).WillReturnRows(uiRows)
 				mock.ExpectExec("INSERT INTO image_service.request").
-					WithArgs(1, AnyTime{}, AnyTime{}).WillReturnResult(sqlmock.NewResult(1, 1))
+					WithArgs(asStringImageID, AnyTime{}, AnyTime{}).WillReturnResult(sqlmock.NewResult(1, 1))
 				mock.ExpectCommit()
 			},
 			input: args{
 				user: models.User{
-					ID: 1,
+					ID: [16]byte{00000000 - 0000 - 0000 - 0000 - 000000000000},
 				},
 				uploadedImage: models.UploadedImage{
-					ID: 1,
+					ID: [16]byte{00000000 - 0000 - 0000 - 0000 - 000000000000},
 				},
 				resultedImage: models.ResultedImage{
 					Name:     "filename",
@@ -193,7 +197,7 @@ func TestImageRepository_CreateRequest(t *testing.T) {
 					EndOfTime: time.Now(),
 				},
 			},
-			want: 1,
+			want: [16]byte{00000000 - 0000 - 0000 - 0000 - 000000000000},
 			isOk: true,
 		},
 		{
@@ -207,10 +211,10 @@ func TestImageRepository_CreateRequest(t *testing.T) {
 			},
 			input: args{
 				user: models.User{
-					ID: 1,
+					ID: [16]byte{00000000 - 0000 - 0000 - 0000 - 000000000000},
 				},
 				uploadedImage: models.UploadedImage{
-					ID: 1,
+					ID: [16]byte{00000000 - 0000 - 0000 - 0000 - 000000000000},
 				},
 				resultedImage: models.ResultedImage{
 					Name:     "",
@@ -255,7 +259,7 @@ func TestImageRepository_FindTheResultingImage(t *testing.T) {
 	repo := NewImageRepository(db)
 
 	type args struct {
-		id      int
+		id      uuid.UUID
 		service models.Service
 	}
 
@@ -271,7 +275,7 @@ func TestImageRepository_FindTheResultingImage(t *testing.T) {
 		{
 			name: "Test with correct values",
 			input: args{
-				id:      1,
+				id:      [16]byte{00000000 - 0000 - 0000 - 0000 - 000000000000},
 				service: models.Conversion,
 			},
 			mock: func(args args) {
@@ -294,7 +298,7 @@ func TestImageRepository_FindTheResultingImage(t *testing.T) {
 					WithArgs(args.id, args.service).WillReturnRows(rows)
 			},
 			input: args{
-				id:      0,
+				id:      [16]byte{},
 				service: models.Compression,
 			},
 			isOk: false,
@@ -327,26 +331,28 @@ func TestImageRepository_FindOriginalImage(t *testing.T) {
 	repo := NewImageRepository(db)
 
 	type args struct {
-		id int
+		id uuid.UUID
 	}
+
+	type mockBehavior func(args args)
 
 	tests := []struct {
 		name  string
-		mock  func()
+		mock  mockBehavior
 		input args
 		want  models.UploadedImage
 		isOk  bool
 	}{
 		{
 			name: "Test with correct values",
-			mock: func() {
+			mock: func(args2 args) {
 				rows := sqlmock.NewRows([]string{"uploaded_name", "uploaded_location"}).
 					AddRow("filename", "location")
 				mock.ExpectQuery("SELECT (.+) FROM image_service.uploaded_image").
-					WithArgs(1).WillReturnRows(rows)
+					WithArgs(args2.id).WillReturnRows(rows)
 			},
 			input: args{
-				id: 1,
+				id: [16]byte{00000000 - 0000 - 0000 - 0000 - 000000000000},
 			},
 			want: models.UploadedImage{
 				Name:     "filename",
@@ -356,22 +362,21 @@ func TestImageRepository_FindOriginalImage(t *testing.T) {
 		},
 		{
 			name: "Test with incorrect values",
-			mock: func() {
+			mock: func(args2 args) {
 				rows := sqlmock.NewRows([]string{"uploaded_name", "uploaded_location"})
 				mock.ExpectQuery("SELECT (.+) FROM image_service.uploaded_image").
-					WithArgs(0).WillReturnRows(rows)
+					WithArgs(args2.id).WillReturnRows(rows)
 
 			},
 			input: args{
-				id: 0,
+				id: [16]byte{},
 			},
-			isOk: false,
 		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			tt.mock()
+			tt.mock(tt.input)
 
 			got, err := repo.FindOriginalImage(context.TODO(), tt.input.id)
 			if tt.isOk {
@@ -395,25 +400,27 @@ func TestImageRepository_UpdateStatus(t *testing.T) {
 	repo := NewImageRepository(db)
 
 	type args struct {
-		id     int
+		id     uuid.UUID
 		status string
 	}
 
+	type mockBehavior func(args args)
+
 	tests := []struct {
 		name  string
-		mock  func()
+		mock  mockBehavior
 		input args
 		want  error
 		isOk  bool
 	}{
 		{
 			name: "Test with correct values",
-			mock: func() {
+			mock: func(args2 args) {
 				mock.ExpectExec("UPDATE image_service.user_image SET status").
-					WithArgs("processing", 1).WillReturnResult(sqlmock.NewResult(0, 1))
+					WithArgs(args2.status, args2.id).WillReturnResult(sqlmock.NewResult(0, 1))
 			},
 			input: args{
-				id:     1,
+				id:     [16]byte{00000000 - 0000 - 0000 - 0000 - 000000000000},
 				status: string(models.Processing),
 			},
 			want: nil,
@@ -421,12 +428,12 @@ func TestImageRepository_UpdateStatus(t *testing.T) {
 		},
 		{
 			name: "Test with incorrect values",
-			mock: func() {
+			mock: func(args2 args) {
 				mock.ExpectExec("UPDATE image_service.user_image SET status").
-					WithArgs("processing", 1).WillReturnError(fmt.Errorf("cannot update image status"))
+					WithArgs(args2.status, args2.id).WillReturnError(fmt.Errorf("cannot update image status"))
 			},
 			input: args{
-				id:     1,
+				id:     [16]byte{00000000 - 0000 - 0000 - 0000 - 000000000000},
 				status: string(models.Processing),
 			},
 			want: fmt.Errorf("cannot update image status"),
@@ -436,7 +443,7 @@ func TestImageRepository_UpdateStatus(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			tt.mock()
+			tt.mock(tt.input)
 
 			err := repo.UpdateStatus(context.TODO(), tt.input.id, models.Status(tt.input.status))
 			if tt.isOk {

@@ -1,9 +1,14 @@
 package apiserver
 
 import (
+	"fmt"
 	"net/http"
 	"strconv"
 	"time"
+
+	"github.com/google/uuid"
+
+	"github.com/alisavch/image-service/internal/service"
 
 	"github.com/alisavch/image-service/internal/models"
 	"github.com/alisavch/image-service/internal/utils"
@@ -16,6 +21,8 @@ const (
 	DefaultWidth = "150"
 	// DefaultOriginal is default value for downloads original image.
 	DefaultOriginal = "false"
+	// IsRemoteStorage is default value for storing images.
+	IsRemoteStorage = true
 )
 
 type findUserHistoryRequest struct {
@@ -24,9 +31,9 @@ type findUserHistoryRequest struct {
 
 // Build builds a request to find history.
 func (req *findUserHistoryRequest) Build(r *http.Request) error {
-	id, ok := r.Context().Value(userCtx).(int)
+	id, ok := r.Context().Value(userCtx).(uuid.UUID)
 	if !ok {
-		return utils.ErrFailedConvert
+		return utils.ErrGetUserID
 	}
 
 	vars := mux.Vars(r)
@@ -35,14 +42,10 @@ func (req *findUserHistoryRequest) Build(r *http.Request) error {
 		return utils.ErrMissingParams
 	}
 
-	intParamID, err := strconv.Atoi(paramID)
-	if err != nil {
-		return utils.ErrAtoi
-	}
-
-	if id != intParamID {
+	if id.String() != paramID {
 		return utils.ErrPrivacy
 	}
+
 	req.User.ID = id
 
 	return nil
@@ -81,9 +84,9 @@ type compressImageRequest struct {
 
 // Build builds a request to compress image.
 func (req *compressImageRequest) Build(r *http.Request) error {
-	id, ok := r.Context().Value(userCtx).(int)
+	id, ok := r.Context().Value(userCtx).(uuid.UUID)
 	if !ok {
-		return utils.ErrFailedConvert
+		return utils.ErrGetUserID
 	}
 
 	vars := mux.Vars(r)
@@ -92,12 +95,7 @@ func (req *compressImageRequest) Build(r *http.Request) error {
 		return utils.ErrMissingParams
 	}
 
-	intParamID, err := strconv.Atoi(paramID)
-	if err != nil {
-		return utils.ErrAtoi
-	}
-
-	if id != intParamID {
+	if id.String() != paramID {
 		return utils.ErrPrivacy
 	}
 	req.User.ID = id
@@ -133,7 +131,7 @@ func (s *Server) compressImage() http.HandlerFunc {
 
 		startOfExecution := time.Now()
 
-		newUploadedImage, err := s.uploadImage(r, req.UploadedImage)
+		originalImage, err := s.uploadImage(r, req.UploadedImage)
 		if err != nil {
 			s.errorJSON(w, r, http.StatusInternalServerError, err)
 			return
@@ -154,7 +152,7 @@ func (s *Server) compressImage() http.HandlerFunc {
 			logger.Fatalf("%s: %s", "Failed to publish a message", err)
 		}
 
-		err = s.service.Image.UpdateStatus(r.Context(), newUploadedImage.ID, models.Processing)
+		err = s.service.Image.UpdateStatus(r.Context(), originalImage.ID, models.Processing)
 		if err != nil {
 			s.errorJSON(w, r, http.StatusInternalServerError, err)
 			return
@@ -165,13 +163,20 @@ func (s *Server) compressImage() http.HandlerFunc {
 			logger.Fatalf("%s: %s", "Failed to publish a message", err)
 		}
 
-		resultedImage, err := s.service.Image.CompressImage(req.Width, newUploadedImage)
+		img, format, resultedName, file, isRemoteStorage, err := s.prepareImage(r, originalImage, originalImage.Name, "cmp-"+originalImage.Name)
+
 		if err != nil {
 			s.errorJSON(w, r, http.StatusInternalServerError, err)
 			return
 		}
 
-		err = s.service.Image.UpdateStatus(r.Context(), newUploadedImage.ID, models.Done)
+		resultedImage, err := s.service.Image.CompressImage(req.Width, format, resultedName, img, file, isRemoteStorage)
+		if err != nil {
+			s.errorJSON(w, r, http.StatusInternalServerError, err)
+			return
+		}
+
+		err = s.service.Image.UpdateStatus(r.Context(), originalImage.ID, models.Done)
 		if err != nil {
 			s.errorJSON(w, r, http.StatusInternalServerError, err)
 			return
@@ -188,12 +193,13 @@ func (s *Server) compressImage() http.HandlerFunc {
 		requestID, err := s.service.CreateRequest(
 			r.Context(),
 			req.User,
-			newUploadedImage,
+			originalImage,
 			resultedImage,
 			models.UserImage{
 				UserAccountID:   req.User.ID,
-				UploadedImageID: newUploadedImage.ID,
-				Status:          models.Done},
+				UploadedImageID: originalImage.ID,
+				Status:          models.Done,
+			},
 			models.Request{
 				TimeStart: startOfExecution,
 				EndOfTime: endOfExecution,
@@ -209,17 +215,19 @@ func (s *Server) compressImage() http.HandlerFunc {
 
 type findCompressedImageRequest struct {
 	models.ResultedImage
-	User       models.User
-	requestID  int
-	isOriginal bool
+	User            models.User
+	requestID       uuid.UUID
+	isOriginal      bool
+	isRemoteStorage bool
 }
 
 // Build builds a request to find compressed image.
 func (req *findCompressedImageRequest) Build(r *http.Request) error {
-	id, ok := r.Context().Value(userCtx).(int)
+	id, ok := r.Context().Value(userCtx).(uuid.UUID)
 	if !ok {
-		return utils.ErrFailedConvert
+		return utils.ErrGetUserID
 	}
+
 	req.User.ID = id
 
 	vars := mux.Vars(r)
@@ -233,12 +241,7 @@ func (req *findCompressedImageRequest) Build(r *http.Request) error {
 		return utils.ErrMissingParams
 	}
 
-	intParamID, err := strconv.Atoi(paramID)
-	if err != nil {
-		return utils.ErrAtoi
-	}
-
-	if id != intParamID {
+	if id.String() != paramID {
 		return utils.ErrPrivacy
 	}
 	req.User.ID = id
@@ -248,16 +251,17 @@ func (req *findCompressedImageRequest) Build(r *http.Request) error {
 		originalImage = DefaultOriginal
 	}
 
-	convertedID, err := strconv.Atoi(compressedImageID)
-	if err != nil {
-		return utils.ErrAtoi
-	}
 	convertedBool, err := strconv.ParseBool(originalImage)
 	if err != nil {
 		return err
 	}
-	req.requestID = convertedID
+
+	compressedID := uuid.MustParse(compressedImageID)
+
+	req.requestID = compressedID
 	req.isOriginal = convertedBool
+	req.isRemoteStorage = IsRemoteStorage
+
 	return nil
 }
 
@@ -279,13 +283,13 @@ func (s *Server) findCompressedImage() http.HandlerFunc {
 		if req.isOriginal {
 			uploaded, err := s.service.Image.FindOriginalImage(r.Context(), req.requestID)
 			if err != nil {
-				s.errorJSON(w, r, http.StatusInternalServerError, utils.ErrFindImage)
+				s.errorJSON(w, r, http.StatusInternalServerError, fmt.Errorf("%s:%s", utils.ErrFindImage, err))
 				return
 			}
 
-			file, err := s.service.Image.SaveImage(uploaded.Name, "/uploads/")
+			file, err := s.service.Image.SaveImage(uploaded.Name, uploaded.Location, req.isRemoteStorage)
 			if err != nil {
-				s.errorJSON(w, r, http.StatusInternalServerError, utils.ErrSaveImage)
+				s.errorJSON(w, r, http.StatusInternalServerError, fmt.Errorf("%s:%s", utils.ErrSaveImage, err))
 				return
 			}
 
@@ -295,13 +299,13 @@ func (s *Server) findCompressedImage() http.HandlerFunc {
 
 		resultedImage, err := s.service.Image.FindTheResultingImage(r.Context(), req.requestID, models.Compression)
 		if err != nil {
-			s.errorJSON(w, r, http.StatusInternalServerError, utils.ErrFindImage)
+			s.errorJSON(w, r, http.StatusInternalServerError, fmt.Errorf("%s:%s", utils.ErrFindImage, err))
 			return
 		}
 
-		file, err := s.service.Image.SaveImage(resultedImage.Name, "/results/")
+		file, err := s.service.Image.SaveImage(resultedImage.Name, resultedImage.Location, req.isRemoteStorage)
 		if err != nil {
-			s.errorJSON(w, r, http.StatusInternalServerError, utils.ErrSaveImage)
+			s.errorJSON(w, r, http.StatusInternalServerError, fmt.Errorf("%s:%s", utils.ErrSaveImage, err))
 			return
 		}
 
@@ -316,9 +320,9 @@ type convertImageRequest struct {
 
 // Build builds a request to convert image.
 func (req *convertImageRequest) Build(r *http.Request) error {
-	id, ok := r.Context().Value(userCtx).(int)
+	id, ok := r.Context().Value(userCtx).(uuid.UUID)
 	if !ok {
-		return utils.ErrFailedConvert
+		return utils.ErrGetUserID
 	}
 
 	vars := mux.Vars(r)
@@ -327,12 +331,7 @@ func (req *convertImageRequest) Build(r *http.Request) error {
 		return utils.ErrMissingParams
 	}
 
-	intParamID, err := strconv.Atoi(paramID)
-	if err != nil {
-		return utils.ErrAtoi
-	}
-
-	if id != intParamID {
+	if id.String() != paramID {
 		return utils.ErrPrivacy
 	}
 
@@ -358,7 +357,7 @@ func (s *Server) convertImage() http.HandlerFunc {
 
 		startOfExecution := time.Now()
 
-		newUploadedImage, err := s.uploadImage(r, req.UploadedImage)
+		originalImage, err := s.uploadImage(r, req.UploadedImage)
 		if err != nil {
 			s.errorJSON(w, r, http.StatusInternalServerError, err)
 			return
@@ -379,7 +378,7 @@ func (s *Server) convertImage() http.HandlerFunc {
 			logger.Fatalf("%s: %s", "Failed to publish a message", err)
 		}
 
-		err = s.service.Image.UpdateStatus(r.Context(), newUploadedImage.ID, models.Processing)
+		err = s.service.Image.UpdateStatus(r.Context(), originalImage.ID, models.Processing)
 		if err != nil {
 			s.errorJSON(w, r, http.StatusInternalServerError, err)
 			return
@@ -390,13 +389,25 @@ func (s *Server) convertImage() http.HandlerFunc {
 			logger.Fatalf("%s: %s", "Failed to publish a message", err)
 		}
 
-		resultedImage, err := s.service.Image.ConvertToType(newUploadedImage)
+		convertedName, err := service.ChangeFormat(originalImage.Name)
 		if err != nil {
-			s.errorJSON(w, r, http.StatusInternalServerError, utils.ErrConvert)
+			s.errorJSON(w, r, http.StatusInternalServerError, err)
 			return
 		}
 
-		err = s.service.Image.UpdateStatus(r.Context(), newUploadedImage.ID, models.Done)
+		img, format, resultedName, file, isRemoteStorage, err := s.prepareImage(r, originalImage, originalImage.Name, "cnv-"+convertedName)
+		if err != nil {
+			s.errorJSON(w, r, http.StatusInternalServerError, err)
+			return
+		}
+
+		resultedImage, err := s.service.Image.ConvertToType(format, resultedName, img, file, isRemoteStorage)
+		if err != nil {
+			s.errorJSON(w, r, http.StatusInternalServerError, err)
+			return
+		}
+
+		err = s.service.Image.UpdateStatus(r.Context(), originalImage.ID, models.Done)
 		if err != nil {
 			s.errorJSON(w, r, http.StatusInternalServerError, err)
 			return
@@ -413,18 +424,19 @@ func (s *Server) convertImage() http.HandlerFunc {
 		requestID, err := s.service.CreateRequest(
 			r.Context(),
 			req.User,
-			newUploadedImage,
+			originalImage,
 			resultedImage,
 			models.UserImage{
 				UserAccountID:   req.User.ID,
-				UploadedImageID: newUploadedImage.ID,
-				Status:          models.Done},
+				UploadedImageID: originalImage.ID,
+				Status:          models.Done,
+			},
 			models.Request{
 				TimeStart: startOfExecution,
 				EndOfTime: endOfExecution,
 			})
 		if err != nil {
-			s.errorJSON(w, r, http.StatusInternalServerError, err)
+			s.errorJSON(w, r, http.StatusInternalServerError, fmt.Errorf("%s:%s", utils.ErrCreateRequest, err))
 			return
 		}
 
@@ -434,17 +446,19 @@ func (s *Server) convertImage() http.HandlerFunc {
 
 type findConvertedImageRequest struct {
 	models.ResultedImage
-	User       models.User
-	requestID  int
-	isOriginal bool
+	User            models.User
+	requestID       uuid.UUID
+	isOriginal      bool
+	isRemoteStorage bool
 }
 
 // Build builds a request to find converted image.
 func (req *findConvertedImageRequest) Build(r *http.Request) error {
-	id, ok := r.Context().Value(userCtx).(int)
+	id, ok := r.Context().Value(userCtx).(uuid.UUID)
 	if !ok {
-		return utils.ErrFailedConvert
+		return utils.ErrGetUserID
 	}
+
 	req.User.ID = id
 
 	vars := mux.Vars(r)
@@ -458,30 +472,26 @@ func (req *findConvertedImageRequest) Build(r *http.Request) error {
 		return utils.ErrMissingParams
 	}
 
-	intParamID, err := strconv.Atoi(paramID)
-	if err != nil {
-		return utils.ErrAtoi
-	}
-
-	if id != intParamID {
+	if id.String() != paramID {
 		return utils.ErrPrivacy
 	}
 	req.User.ID = id
-
-	convertedID, err := strconv.Atoi(convertedImageID)
-	if err != nil {
-		return utils.ErrAtoi
-	}
-	req.requestID = convertedID
 
 	originalImage := r.FormValue("original")
 	if originalImage == "" {
 		originalImage = DefaultOriginal
 	}
-	req.isOriginal, err = strconv.ParseBool(originalImage)
+
+	convertedBool, err := strconv.ParseBool(originalImage)
 	if err != nil {
 		return err
 	}
+
+	convertedID := uuid.MustParse(convertedImageID)
+
+	req.requestID = convertedID
+	req.isOriginal = convertedBool
+	req.isRemoteStorage = IsRemoteStorage
 
 	return nil
 }
@@ -504,13 +514,13 @@ func (s *Server) findConvertedImage() http.HandlerFunc {
 		if req.isOriginal {
 			uploaded, err := s.service.Image.FindOriginalImage(r.Context(), req.requestID)
 			if err != nil {
-				s.errorJSON(w, r, http.StatusInternalServerError, utils.ErrFindImage)
+				s.errorJSON(w, r, http.StatusInternalServerError, fmt.Errorf("%s:%s", utils.ErrFindImage, err))
 				return
 			}
 
-			file, err := s.service.Image.SaveImage(uploaded.Name, "/uploads/")
+			file, err := s.service.Image.SaveImage(uploaded.Name, "/uploads/", req.isRemoteStorage)
 			if err != nil {
-				s.errorJSON(w, r, http.StatusInternalServerError, utils.ErrSaveImage)
+				s.errorJSON(w, r, http.StatusInternalServerError, fmt.Errorf("%s:%s", utils.ErrSaveImage, err))
 				return
 			}
 			s.respondImage(w, file)
@@ -519,13 +529,13 @@ func (s *Server) findConvertedImage() http.HandlerFunc {
 
 		resultedImage, err := s.service.Image.FindTheResultingImage(r.Context(), req.requestID, models.Conversion)
 		if err != nil {
-			s.errorJSON(w, r, http.StatusInternalServerError, utils.ErrFindImage)
+			s.errorJSON(w, r, http.StatusInternalServerError, fmt.Errorf("%s:%s", utils.ErrFindImage, err))
 			return
 		}
 
-		file, err := s.service.Image.SaveImage(resultedImage.Name, "/results/")
+		file, err := s.service.Image.SaveImage(resultedImage.Name, "/results/", req.isRemoteStorage)
 		if err != nil {
-			s.errorJSON(w, r, http.StatusInternalServerError, utils.ErrSaveImage)
+			s.errorJSON(w, r, http.StatusInternalServerError, fmt.Errorf("%s:%s", utils.ErrSaveImage, err))
 			return
 		}
 

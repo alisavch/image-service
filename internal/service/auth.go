@@ -2,7 +2,10 @@ package service
 
 import (
 	"context"
+	"fmt"
 	"time"
+
+	"github.com/google/uuid"
 
 	"github.com/alisavch/image-service/internal/utils"
 
@@ -18,7 +21,7 @@ const (
 
 type tokenClaims struct {
 	jwt.StandardClaims
-	UserID int64 `json:"user_id"`
+	UserID uuid.UUID `json:"user_id"`
 }
 
 // AuthService provides access to repository.
@@ -32,10 +35,10 @@ func NewAuthService(repo repository.Authorization) *AuthService {
 }
 
 // CreateUser creates user.
-func (s *AuthService) CreateUser(ctx context.Context, user models.User) (id int, err error) {
+func (s *AuthService) CreateUser(ctx context.Context, user models.User) (id uuid.UUID, err error) {
 	user.Password, err = generatePasswordHash(user.Password)
 	if err != nil {
-		return 0, err
+		return [16]byte{}, fmt.Errorf("%s:%s", "cannot generate password hash", err)
 	}
 	return s.repo.CreateUser(ctx, user)
 }
@@ -46,27 +49,30 @@ func (s *AuthService) GenerateToken(ctx context.Context, username, password stri
 	if err != nil {
 		return "get user error", err
 	}
+
 	match := checkPasswordHash(password, user.Password)
 	if !match {
 		return "password verification error", err
 	}
+
 	conf := utils.NewConfig()
 	jwtTTL, err := time.ParseDuration(conf.TokenTTL)
 	if err != nil {
 		return "error getting jwt ttl", nil
 	}
+
 	token := jwt.NewWithClaims(jwt.SigningMethodHS256, &tokenClaims{
 		jwt.StandardClaims{
 			ExpiresAt: time.Now().Add(jwtTTL).Unix(),
 			IssuedAt:  time.Now().Unix(),
 		},
-		int64(user.ID),
+		user.ID,
 	})
 	return token.SignedString([]byte(signingKey))
 }
 
 // ParseToken parses token.
-func (s *AuthService) ParseToken(accessToken string) (int, error) {
+func (s *AuthService) ParseToken(accessToken string) (uuid.UUID, error) {
 	token, err := jwt.ParseWithClaims(accessToken, &tokenClaims{}, func(token *jwt.Token) (interface{}, error) {
 		if _, ok := token.Method.(*jwt.SigningMethodHMAC); !ok {
 			return nil, utils.ErrSigningMethod
@@ -74,13 +80,13 @@ func (s *AuthService) ParseToken(accessToken string) (int, error) {
 		return []byte(signingKey), nil
 	})
 	if err != nil {
-		return 0, nil
+		return [16]byte{}, nil
 	}
 	claims, ok := token.Claims.(*tokenClaims)
 	if !ok {
-		return 0, utils.ErrInvalidToken
+		return [16]byte{}, utils.ErrInvalidToken
 	}
-	return int(claims.UserID), nil
+	return claims.UserID, nil
 }
 
 func generatePasswordHash(password string) (string, error) {

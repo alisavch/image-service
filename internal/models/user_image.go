@@ -1,12 +1,14 @@
 package models
 
+import "github.com/google/uuid"
+
 // UserImage contains details of a single request.
 type UserImage struct {
-	ID              int    `json:"id"`
-	UserAccountID   int    `json:"user_account_id,omitempty"`
-	UploadedImageID int    `json:"uploaded_image_id,omitempty"`
-	ResultedImageID int    `json:"resulted_image_id,omitempty"`
-	Status          Status `json:"status,omitempty"`
+	ID              uuid.UUID `gorm:"type:uuid;primary_key;" json:"id"`
+	UserAccountID   uuid.UUID `json:"user_account_id,omitempty"`
+	UploadedImageID uuid.UUID `json:"uploaded_image_id,omitempty"`
+	ResultedImageID uuid.UUID `json:"resulted_image_id,omitempty"`
+	Status          Status    `json:"status,omitempty"`
 }
 
 type (

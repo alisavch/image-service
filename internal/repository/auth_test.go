@@ -6,6 +6,7 @@ import (
 
 	"github.com/DATA-DOG/go-sqlmock"
 	"github.com/alisavch/image-service/internal/models"
+	"github.com/google/uuid"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -22,14 +23,16 @@ func TestAuthRepository_CreateUser(t *testing.T) {
 		name  string
 		mock  func()
 		input models.User
-		want  int
+		want  uuid.UUID
 		isOk  bool
 	}{
 		{
 			name: "Test with correct values",
 			mock: func() {
+				asString := "00000000-0000-0000-0000-000000000000"
+				asBytes := []byte(asString)
 				rows := sqlmock.NewRows([]string{"id"}).
-					AddRow(1)
+					AddRow(asBytes)
 				mock.ExpectQuery("INSERT INTO image_service.user_account").
 					WithArgs("mock", "12345").WillReturnRows(rows)
 			},
@@ -37,7 +40,7 @@ func TestAuthRepository_CreateUser(t *testing.T) {
 				Username: "mock",
 				Password: "12345",
 			},
-			want: 1,
+			want: [16]byte{00000000 - 0000 - 0000 - 0000 - 000000000000},
 			isOk: true,
 		},
 		{
@@ -89,14 +92,16 @@ func TestAuthRepository_GetUser(t *testing.T) {
 		{
 			name: "Test with correct values",
 			mock: func() {
+				asString := "00000000-0000-0000-0000-000000000000"
+				asBytes := []byte(asString)
 				rows := sqlmock.NewRows([]string{"id", "password"}).
-					AddRow(1, "12345")
+					AddRow(asBytes, "12345")
 				mock.ExpectQuery("SELECT (.+) FROM image_service.user_account").
 					WithArgs("mock").WillReturnRows(rows)
 			},
 			input: "mock",
 			want: models.User{
-				ID:       1,
+				ID:       [16]byte{00000000 - 0000 - 0000 - 0000 - 000000000000},
 				Password: "12345",
 			},
 			isOk: true,

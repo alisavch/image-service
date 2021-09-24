@@ -10,7 +10,7 @@ import (
 )
 
 func main() {
-	var logger log.Logger = log.NewCustomLogger()
+	logger := log.NewCustomLogger()
 
 	flag.Parse()
 	logger.Info("The consumer is running")

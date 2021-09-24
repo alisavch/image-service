@@ -6,6 +6,8 @@ import (
 	"fmt"
 	_ "time" // Registers time.
 
+	"github.com/google/uuid"
+
 	"github.com/alisavch/image-service/internal/models"
 )
 
@@ -20,7 +22,7 @@ func NewImageRepository(db *sql.DB) *ImageRepository {
 }
 
 // FindUserHistoryByID allows to get the history of interaction with the user's service.
-func (i *ImageRepository) FindUserHistoryByID(ctx context.Context, id int) ([]models.History, error) {
+func (i *ImageRepository) FindUserHistoryByID(ctx context.Context, id uuid.UUID) ([]models.History, error) {
 	query := "SELECT upi.uploaded_name, ri.resulted_name, ri.service, r.time_start, r.end_of_time, ui.status from image_service.request r INNER JOIN image_service.user_image ui on r.user_image_id = ui.id INNER JOIN image_service.uploaded_image upi on ui.uploaded_image_id = upi.id INNER JOIN image_service.resulted_image ri on ri.id = ui.resulting_image_id INNER JOIN image_service.user_account ua on ua.id = ui.user_account_id where ua.id = $1"
 	rows, err := i.db.QueryContext(ctx, query, id)
 	if err != nil {
@@ -45,49 +47,49 @@ func (i *ImageRepository) FindUserHistoryByID(ctx context.Context, id int) ([]mo
 }
 
 // UploadImage allows to upload an image.
-func (i *ImageRepository) UploadImage(ctx context.Context, image models.UploadedImage) (int, error) {
-	var id int
+func (i *ImageRepository) UploadImage(ctx context.Context, image models.UploadedImage) (uuid.UUID, error) {
+	var id uuid.UUID
 	query := "INSERT INTO image_service.uploaded_image(uploaded_name, uploaded_location) VALUES($1, $2) RETURNING id"
 	row := i.db.QueryRowContext(ctx, query, image.Name, image.Location)
 	if err := row.Scan(&id); err != nil {
-		return 0, fmt.Errorf("unable to insert image into database")
+		return [16]byte{}, fmt.Errorf("unable to insert image into database")
 	}
 	return id, nil
 }
 
 // CreateRequest adds data to multiple tables and returns resulted image id.
-func (i *ImageRepository) CreateRequest(ctx context.Context, user models.User, uplImg models.UploadedImage, resImg models.ResultedImage, uI models.UserImage, r models.Request) (int, error) {
+func (i *ImageRepository) CreateRequest(ctx context.Context, user models.User, uplImg models.UploadedImage, resImg models.ResultedImage, uI models.UserImage, r models.Request) (uuid.UUID, error) {
 	tx, err := i.db.Begin()
 	if err != nil {
-		return 0, fmt.Errorf("cannot start tranzaction")
+		return [16]byte{}, fmt.Errorf("cannot start tranzaction")
 	}
 
-	var resultedImageID, userImageID int
+	var resultedImageID, userImageID uuid.UUID
 	createResultedImage := "INSERT INTO image_service.resulted_image(resulted_name, resulted_location, service) VALUES ($1, $2, $3) RETURNING id"
 	row := tx.QueryRowContext(ctx, createResultedImage, resImg.Name, resImg.Location, resImg.Service)
 	if err := row.Scan(&resultedImageID); err != nil {
 		_ = tx.Rollback()
-		return 0, fmt.Errorf("unable to insert resulted image into database")
+		return [16]byte{}, fmt.Errorf("unable to insert resulted image into database")
 	}
 
 	createUserImage := "INSERT INTO image_service.user_image(user_account_id, uploaded_image_id, resulting_image_id, status) VALUES($1, $2, $3, $4) RETURNING id"
 	row = tx.QueryRowContext(ctx, createUserImage, user.ID, uplImg.ID, resultedImageID, uI.Status)
 	if err := row.Scan(&userImageID); err != nil {
 		_ = tx.Rollback()
-		return 0, fmt.Errorf("unable to insert users image into database")
+		return [16]byte{}, fmt.Errorf("unable to insert users image into database")
 	}
 
 	createRequest := "INSERT INTO image_service.request(user_image_id, time_start, end_of_time) VALUES($1, $2, $3)"
 	_, err = tx.ExecContext(ctx, createRequest, userImageID, r.TimeStart, r.EndOfTime)
 	if err != nil {
 		_ = tx.Rollback()
-		return 0, fmt.Errorf("unable to insert request into database")
+		return [16]byte{}, fmt.Errorf("unable to insert request into database")
 	}
 	return resultedImageID, tx.Commit()
 }
 
 // FindTheResultingImage finds processed image by ID.
-func (i *ImageRepository) FindTheResultingImage(ctx context.Context, id int, service models.Service) (models.ResultedImage, error) {
+func (i *ImageRepository) FindTheResultingImage(ctx context.Context, id uuid.UUID, service models.Service) (models.ResultedImage, error) {
 	var filename, location string
 	image := "SELECT ri.resulted_name, ri.resulted_location FROM image_service.resulted_image ri WHERE ri.id=$1 and ri.service=$2"
 	row := i.db.QueryRowContext(ctx, image, id, service)
@@ -98,7 +100,7 @@ func (i *ImageRepository) FindTheResultingImage(ctx context.Context, id int, ser
 }
 
 // FindOriginalImage finds original image by ID.
-func (i *ImageRepository) FindOriginalImage(ctx context.Context, id int) (models.UploadedImage, error) {
+func (i *ImageRepository) FindOriginalImage(ctx context.Context, id uuid.UUID) (models.UploadedImage, error) {
 	var filename, location string
 	image := "SELECT ui.uploaded_name, ui.uploaded_location FROM image_service.uploaded_image ui INNER JOIN image_service.user_image usi on ui.id = usi.uploaded_image_id INNER JOIN image_service.resulted_image ri on ri.id = usi.resulting_image_id WHERE ri.id =$1"
 	row := i.db.QueryRowContext(ctx, image, id)
@@ -109,7 +111,7 @@ func (i *ImageRepository) FindOriginalImage(ctx context.Context, id int) (models
 }
 
 // UpdateStatus updates the status of image processing.
-func (i *ImageRepository) UpdateStatus(ctx context.Context, id int, status models.Status) error {
+func (i *ImageRepository) UpdateStatus(ctx context.Context, id uuid.UUID, status models.Status) error {
 	updated := "UPDATE image_service.user_image SET status = $1 WHERE uploaded_image_id = $2"
 	_, err := i.db.ExecContext(ctx, updated, status, id)
 	fmt.Println(err)

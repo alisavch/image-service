@@ -8,6 +8,8 @@ import (
 	"net/http"
 	"strconv"
 
+	"github.com/google/uuid"
+
 	"github.com/alisavch/image-service/internal/models"
 
 	"github.com/alisavch/image-service/internal/broker"
@@ -50,12 +52,12 @@ func (s *Server) respondJSON(w http.ResponseWriter, r *http.Request, code int, d
 	}
 }
 
-func (s *Server) respondFormData(w http.ResponseWriter, r *http.Request, code int, id int) {
+func (s *Server) respondFormData(w http.ResponseWriter, r *http.Request, code int, id uuid.UUID) {
 	body := &bytes.Buffer{}
 	writer := multipart.NewWriter(body)
 	defer writer.Close()
 	w.Header().Set("Content-Type", writer.FormDataContentType())
-	s.respondJSON(w, r, code, map[string]int{"Image ID": id})
+	s.respondJSON(w, r, code, map[string]uuid.UUID{"Image ID": id})
 }
 
 func (s *Server) respondImage(w http.ResponseWriter, image *models.Image) {

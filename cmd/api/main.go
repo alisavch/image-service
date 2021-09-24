@@ -35,7 +35,7 @@ import (
 
 //go:generate swagger generate spec
 func main() {
-	var logger log.Logger = log.NewCustomLogger()
+	var logger = log.NewCustomLogger()
 
 	flag.Parse()
 	logger.Info("The server is running")

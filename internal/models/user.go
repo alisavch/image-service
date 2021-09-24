@@ -1,5 +1,7 @@
 package models
 
+import "github.com/google/uuid"
+
 // User contains information about user.
 //
 // A user is the security principal for this application.
@@ -9,7 +11,7 @@ type User struct {
 	// the ID for this user
 	//
 	// required: false
-	ID int `json:"id"`
+	ID uuid.UUID `gorm:"type:uuid;primary_key;" json:"id"`
 
 	// the username for this user
 	//

@@ -5,7 +5,7 @@ import (
 	"github.com/alisavch/image-service/internal/log"
 )
 
-var logger log.Logger = log.NewCustomLogger()
+var logger = log.NewCustomLogger()
 
 // Consume starts the message consumer.
 func Consume() {

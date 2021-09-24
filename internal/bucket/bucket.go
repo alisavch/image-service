@@ -97,7 +97,7 @@ func (as *s3Session) DownloadFromS3Bucket(filename string) (*os.File, error) {
 		return nil, fmt.Errorf("%s:%s", "failed to create file", err)
 	}
 
-	result, err := downloader.Download(file, &s3.GetObjectInput{
+	_, err = downloader.Download(file, &s3.GetObjectInput{
 		Bucket: aws.String(as.bucketName),
 		Key:    aws.String(filename),
 	})
@@ -105,6 +105,6 @@ func (as *s3Session) DownloadFromS3Bucket(filename string) (*os.File, error) {
 		return nil, fmt.Errorf("%s:%s", "failed get object", err)
 	}
 
-	logger.Printf("%s:%s", "Successfully downloaded", file.Name(), result, "bytes")
+	logger.Printf("%s:%s", "Successfully downloaded", file.Name())
 	return file, nil
 }

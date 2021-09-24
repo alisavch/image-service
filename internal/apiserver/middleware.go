@@ -199,6 +199,9 @@ func (req prepare) Validate() error {
 func (s *Server) prepareImage(r *http.Request, uploadedImage models.UploadedImage, originalImageName string, resultedImageName string) (image.Image, string, string, *os.File, bool, error) {
 	var req prepare
 	err := ParseRequest(r, &req)
+	if err != nil {
+		return nil, "", "", nil, false, err
+	}
 
 	if req.isRemoteStorage {
 		file, err := remoteStorage.DownloadFromS3Bucket(originalImageName)

@@ -24,7 +24,7 @@ mocks:
 
 .PHONY: lint
 lint:
-	$(LINTER) run
+	$(LINTER) run --config .golangci.yaml
 
 .PHONY: test
 test:

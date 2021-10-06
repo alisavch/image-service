@@ -1,5 +1,5 @@
 # **Image Service**
-The Image Service is a service that maintains the upload of images to the file system.
+Image Service is a service that supports compressing and converting images and uploading them to the file system or AWS S3 Bucket.
 
 Create .env file in root directory and add following values to run in docker container:
 ~~~~

@@ -187,13 +187,13 @@ func (_m *Image) UpdateStatus(ctx context.Context, id uuid.UUID, status models.S
 	return r0
 }
 
-// UploadImage provides a mock function with given fields: ctx, _a1
-func (_m *Image) UploadImage(ctx context.Context, _a1 models.UploadedImage) (uuid.UUID, error) {
-	ret := _m.Called(ctx, _a1)
+// UploadImage provides a mock function with given fields: ctx, img
+func (_m *Image) UploadImage(ctx context.Context, img models.UploadedImage) (uuid.UUID, error) {
+	ret := _m.Called(ctx, img)
 
 	var r0 uuid.UUID
 	if rf, ok := ret.Get(0).(func(context.Context, models.UploadedImage) uuid.UUID); ok {
-		r0 = rf(ctx, _a1)
+		r0 = rf(ctx, img)
 	} else {
 		if ret.Get(0) != nil {
 			r0 = ret.Get(0).(uuid.UUID)
@@ -202,7 +202,7 @@ func (_m *Image) UploadImage(ctx context.Context, _a1 models.UploadedImage) (uui
 
 	var r1 error
 	if rf, ok := ret.Get(1).(func(context.Context, models.UploadedImage) error); ok {
-		r1 = rf(ctx, _a1)
+		r1 = rf(ctx, img)
 	} else {
 		r1 = ret.Error(1)
 	}

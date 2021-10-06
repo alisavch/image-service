@@ -26,10 +26,10 @@ type Server struct {
 }
 
 // NewServer configures server.
-func NewServer(service *service.Service, mq *broker.AMQPBroker) *Server {
+func NewServer(srv *service.Service, mq *broker.AMQPBroker) *Server {
 	s := &Server{
 		router:  mux.NewRouter(),
-		service: service,
+		service: srv,
 		mq:      mq,
 	}
 	s.ConfigureRouter()
@@ -40,11 +40,11 @@ func (s *Server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	s.router.ServeHTTP(w, r)
 }
 
-func (s *Server) errorJSON(w http.ResponseWriter, r *http.Request, code int, err error) {
-	s.respondJSON(w, r, code, map[string]string{"error": err.Error()})
+func (s *Server) errorJSON(w http.ResponseWriter, code int, err error) {
+	s.respondJSON(w, code, map[string]string{"error": err.Error()})
 }
 
-func (s *Server) respondJSON(w http.ResponseWriter, r *http.Request, code int, data interface{}) {
+func (s *Server) respondJSON(w http.ResponseWriter, code int, data interface{}) {
 	w.WriteHeader(code)
 	w.Header().Set("Content-Type", "application/json")
 	if data != nil {
@@ -52,12 +52,17 @@ func (s *Server) respondJSON(w http.ResponseWriter, r *http.Request, code int, d
 	}
 }
 
-func (s *Server) respondFormData(w http.ResponseWriter, r *http.Request, code int, id uuid.UUID) {
+func (s *Server) respondFormData(w http.ResponseWriter, code int, id uuid.UUID) {
 	body := &bytes.Buffer{}
 	writer := multipart.NewWriter(body)
-	defer writer.Close()
+	defer func(writer *multipart.Writer) {
+		err := writer.Close()
+		if err != nil {
+			logger.Fatalf("%s:%s", "failed fileReader.Close", err)
+		}
+	}(writer)
 	w.Header().Set("Content-Type", writer.FormDataContentType())
-	s.respondJSON(w, r, code, map[string]uuid.UUID{"Image ID": id})
+	s.respondJSON(w, code, map[string]uuid.UUID{"Image ID": id})
 }
 
 func (s *Server) respondImage(w http.ResponseWriter, image *models.Image) {

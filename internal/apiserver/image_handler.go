@@ -62,17 +62,17 @@ func (s *Server) findUserHistory() http.HandlerFunc {
 
 		err := ParseRequest(r, &req)
 		if err != nil {
-			s.errorJSON(w, r, http.StatusUnauthorized, err)
+			s.errorJSON(w, http.StatusUnauthorized, err)
 			return
 		}
 
 		history, err := s.service.Image.FindUserHistoryByID(r.Context(), req.User.ID)
 		if err != nil {
-			s.errorJSON(w, r, http.StatusInternalServerError, err)
+			s.errorJSON(w, http.StatusInternalServerError, err)
 			return
 		}
 
-		s.respondJSON(w, r, http.StatusOK, history)
+		s.respondJSON(w, http.StatusOK, history)
 	}
 }
 
@@ -125,7 +125,7 @@ func (s *Server) compressImage() http.HandlerFunc {
 
 		err := ParseRequest(r, &req)
 		if err != nil {
-			s.errorJSON(w, r, http.StatusUnauthorized, err)
+			s.errorJSON(w, http.StatusUnauthorized, err)
 			return
 		}
 
@@ -133,7 +133,7 @@ func (s *Server) compressImage() http.HandlerFunc {
 
 		originalImage, err := s.uploadImage(r, req.UploadedImage)
 		if err != nil {
-			s.errorJSON(w, r, http.StatusInternalServerError, err)
+			s.errorJSON(w, http.StatusInternalServerError, err)
 			return
 		}
 
@@ -154,7 +154,7 @@ func (s *Server) compressImage() http.HandlerFunc {
 
 		err = s.service.Image.UpdateStatus(r.Context(), originalImage.ID, models.Processing)
 		if err != nil {
-			s.errorJSON(w, r, http.StatusInternalServerError, err)
+			s.errorJSON(w, http.StatusInternalServerError, err)
 			return
 		}
 
@@ -163,22 +163,24 @@ func (s *Server) compressImage() http.HandlerFunc {
 			logger.Fatalf("%s: %s", "Failed to publish a message", err)
 		}
 
-		img, format, resultedName, file, isRemoteStorage, err := s.prepareImage(r, originalImage, originalImage.Name, "cmp-"+originalImage.Name)
+		resultedName := newImgName("cmp-" + originalImage.Name)
+
+		img, format, file, err := prepareImage(originalImage, originalImage.Name, resultedName)
 
 		if err != nil {
-			s.errorJSON(w, r, http.StatusInternalServerError, err)
+			s.errorJSON(w, http.StatusInternalServerError, err)
 			return
 		}
 
-		resultedImage, err := s.service.Image.CompressImage(req.Width, format, resultedName, img, file, isRemoteStorage)
+		resultedImage, err := s.service.Image.CompressImage(req.Width, format, resultedName, img, file, IsRemoteStorage)
 		if err != nil {
-			s.errorJSON(w, r, http.StatusInternalServerError, err)
+			s.errorJSON(w, http.StatusInternalServerError, err)
 			return
 		}
 
 		err = s.service.Image.UpdateStatus(r.Context(), originalImage.ID, models.Done)
 		if err != nil {
-			s.errorJSON(w, r, http.StatusInternalServerError, err)
+			s.errorJSON(w, http.StatusInternalServerError, err)
 			return
 		}
 
@@ -205,11 +207,11 @@ func (s *Server) compressImage() http.HandlerFunc {
 				EndOfTime: endOfExecution,
 			})
 		if err != nil {
-			s.errorJSON(w, r, http.StatusInternalServerError, err)
+			s.errorJSON(w, http.StatusInternalServerError, err)
 			return
 		}
 
-		s.respondFormData(w, r, http.StatusOK, requestID)
+		s.respondFormData(w, http.StatusOK, requestID)
 	}
 }
 
@@ -276,20 +278,20 @@ func (s *Server) findCompressedImage() http.HandlerFunc {
 
 		err := ParseRequest(r, &req)
 		if err != nil {
-			s.errorJSON(w, r, http.StatusUnauthorized, err)
+			s.errorJSON(w, http.StatusUnauthorized, err)
 			return
 		}
 
 		if req.isOriginal {
 			uploaded, err := s.service.Image.FindOriginalImage(r.Context(), req.requestID)
 			if err != nil {
-				s.errorJSON(w, r, http.StatusInternalServerError, fmt.Errorf("%s:%s", utils.ErrFindImage, err))
+				s.errorJSON(w, http.StatusInternalServerError, fmt.Errorf("%s:%s", utils.ErrFindImage, err))
 				return
 			}
 
 			file, err := s.service.Image.SaveImage(uploaded.Name, uploaded.Location, req.isRemoteStorage)
 			if err != nil {
-				s.errorJSON(w, r, http.StatusInternalServerError, fmt.Errorf("%s:%s", utils.ErrSaveImage, err))
+				s.errorJSON(w, http.StatusInternalServerError, fmt.Errorf("%s:%s", utils.ErrSaveImage, err))
 				return
 			}
 
@@ -299,13 +301,13 @@ func (s *Server) findCompressedImage() http.HandlerFunc {
 
 		resultedImage, err := s.service.Image.FindTheResultingImage(r.Context(), req.requestID, models.Compression)
 		if err != nil {
-			s.errorJSON(w, r, http.StatusInternalServerError, fmt.Errorf("%s:%s", utils.ErrFindImage, err))
+			s.errorJSON(w, http.StatusInternalServerError, fmt.Errorf("%s:%s", utils.ErrFindImage, err))
 			return
 		}
 
 		file, err := s.service.Image.SaveImage(resultedImage.Name, resultedImage.Location, req.isRemoteStorage)
 		if err != nil {
-			s.errorJSON(w, r, http.StatusInternalServerError, fmt.Errorf("%s:%s", utils.ErrSaveImage, err))
+			s.errorJSON(w, http.StatusInternalServerError, fmt.Errorf("%s:%s", utils.ErrSaveImage, err))
 			return
 		}
 
@@ -351,7 +353,7 @@ func (s *Server) convertImage() http.HandlerFunc {
 
 		err := ParseRequest(r, &req)
 		if err != nil {
-			s.errorJSON(w, r, http.StatusUnauthorized, err)
+			s.errorJSON(w, http.StatusUnauthorized, err)
 			return
 		}
 
@@ -359,7 +361,7 @@ func (s *Server) convertImage() http.HandlerFunc {
 
 		originalImage, err := s.uploadImage(r, req.UploadedImage)
 		if err != nil {
-			s.errorJSON(w, r, http.StatusInternalServerError, err)
+			s.errorJSON(w, http.StatusInternalServerError, err)
 			return
 		}
 
@@ -380,7 +382,7 @@ func (s *Server) convertImage() http.HandlerFunc {
 
 		err = s.service.Image.UpdateStatus(r.Context(), originalImage.ID, models.Processing)
 		if err != nil {
-			s.errorJSON(w, r, http.StatusInternalServerError, err)
+			s.errorJSON(w, http.StatusInternalServerError, err)
 			return
 		}
 
@@ -391,25 +393,27 @@ func (s *Server) convertImage() http.HandlerFunc {
 
 		convertedName, err := service.ChangeFormat(originalImage.Name)
 		if err != nil {
-			s.errorJSON(w, r, http.StatusInternalServerError, err)
+			s.errorJSON(w, http.StatusInternalServerError, err)
 			return
 		}
 
-		img, format, resultedName, file, isRemoteStorage, err := s.prepareImage(r, originalImage, originalImage.Name, "cnv-"+convertedName)
+		resultedName := newImgName("cnv-" + convertedName)
+
+		img, format, file, err := prepareImage(originalImage, originalImage.Name, resultedName)
 		if err != nil {
-			s.errorJSON(w, r, http.StatusInternalServerError, err)
+			s.errorJSON(w, http.StatusInternalServerError, err)
 			return
 		}
 
-		resultedImage, err := s.service.Image.ConvertToType(format, resultedName, img, file, isRemoteStorage)
+		resultedImage, err := s.service.Image.ConvertToType(format, resultedName, img, file, IsRemoteStorage)
 		if err != nil {
-			s.errorJSON(w, r, http.StatusInternalServerError, err)
+			s.errorJSON(w, http.StatusInternalServerError, err)
 			return
 		}
 
 		err = s.service.Image.UpdateStatus(r.Context(), originalImage.ID, models.Done)
 		if err != nil {
-			s.errorJSON(w, r, http.StatusInternalServerError, err)
+			s.errorJSON(w, http.StatusInternalServerError, err)
 			return
 		}
 
@@ -436,11 +440,11 @@ func (s *Server) convertImage() http.HandlerFunc {
 				EndOfTime: endOfExecution,
 			})
 		if err != nil {
-			s.errorJSON(w, r, http.StatusInternalServerError, fmt.Errorf("%s:%s", utils.ErrCreateRequest, err))
+			s.errorJSON(w, http.StatusInternalServerError, fmt.Errorf("%s:%s", utils.ErrCreateRequest, err))
 			return
 		}
 
-		s.respondFormData(w, r, http.StatusOK, requestID)
+		s.respondFormData(w, http.StatusOK, requestID)
 	}
 }
 
@@ -507,20 +511,20 @@ func (s *Server) findConvertedImage() http.HandlerFunc {
 
 		err := ParseRequest(r, &req)
 		if err != nil {
-			s.errorJSON(w, r, http.StatusUnauthorized, err)
+			s.errorJSON(w, http.StatusUnauthorized, err)
 			return
 		}
 
 		if req.isOriginal {
 			uploaded, err := s.service.Image.FindOriginalImage(r.Context(), req.requestID)
 			if err != nil {
-				s.errorJSON(w, r, http.StatusInternalServerError, fmt.Errorf("%s:%s", utils.ErrFindImage, err))
+				s.errorJSON(w, http.StatusInternalServerError, fmt.Errorf("%s:%s", utils.ErrFindImage, err))
 				return
 			}
 
 			file, err := s.service.Image.SaveImage(uploaded.Name, "/uploads/", req.isRemoteStorage)
 			if err != nil {
-				s.errorJSON(w, r, http.StatusInternalServerError, fmt.Errorf("%s:%s", utils.ErrSaveImage, err))
+				s.errorJSON(w, http.StatusInternalServerError, fmt.Errorf("%s:%s", utils.ErrSaveImage, err))
 				return
 			}
 			s.respondImage(w, file)
@@ -529,13 +533,13 @@ func (s *Server) findConvertedImage() http.HandlerFunc {
 
 		resultedImage, err := s.service.Image.FindTheResultingImage(r.Context(), req.requestID, models.Conversion)
 		if err != nil {
-			s.errorJSON(w, r, http.StatusInternalServerError, fmt.Errorf("%s:%s", utils.ErrFindImage, err))
+			s.errorJSON(w, http.StatusInternalServerError, fmt.Errorf("%s:%s", utils.ErrFindImage, err))
 			return
 		}
 
 		file, err := s.service.Image.SaveImage(resultedImage.Name, "/results/", req.isRemoteStorage)
 		if err != nil {
-			s.errorJSON(w, r, http.StatusInternalServerError, fmt.Errorf("%s:%s", utils.ErrSaveImage, err))
+			s.errorJSON(w, http.StatusInternalServerError, fmt.Errorf("%s:%s", utils.ErrSaveImage, err))
 			return
 		}
 

@@ -28,7 +28,12 @@ func (i *ImageRepository) FindUserHistoryByID(ctx context.Context, id uuid.UUID)
 	if err != nil {
 		return nil, fmt.Errorf("cannot complete request to get history")
 	}
-	defer rows.Close()
+	defer func(rows *sql.Rows) {
+		err := rows.Close()
+		if err != nil {
+			return
+		}
+	}(rows)
 
 	var history []models.History
 
@@ -47,10 +52,10 @@ func (i *ImageRepository) FindUserHistoryByID(ctx context.Context, id uuid.UUID)
 }
 
 // UploadImage allows to upload an image.
-func (i *ImageRepository) UploadImage(ctx context.Context, image models.UploadedImage) (uuid.UUID, error) {
+func (i *ImageRepository) UploadImage(ctx context.Context, img models.UploadedImage) (uuid.UUID, error) {
 	var id uuid.UUID
 	query := "INSERT INTO image_service.uploaded_image(uploaded_name, uploaded_location) VALUES($1, $2) RETURNING id"
-	row := i.db.QueryRowContext(ctx, query, image.Name, image.Location)
+	row := i.db.QueryRowContext(ctx, query, img.Name, img.Location)
 	if err := row.Scan(&id); err != nil {
 		return [16]byte{}, fmt.Errorf("unable to insert image into database")
 	}

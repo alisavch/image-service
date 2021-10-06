@@ -3,13 +3,11 @@ package broker
 import (
 	"fmt"
 
-	"github.com/alisavch/image-service/internal/log"
-
 	"github.com/alisavch/image-service/internal/utils"
 	"github.com/streadway/amqp"
 )
 
-var logger log.Logger = log.NewCustomLogger()
+var logger = NewLogger()
 
 // RabbitMQ Operate Wrapper.
 type RabbitMQ struct {
@@ -43,7 +41,7 @@ func (r *RabbitMQ) Connect() error {
 }
 
 // Publish sends data to the queue.
-func (r *RabbitMQ) Publish(exchange, key string, body string) error {
+func (r *RabbitMQ) Publish(exchange, key, body string) error {
 	err := r.ch.Publish(exchange, key, false, false,
 		amqp.Publishing{
 			ContentType: "application/json",

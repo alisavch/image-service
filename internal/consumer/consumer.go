@@ -2,10 +2,9 @@ package consumer
 
 import (
 	"github.com/alisavch/image-service/internal/broker"
-	"github.com/alisavch/image-service/internal/log"
 )
 
-var logger = log.NewCustomLogger()
+var logger = NewLogger()
 
 // Consume starts the message consumer.
 func Consume() {

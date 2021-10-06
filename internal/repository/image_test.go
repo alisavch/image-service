@@ -28,7 +28,6 @@ func TestImageRepository_FindUserHistoryByID(t *testing.T) {
 	if err != nil {
 		t.Fatalf("an error '%s' was not expected wher opening a stub database connection", err)
 	}
-	defer db.Close()
 
 	repo := NewImageRepository(db)
 
@@ -80,7 +79,6 @@ func TestImageRepository_UploadImage(t *testing.T) {
 	if err != nil {
 		t.Fatalf("an error '%s' was not expected wher opening a stub database connection", err)
 	}
-	defer db.Close()
 
 	repo := NewImageRepository(db)
 
@@ -141,7 +139,6 @@ func TestImageRepository_CreateRequest(t *testing.T) {
 	if err != nil {
 		t.Fatalf("an error '%s' was not expected wher opening a stub database connection", err)
 	}
-	defer db.Close()
 
 	repo := NewImageRepository(db)
 
@@ -254,7 +251,6 @@ func TestImageRepository_FindTheResultingImage(t *testing.T) {
 	if err != nil {
 		t.Fatalf("an error '%s' was not expected wher opening a stub database connection", err)
 	}
-	defer db.Close()
 
 	repo := NewImageRepository(db)
 
@@ -326,7 +322,6 @@ func TestImageRepository_FindOriginalImage(t *testing.T) {
 	if err != nil {
 		t.Fatalf("an error '%s' was not expected wher opening a stub database connection", err)
 	}
-	defer db.Close()
 
 	repo := NewImageRepository(db)
 
@@ -366,7 +361,6 @@ func TestImageRepository_FindOriginalImage(t *testing.T) {
 				rows := sqlmock.NewRows([]string{"uploaded_name", "uploaded_location"})
 				mock.ExpectQuery("SELECT (.+) FROM image_service.uploaded_image").
 					WithArgs(args2.id).WillReturnRows(rows)
-
 			},
 			input: args{
 				id: [16]byte{},
@@ -395,7 +389,6 @@ func TestImageRepository_UpdateStatus(t *testing.T) {
 	if err != nil {
 		t.Fatalf("an error '%s' was not expected wher opening a stub database connection", err)
 	}
-	defer db.Close()
 
 	repo := NewImageRepository(db)
 

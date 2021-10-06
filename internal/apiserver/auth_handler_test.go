@@ -40,7 +40,6 @@ func TestHandler_signUp(t *testing.T) {
 				Password: "12345",
 			},
 			fn: func(mockAuthorization *mocks.Authorization, user models.User) {
-
 				mockAuthorization.On("CreateUser", mock.Anything, user).Return(s, nil)
 			},
 			expectedStatusCode:   201,

@@ -26,28 +26,14 @@ func formatFilePath(path string) string {
 	return arr[len(arr)-1]
 }
 
-// Logger contains methods for working with logs.
-type Logger interface {
-	Debug(args ...interface{})
-	Debugf(format string, args ...interface{})
-	Info(args ...interface{})
-	Infof(format string, args ...interface{})
-	Print(args ...interface{})
-	Printf(format string, args ...interface{})
-	Error(args ...interface{})
-	Errorf(format string, args ...interface{})
-	Fatal(args ...interface{})
-	Fatalf(format string, args ...interface{})
-}
-
 // CustomLogger contains logrus.
 type CustomLogger struct {
 	logger *logrus.Logger
 }
 
-// NewCustomLogger is the CustomLogger constructor.
-func NewCustomLogger() *CustomLogger {
-	return &CustomLogger{logger: logrus.New()}
+// NewCustomLogger is constructor of the CustomLogger.
+func NewCustomLogger(logger *logrus.Logger) *CustomLogger {
+	return &CustomLogger{logger: logger}
 }
 
 // Debugf outputs debug error plus log format.

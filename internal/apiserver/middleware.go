@@ -10,22 +10,21 @@ import (
 	"os"
 	"strings"
 
-	"github.com/alisavch/image-service/internal/bucket"
+	"github.com/google/uuid"
 
 	"github.com/alisavch/image-service/internal/service"
 
 	"github.com/alisavch/image-service/internal/utils"
 
-	"github.com/alisavch/image-service/internal/models"
-	"github.com/google/uuid"
+	_ "image/jpeg" // It allows using jpeg
+	_ "image/png"  // It allows using png
 
-	_ "image/jpeg"
-	_ "image/png"
+	"github.com/alisavch/image-service/internal/models"
 )
 
 type key string
 
-var remoteStorage = bucket.NewAWS()
+var remoteStorage = NewAWS()
 
 const (
 	authorizationHeader key = "Authorization"
@@ -69,7 +68,7 @@ func (req authorization) Validate() error {
 	if len(req.headerParts) != 2 || req.headerParts[0] != "Bearer" {
 		return utils.ErrInvalidAuthHeader
 	}
-	if len(req.token) == 0 {
+	if req.token == "" {
 		return utils.ErrEmptyToken
 	}
 	return nil
@@ -81,12 +80,12 @@ func (s *Server) authorize(next http.Handler) http.HandlerFunc {
 
 		err := ParseRequest(r, &req)
 		if err != nil {
-			s.errorJSON(w, r, http.StatusBadRequest, err)
+			s.errorJSON(w, http.StatusBadRequest, err)
 		}
 
 		userID, err := s.service.Authorization.ParseToken(req.token)
 		if err != nil {
-			s.errorJSON(w, r, http.StatusUnauthorized, err)
+			s.errorJSON(w, http.StatusUnauthorized, err)
 			return
 		}
 		ctx := context.WithValue(r.Context(), userCtx, userID)
@@ -95,9 +94,8 @@ func (s *Server) authorize(next http.Handler) http.HandlerFunc {
 }
 
 type uploaded struct {
-	file            multipart.File
-	handler         *multipart.FileHeader
-	isRemoteStorage bool
+	file    multipart.File
+	handler *multipart.FileHeader
 }
 
 // Build builds a request to load an image.
@@ -111,8 +109,6 @@ func (req *uploaded) Build(r *http.Request) error {
 	if err != nil {
 		return err
 	}
-
-	req.isRemoteStorage = IsRemoteStorage
 
 	return nil
 }
@@ -131,15 +127,20 @@ func (s *Server) uploadImage(r *http.Request, uploadedImage models.UploadedImage
 	if err != nil {
 		return models.UploadedImage{}, err
 	}
-	req.handler.Filename = strings.Replace(uuid.New().String(), "-", "", -1) + req.handler.Filename
+	// TODO: delete
+	// req.handler.Filename = strings.Replace(uuid.New().String(), "-", "", -1) + req.handler.Filename
+	req.handler.Filename = strings.ReplaceAll(uuid.New().String(), "-", "") + req.handler.Filename
 
-	if req.isRemoteStorage {
+	if IsRemoteStorage {
 		imageLocation, err := remoteStorage.UploadToS3Bucket(req.file, req.handler.Filename)
 		if err != nil {
 			return models.UploadedImage{}, err
 		}
 
-		req.file.Close()
+		err = req.file.Close()
+		if err != nil {
+			return models.UploadedImage{}, err
+		}
 		uploadedImage.Name = req.handler.Filename
 		uploadedImage.Location = imageLocation
 
@@ -161,13 +162,23 @@ func (s *Server) uploadImage(r *http.Request, uploadedImage models.UploadedImage
 	if err != nil {
 		return models.UploadedImage{}, utils.ErrCreateFile
 	}
-	defer out.Close()
+	defer func(out *os.File) {
+		err := out.Close()
+		if err != nil {
+			logger.Fatalf("%s:%s", "failed fileReader.Close", err)
+		}
+	}(out)
 
 	_, err = io.Copy(out, req.file)
-	defer req.file.Close()
 	if err != nil {
 		return models.UploadedImage{}, utils.ErrCopyFile
 	}
+	defer func(file multipart.File) {
+		err := file.Close()
+		if err != nil {
+			logger.Fatalf("%s:%s", "failed fileReader.Close", err)
+		}
+	}(req.file)
 
 	uploadedImage.Name = req.handler.Filename
 	currentDir, _ := os.Getwd()
@@ -181,38 +192,17 @@ func (s *Server) uploadImage(r *http.Request, uploadedImage models.UploadedImage
 	return uploadedImage, nil
 }
 
-type prepare struct {
-	isRemoteStorage bool
-}
-
-// Build builds a request to load an image.
-func (req *prepare) Build(r *http.Request) error {
-	req.isRemoteStorage = IsRemoteStorage
-	return nil
-}
-
-// Validate builds a request to validate the preparation of an image.
-func (req prepare) Validate() error {
-	return nil
-}
-
-func (s *Server) prepareImage(r *http.Request, uploadedImage models.UploadedImage, originalImageName string, resultedImageName string) (image.Image, string, string, *os.File, bool, error) {
-	var req prepare
-	err := ParseRequest(r, &req)
-	if err != nil {
-		return nil, "", "", nil, false, err
-	}
-
-	if req.isRemoteStorage {
+func prepareImage(uploadedImage models.UploadedImage, originalImageName, resultedImageName string) (image.Image, string, *os.File, error) {
+	if IsRemoteStorage {
 		file, err := remoteStorage.DownloadFromS3Bucket(originalImageName)
 		if err != nil {
-			return nil, "", "", nil, req.isRemoteStorage, err
+			return nil, "", nil, err
 		}
 
 		img, format, err := image.Decode(file)
 		if err != nil {
 			logger.Fatalf("%s:%s", "Cannot decode file", err)
-			return nil, "", "", nil, req.isRemoteStorage, utils.ErrDecode
+			return nil, "", nil, utils.ErrDecode
 		}
 
 		resultedFile, err := os.Create(resultedImageName)
@@ -220,30 +210,37 @@ func (s *Server) prepareImage(r *http.Request, uploadedImage models.UploadedImag
 			logger.Fatalf("%s:%s", "Cannot create resulted file", err)
 		}
 
-		return img, format, resultedImageName, resultedFile, req.isRemoteStorage, nil
+		return img, format, resultedFile, nil
 	}
 
 	file, err := os.Open(uploadedImage.Location + uploadedImage.Name)
 	if err != nil {
-		return nil, "", "", nil, req.isRemoteStorage, utils.ErrOpen
+		return nil, "", nil, utils.ErrOpen
 	}
 
 	img, format, err := image.Decode(file)
 	if err != nil {
-		return nil, "", "", nil, req.isRemoteStorage, utils.ErrDecode
+		return nil, "", nil, utils.ErrDecode
 	}
 
-	file.Close()
+	err = file.Close()
+	if err != nil {
+		return nil, "", nil, err
+	}
 
 	err = service.EnsureBaseDir("./results/")
 	if err != nil {
-		return nil, "", "", nil, req.isRemoteStorage, utils.ErrEnsureDir
+		return nil, "", nil, utils.ErrEnsureDir
 	}
 
 	newImg, err := os.Create(fmt.Sprintf("./results/%s", resultedImageName))
 	if err != nil {
-		return nil, "", "", nil, req.isRemoteStorage, utils.ErrCreateFile
+		return nil, "", nil, utils.ErrCreateFile
 	}
 
-	return img, format, resultedImageName, newImg, req.isRemoteStorage, nil
+	return img, format, newImg, nil
+}
+
+func newImgName(str string) string {
+	return str
 }

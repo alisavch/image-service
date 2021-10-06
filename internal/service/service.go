@@ -20,9 +20,9 @@ type Authorization interface {
 
 // Image contains methods for working with images.
 type Image interface {
-	UploadImage(ctx context.Context, image models.UploadedImage) (uuid.UUID, error)
-	ConvertToType(format string, newImageName string, img image.Image, newImg *os.File, isRemoteStorage bool) (models.ResultedImage, error)
-	CompressImage(width int, format string, resultedName string, img image.Image, newImg *os.File, isRemoteStorage bool) (models.ResultedImage, error)
+	UploadImage(ctx context.Context, img models.UploadedImage) (uuid.UUID, error)
+	ConvertToType(format, newImageName string, img image.Image, newImg *os.File, isRemoteStorage bool) (models.ResultedImage, error)
+	CompressImage(width int, format, resultedName string, img image.Image, newImg *os.File, isRemoteStorage bool) (models.ResultedImage, error)
 	CreateRequest(ctx context.Context, user models.User, uplImg models.UploadedImage, resImg models.ResultedImage, uI models.UserImage, r models.Request) (uuid.UUID, error)
 	FindTheResultingImage(ctx context.Context, id uuid.UUID, service models.Service) (models.ResultedImage, error)
 	FindOriginalImage(ctx context.Context, id uuid.UUID) (models.UploadedImage, error)

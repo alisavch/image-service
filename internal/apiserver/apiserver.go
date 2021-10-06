@@ -5,8 +5,6 @@ import (
 	"fmt"
 	"net/http"
 
-	"github.com/alisavch/image-service/internal/log"
-
 	"github.com/joho/godotenv"
 
 	"github.com/alisavch/image-service/internal/broker"
@@ -16,7 +14,7 @@ import (
 	_ "github.com/lib/pq" // Registers database.
 )
 
-var logger log.Logger = log.NewCustomLogger()
+var logger = NewLogger()
 
 // Start starts the server.
 func Start() error {

@@ -39,16 +39,16 @@ func (s *Server) signUp() http.HandlerFunc {
 
 		err := ParseRequest(r, &req)
 		if err != nil {
-			s.errorJSON(w, r, http.StatusUnauthorized, err)
+			s.errorJSON(w, http.StatusUnauthorized, err)
 			return
 		}
 
 		id, err := s.service.Authorization.CreateUser(r.Context(), req.User)
 		if err != nil {
-			s.errorJSON(w, r, http.StatusInternalServerError, err)
+			s.errorJSON(w, http.StatusInternalServerError, err)
 			return
 		}
-		s.respondJSON(w, r, http.StatusCreated, id)
+		s.respondJSON(w, http.StatusCreated, id)
 	}
 }
 
@@ -82,15 +82,15 @@ func (s *Server) signIn() http.HandlerFunc {
 		var req signInRequest
 		err := ParseRequest(r, &req)
 		if err != nil {
-			s.errorJSON(w, r, http.StatusForbidden, err)
+			s.errorJSON(w, http.StatusForbidden, err)
 			return
 		}
 
 		token, err := s.service.Authorization.GenerateToken(r.Context(), req.Username, req.Password)
 		if err != nil {
-			s.errorJSON(w, r, http.StatusInternalServerError, err)
+			s.errorJSON(w, http.StatusInternalServerError, err)
 			return
 		}
-		s.respondJSON(w, r, http.StatusOK, token)
+		s.respondJSON(w, http.StatusOK, token)
 	}
 }

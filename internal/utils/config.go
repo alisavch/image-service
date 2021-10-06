@@ -56,7 +56,7 @@ func NewConfig() *Config {
 }
 
 // Simple helper function to read an environment or return a default value
-func getEnv(key string, defaultVal string) string {
+func getEnv(key, defaultVal string) string {
 	if value, ok := os.LookupEnv(key); ok {
 		return value
 	}

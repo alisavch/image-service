@@ -15,7 +15,6 @@ func TestAuthRepository_CreateUser(t *testing.T) {
 	if err != nil {
 		t.Fatalf("an error '%s' was not expected wher opening a stub database connection", err)
 	}
-	defer db.Close()
 
 	repo := NewAuthRepository(db)
 
@@ -78,7 +77,6 @@ func TestAuthRepository_GetUser(t *testing.T) {
 	if err != nil {
 		t.Fatalf("an error '%s' was not expected wher opening a stub database connection", err)
 	}
-	defer db.Close()
 
 	repo := NewAuthRepository(db)
 

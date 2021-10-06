@@ -8,8 +8,6 @@ import (
 
 	"github.com/google/uuid"
 
-	"github.com/alisavch/image-service/internal/bucket"
-
 	"github.com/alisavch/image-service/internal/utils"
 
 	"github.com/alisavch/image-service/internal/models"
@@ -22,7 +20,8 @@ var (
 		"jpg":  "png",
 		"png":  "jpeg",
 	}
-	remoteStorage = bucket.NewAWS()
+	remoteStorage = NewAWS()
+	logger        = NewLogger()
 )
 
 // ImageService provides access to repository.
@@ -41,12 +40,12 @@ func (s *ImageService) FindUserHistoryByID(ctx context.Context, id uuid.UUID) ([
 }
 
 // UploadImage uploads image.
-func (s *ImageService) UploadImage(ctx context.Context, image models.UploadedImage) (uuid.UUID, error) {
-	return s.repo.UploadImage(ctx, image)
+func (s *ImageService) UploadImage(ctx context.Context, img models.UploadedImage) (uuid.UUID, error) {
+	return s.repo.UploadImage(ctx, img)
 }
 
 // CompressImage compress image.
-func (s *ImageService) CompressImage(width int, format string, resultedName string, img image.Image, newImg *os.File, isRemoteStorage bool) (models.ResultedImage, error) {
+func (s *ImageService) CompressImage(width int, format, resultedName string, img image.Image, newImg *os.File, isRemoteStorage bool) (models.ResultedImage, error) {
 	var result models.ResultedImage
 
 	switch format {
@@ -65,7 +64,12 @@ func (s *ImageService) CompressImage(width int, format string, resultedName stri
 		if err != nil {
 			return models.ResultedImage{}, fmt.Errorf("%s:%s", "unable to open file", err)
 		}
-		defer fileReader.Close()
+		defer func(fileReader *os.File) {
+			err := fileReader.Close()
+			if err != nil {
+				logger.Fatalf("%s:%s", "failed fileReader.Close", err)
+			}
+		}(fileReader)
 
 		imageLocation, err := remoteStorage.UploadToS3Bucket(fileReader, resultedName)
 		if err != nil {
@@ -83,7 +87,11 @@ func (s *ImageService) CompressImage(width int, format string, resultedName stri
 		return models.ResultedImage{}, utils.ErrGetDir
 	}
 
-	newImg.Close()
+	err = newImg.Close()
+	if err != nil {
+		return models.ResultedImage{}, err
+	}
+
 	result.Name = resultedName
 	result.Location = currentDir + "/results/"
 
@@ -91,7 +99,7 @@ func (s *ImageService) CompressImage(width int, format string, resultedName stri
 }
 
 // ConvertToType converts from png to jpeg and vice versa.
-func (s *ImageService) ConvertToType(format string, resultedName string, img image.Image, newImg *os.File, isRemoteStorage bool) (models.ResultedImage, error) {
+func (s *ImageService) ConvertToType(format, resultedName string, img image.Image, newImg *os.File, isRemoteStorage bool) (models.ResultedImage, error) {
 	var result models.ResultedImage
 	switch format {
 	case "jpeg":
@@ -109,14 +117,23 @@ func (s *ImageService) ConvertToType(format string, resultedName string, img ima
 		if err != nil {
 			return models.ResultedImage{}, fmt.Errorf("%s:%s", "unable to open file", err)
 		}
-		defer fileReader.Close()
+		defer func(fileReader *os.File) {
+			err := fileReader.Close()
+			if err != nil {
+				logger.Fatalf("%s:%s", "failed fileReader.Close", err)
+			}
+		}(fileReader)
 
 		imageLocation, err := remoteStorage.UploadToS3Bucket(fileReader, resultedName)
 		if err != nil {
 			return models.ResultedImage{}, fmt.Errorf("%s:%s", "failed to upload to aws", err)
 		}
 
-		newImg.Close()
+		err = newImg.Close()
+		if err != nil {
+			return models.ResultedImage{}, err
+		}
+
 		result.Name = resultedName
 		result.Location = imageLocation
 
@@ -128,7 +145,11 @@ func (s *ImageService) ConvertToType(format string, resultedName string, img ima
 		return models.ResultedImage{}, utils.ErrGetDir
 	}
 
-	newImg.Close()
+	err = newImg.Close()
+	if err != nil {
+		return models.ResultedImage{}, err
+	}
+
 	result.Name = resultedName
 	result.Location = currentDir + "/results/"
 

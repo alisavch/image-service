@@ -65,7 +65,7 @@ func (as *S3Session) UploadToS3Bucket(file io.Reader, filename string) (string, 
 		Key:    aws.String(filename),
 	})
 	if err != nil {
-		return "", fmt.Errorf("%s:%s", "failed upload file", err)
+		return "", fmt.Errorf("%s:%s", "failed to upload file to S3 bucket", err)
 	}
 
 	logger.Printf("%s:%s", "Successfully uploaded", result.Location)

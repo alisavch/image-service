@@ -127,8 +127,7 @@ func (s *Server) uploadImage(r *http.Request, uploadedImage models.UploadedImage
 	if err != nil {
 		return models.UploadedImage{}, err
 	}
-	// TODO: delete
-	// req.handler.Filename = strings.Replace(uuid.New().String(), "-", "", -1) + req.handler.Filename
+
 	req.handler.Filename = strings.ReplaceAll(uuid.New().String(), "-", "") + req.handler.Filename
 
 	if IsRemoteStorage {

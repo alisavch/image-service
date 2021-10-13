@@ -4,23 +4,23 @@ import (
 	"github.com/alisavch/image-service/internal/broker"
 )
 
-var logger = NewLogger()
-
 // Consume starts the message consumer.
 func Consume() {
-	rabbit := new(broker.RabbitMQ)
+	rabbit := broker.NewAMQPBroker()
+	mq := NewRabbit(rabbit)
+	logger := NewLogger()
 
-	err := rabbit.Connect()
+	err := mq.Connect()
 	if err != nil {
 		logger.Fatalf("%s: %s", "Failed to open a channel", err)
 	}
 
-	q, err := rabbit.DeclareQueue("publisher")
+	q, err := mq.DeclareQueue("publisher")
 	if err != nil {
 		logger.Fatalf("%s: %s", "Failed to declare a queue", err)
 	}
 
-	err = rabbit.ConsumeQueue(q.Name)
+	err = mq.ConsumeQueue(q.Name)
 	if err != nil {
 		logger.Fatalf("%s: %s", "Failed to consume a queue", err)
 	}

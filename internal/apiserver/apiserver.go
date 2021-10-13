@@ -5,19 +5,21 @@ import (
 	"fmt"
 	"net/http"
 
+	"github.com/alisavch/image-service/internal/broker"
+
+	"github.com/alisavch/image-service/internal/repository"
+
+	"github.com/alisavch/image-service/internal/service"
+
 	"github.com/joho/godotenv"
 
-	"github.com/alisavch/image-service/internal/broker"
-	"github.com/alisavch/image-service/internal/repository"
-	"github.com/alisavch/image-service/internal/service"
 	"github.com/alisavch/image-service/internal/utils"
 	_ "github.com/lib/pq" // Registers database.
 )
 
-var logger = NewLogger()
-
 // Start starts the server.
 func Start() error {
+	logger := NewLogger()
 	initEnvironments()
 
 	conf := utils.NewConfig()
@@ -35,6 +37,7 @@ func Start() error {
 
 	repos := repository.NewRepository(db)
 	services := service.NewService(repos)
+	currentService := NewService(services)
 	rabbit := broker.NewAMQPBroker()
 
 	err = rabbit.Connect()
@@ -42,7 +45,7 @@ func Start() error {
 		logger.Fatalf("%s: %s", "Failed to connect to Rabbitmq", err)
 	}
 
-	srv := NewServer(services, rabbit)
+	srv := NewServer(rabbit, currentService)
 
 	return http.ListenAndServe(
 		":8080",
@@ -51,6 +54,7 @@ func Start() error {
 }
 
 func initEnvironments() {
+	logger := NewLogger()
 	if err := godotenv.Load(); err != nil {
 		logger.Printf("%s:%s", "Failed to load .env", err)
 	}

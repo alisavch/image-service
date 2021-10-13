@@ -43,7 +43,7 @@ func (s *Server) signUp() http.HandlerFunc {
 			return
 		}
 
-		id, err := s.service.Authorization.CreateUser(r.Context(), req.User)
+		id, err := s.service.CreateUser(r.Context(), req.User)
 		if err != nil {
 			s.errorJSON(w, http.StatusInternalServerError, err)
 			return
@@ -86,7 +86,7 @@ func (s *Server) signIn() http.HandlerFunc {
 			return
 		}
 
-		token, err := s.service.Authorization.GenerateToken(r.Context(), req.Username, req.Password)
+		token, err := s.service.GenerateToken(r.Context(), req.Username, req.Password)
 		if err != nil {
 			s.errorJSON(w, http.StatusInternalServerError, err)
 			return

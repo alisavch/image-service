@@ -1,7 +1,6 @@
 package service
 
 import (
-	"fmt"
 	"image"
 	"image/jpeg"
 	"image/png"
@@ -9,10 +8,6 @@ import (
 	"net/http"
 	"os"
 	"path"
-	"strconv"
-	"strings"
-
-	"github.com/google/uuid"
 
 	"github.com/alisavch/image-service/internal/utils"
 
@@ -28,20 +23,6 @@ type EncodeConfig struct {
 var defaultEncodeConfig = EncodeConfig{
 	jpegQuality:         95,
 	pngCompressionLevel: 0,
-}
-
-// ChangeFormat changes image format.
-func ChangeFormat(filename string) (string, error) {
-	imgNames := strings.Split(strings.ToLower(filename), ".")
-	extension := imgNames[len(imgNames)-1]
-
-	if format, ok := convertedType[extension]; ok {
-		imgNames[len(imgNames)-1] = format
-		convertedName := strings.Join(imgNames, ".")
-		return convertedName, nil
-	}
-
-	return "", utils.ErrUnsupportedFormat
 }
 
 // EncodeOption sets an optional parameter for to Encode and Save functions.
@@ -108,14 +89,4 @@ func GetFileContentType(out *os.File) (string, error) {
 	contentType := http.DetectContentType(buffer)
 
 	return contentType, nil
-}
-
-// UUIDToInt converts uuid.UUID to int.
-func UUIDToInt(value uuid.UUID) (int, error) {
-	strValue := value.String()
-	intValue, err := strconv.Atoi(strValue)
-	if err != nil {
-		return 0, fmt.Errorf("failed convert userID to int")
-	}
-	return intValue, nil
 }

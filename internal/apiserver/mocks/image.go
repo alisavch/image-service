@@ -20,20 +20,20 @@ type Image struct {
 	mock.Mock
 }
 
-// CompressImage provides a mock function with given fields: width, format, resultedName, img, newImg, isRemoteStorage
-func (_m *Image) CompressImage(width int, format string, resultedName string, img image.Image, newImg *os.File, isRemoteStorage bool) (models.ResultedImage, error) {
-	ret := _m.Called(width, format, resultedName, img, newImg, isRemoteStorage)
+// ChangeFormat provides a mock function with given fields: filename
+func (_m *Image) ChangeFormat(filename string) (string, error) {
+	ret := _m.Called(filename)
 
-	var r0 models.ResultedImage
-	if rf, ok := ret.Get(0).(func(int, string, string, image.Image, *os.File, bool) models.ResultedImage); ok {
-		r0 = rf(width, format, resultedName, img, newImg, isRemoteStorage)
+	var r0 string
+	if rf, ok := ret.Get(0).(func(string) string); ok {
+		r0 = rf(filename)
 	} else {
-		r0 = ret.Get(0).(models.ResultedImage)
+		r0 = ret.Get(0).(string)
 	}
 
 	var r1 error
-	if rf, ok := ret.Get(1).(func(int, string, string, image.Image, *os.File, bool) error); ok {
-		r1 = rf(width, format, resultedName, img, newImg, isRemoteStorage)
+	if rf, ok := ret.Get(1).(func(string) error); ok {
+		r1 = rf(filename)
 	} else {
 		r1 = ret.Error(1)
 	}
@@ -41,20 +41,41 @@ func (_m *Image) CompressImage(width int, format string, resultedName string, im
 	return r0, r1
 }
 
-// ConvertToType provides a mock function with given fields: format, newImageName, img, newImg, isRemoteStorage
-func (_m *Image) ConvertToType(format string, newImageName string, img image.Image, newImg *os.File, isRemoteStorage bool) (models.ResultedImage, error) {
-	ret := _m.Called(format, newImageName, img, newImg, isRemoteStorage)
+// CompressImage provides a mock function with given fields: width, format, resultedName, img, newImg, storage
+func (_m *Image) CompressImage(width int, format string, resultedName string, img image.Image, newImg *os.File, storage string) (models.ResultedImage, error) {
+	ret := _m.Called(width, format, resultedName, img, newImg, storage)
 
 	var r0 models.ResultedImage
-	if rf, ok := ret.Get(0).(func(string, string, image.Image, *os.File, bool) models.ResultedImage); ok {
-		r0 = rf(format, newImageName, img, newImg, isRemoteStorage)
+	if rf, ok := ret.Get(0).(func(int, string, string, image.Image, *os.File, string) models.ResultedImage); ok {
+		r0 = rf(width, format, resultedName, img, newImg, storage)
 	} else {
 		r0 = ret.Get(0).(models.ResultedImage)
 	}
 
 	var r1 error
-	if rf, ok := ret.Get(1).(func(string, string, image.Image, *os.File, bool) error); ok {
-		r1 = rf(format, newImageName, img, newImg, isRemoteStorage)
+	if rf, ok := ret.Get(1).(func(int, string, string, image.Image, *os.File, string) error); ok {
+		r1 = rf(width, format, resultedName, img, newImg, storage)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
+}
+
+// ConvertToType provides a mock function with given fields: format, newImageName, img, newImg, storage
+func (_m *Image) ConvertToType(format string, newImageName string, img image.Image, newImg *os.File, storage string) (models.ResultedImage, error) {
+	ret := _m.Called(format, newImageName, img, newImg, storage)
+
+	var r0 models.ResultedImage
+	if rf, ok := ret.Get(0).(func(string, string, image.Image, *os.File, string) models.ResultedImage); ok {
+		r0 = rf(format, newImageName, img, newImg, storage)
+	} else {
+		r0 = ret.Get(0).(models.ResultedImage)
+	}
+
+	var r1 error
+	if rf, ok := ret.Get(1).(func(string, string, image.Image, *os.File, string) error); ok {
+		r1 = rf(format, newImageName, img, newImg, storage)
 	} else {
 		r1 = ret.Error(1)
 	}
@@ -106,20 +127,20 @@ func (_m *Image) FindOriginalImage(ctx context.Context, id uuid.UUID) (models.Up
 	return r0, r1
 }
 
-// FindTheResultingImage provides a mock function with given fields: ctx, id, _a2
-func (_m *Image) FindTheResultingImage(ctx context.Context, id uuid.UUID, _a2 models.Service) (models.ResultedImage, error) {
-	ret := _m.Called(ctx, id, _a2)
+// FindTheResultingImage provides a mock function with given fields: ctx, id, service
+func (_m *Image) FindTheResultingImage(ctx context.Context, id uuid.UUID, service models.Service) (models.ResultedImage, error) {
+	ret := _m.Called(ctx, id, service)
 
 	var r0 models.ResultedImage
 	if rf, ok := ret.Get(0).(func(context.Context, uuid.UUID, models.Service) models.ResultedImage); ok {
-		r0 = rf(ctx, id, _a2)
+		r0 = rf(ctx, id, service)
 	} else {
 		r0 = ret.Get(0).(models.ResultedImage)
 	}
 
 	var r1 error
 	if rf, ok := ret.Get(1).(func(context.Context, uuid.UUID, models.Service) error); ok {
-		r1 = rf(ctx, id, _a2)
+		r1 = rf(ctx, id, service)
 	} else {
 		r1 = ret.Error(1)
 	}
@@ -150,13 +171,13 @@ func (_m *Image) FindUserHistoryByID(ctx context.Context, id uuid.UUID) ([]model
 	return r0, r1
 }
 
-// SaveImage provides a mock function with given fields: filename, location, isRemoteStorage
-func (_m *Image) SaveImage(filename string, location string, isRemoteStorage bool) (*models.Image, error) {
-	ret := _m.Called(filename, location, isRemoteStorage)
+// SaveImage provides a mock function with given fields: filename, location, storage
+func (_m *Image) SaveImage(filename string, location string, storage string) (*models.Image, error) {
+	ret := _m.Called(filename, location, storage)
 
 	var r0 *models.Image
-	if rf, ok := ret.Get(0).(func(string, string, bool) *models.Image); ok {
-		r0 = rf(filename, location, isRemoteStorage)
+	if rf, ok := ret.Get(0).(func(string, string, string) *models.Image); ok {
+		r0 = rf(filename, location, storage)
 	} else {
 		if ret.Get(0) != nil {
 			r0 = ret.Get(0).(*models.Image)
@@ -164,8 +185,8 @@ func (_m *Image) SaveImage(filename string, location string, isRemoteStorage boo
 	}
 
 	var r1 error
-	if rf, ok := ret.Get(1).(func(string, string, bool) error); ok {
-		r1 = rf(filename, location, isRemoteStorage)
+	if rf, ok := ret.Get(1).(func(string, string, string) error); ok {
+		r1 = rf(filename, location, storage)
 	} else {
 		r1 = ret.Error(1)
 	}

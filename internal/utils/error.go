@@ -61,4 +61,34 @@ var (
 	ErrFileStat = errors.New("cannot get file info")
 	// ErrCreateRequest verifies the execution of the request.
 	ErrCreateRequest = errors.New("cannot create request")
+	// ErrS3Uploading checks if the file can be uploaded to aws s3 bucket.
+	ErrS3Uploading = errors.New("failed to upload file to S3 bucket")
+	// ErrCreateUser checks the ability to create a user.
+	ErrCreateUser = errors.New("cannot insert user into database")
+	// ErrFindUser checks the ability to find the user.
+	ErrFindUser = errors.New("cannot find the user in database")
+	// ErrCreateQuery checks the possibility of creating a request.
+	ErrCreateQuery = errors.New("cannot create a query")
+	// ErrGetHistory checks the ability to get user history.
+	ErrGetHistory = errors.New("cannot get history lines")
+	// ErrUploadImageToDB verifies that the image information can be loaded into the database.
+	ErrUploadImageToDB = errors.New("unable to insert image into database")
+	// ErrTransaction checks if the transaction can be started.
+	ErrTransaction = errors.New("cannot start transaction")
+	// ErrFindTheResultingImage checks if the resulting image can be found.
+	ErrFindTheResultingImage = errors.New("cannot complete request to get resulting image")
+	// ErrFindOriginalImage checks if the original image can be found.
+	ErrFindOriginalImage = errors.New("cannot complete request to get original image")
+	// ErrUpdateStatusRequest checks if the status of the request can be updated.
+	ErrUpdateStatusRequest = errors.New("cannot update image status")
+	// ErrGenerateHash checks the hash generation capability.
+	ErrGenerateHash = errors.New("cannot generate password hash")
+	// ErrOpenFile checks if the file can be opened.
+	ErrOpenFile = errors.New("unable to open file")
+	// ErrRemoteUpload checks if the file can be loaded in aws.
+	ErrRemoteUpload = errors.New("failed to upload to aws")
+	// ErrRemoteDownload checks the ability to boot from the s3 bucket.
+	ErrRemoteDownload = errors.New("cannot download from s3 bucket")
+	// ErrGetContentType checks the ability to get the content type of the file.
+	ErrGetContentType = errors.New("cannot get file content type")
 )

@@ -7,18 +7,17 @@ import (
 	"github.com/streadway/amqp"
 )
 
-var logger = NewLogger()
-
 // RabbitMQ Operate Wrapper.
 type RabbitMQ struct {
-	conn *amqp.Connection
-	ch   *amqp.Channel
-	done chan error
+	conn   *amqp.Connection
+	ch     *amqp.Channel
+	done   chan error
+	logger *Logger
 }
 
 // NewRabbitMQ is constructor of the RabbitMQ.
 func NewRabbitMQ() *RabbitMQ {
-	return &RabbitMQ{}
+	return &RabbitMQ{logger: NewLogger()}
 }
 
 // Connect instantiates the RabbitMW instances using configuration defined in environment variables.
@@ -27,12 +26,12 @@ func (r *RabbitMQ) Connect() error {
 	var err error
 	r.conn, err = amqp.Dial(conf.Rabbitmq.RabbitmqURL)
 	if err != nil {
-		logger.Fatalf("%s: %s", "Failed to connect to RabbitMQ", err)
+		r.logger.Fatalf("%s: %s", "Failed to connect to RabbitMQ", err)
 	}
 
 	r.ch, err = r.conn.Channel()
 	if err != nil {
-		logger.Fatalf("%s: %s", "Failed to open a channel", err)
+		r.logger.Fatalf("%s: %s", "Failed to open a channel", err)
 	}
 
 	r.done = make(chan error)
@@ -48,7 +47,7 @@ func (r *RabbitMQ) Publish(exchange, key, body string) error {
 			Body:        []byte(body),
 		})
 	if err != nil {
-		logger.Fatalf("%s:%s", "Failed to publish a message", err)
+		r.logger.Fatalf("%s:%s", "Failed to publish a message", err)
 	}
 	return nil
 }
@@ -57,7 +56,7 @@ func (r *RabbitMQ) Publish(exchange, key, body string) error {
 func (r *RabbitMQ) DeclareQueue(name string) (amqp.Queue, error) {
 	q, err := r.ch.QueueDeclare(name, true, false, false, false, nil)
 	if err != nil {
-		logger.Fatalf("%s: %s", "Failed to declare a queue", err)
+		r.logger.Fatalf("%s: %s", "Failed to declare a queue", err)
 	}
 	return q, nil
 }
@@ -71,11 +70,11 @@ func (r *RabbitMQ) ConsumeQueue(queue string) error {
 	forever := make(chan bool)
 	go func() {
 		for d := range deliveries {
-			logger.Printf("%s: %s", "Received a message", d.Body)
+			r.logger.Printf("%s: %s", "Received a message", d.Body)
 
 			err := d.Ack(false)
 			if err != nil {
-				logger.Printf("%s: %s", "Failed to delegates acknowledgment", d.Body)
+				r.logger.Printf("%s: %s", "Failed to delegates acknowledgment", d.Body)
 			}
 		}
 	}()
@@ -91,7 +90,7 @@ func (r *RabbitMQ) QosQueue() error {
 		false,
 	)
 	if err != nil {
-		logger.Fatalf("%s: %s", "Failed qos", err)
+		r.logger.Fatalf("%s: %s", "Failed qos", err)
 	}
 	return nil
 }

@@ -8,8 +8,6 @@ import (
 
 	"github.com/google/uuid"
 
-	"github.com/alisavch/image-service/internal/service"
-
 	"github.com/alisavch/image-service/internal/models"
 	"github.com/alisavch/image-service/internal/utils"
 
@@ -21,8 +19,6 @@ const (
 	DefaultWidth = "150"
 	// DefaultOriginal is default value for downloads original image.
 	DefaultOriginal = "false"
-	// IsRemoteStorage is default value for storing images.
-	IsRemoteStorage = true
 )
 
 type findUserHistoryRequest struct {
@@ -66,7 +62,7 @@ func (s *Server) findUserHistory() http.HandlerFunc {
 			return
 		}
 
-		history, err := s.service.Image.FindUserHistoryByID(r.Context(), req.User.ID)
+		history, err := s.service.ServiceOperations.FindUserHistoryByID(r.Context(), req.User.ID)
 		if err != nil {
 			s.errorJSON(w, http.StatusInternalServerError, err)
 			return
@@ -122,7 +118,7 @@ func (req compressImageRequest) Validate() error {
 func (s *Server) compressImage() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		var req compressImageRequest
-
+		conf := utils.NewConfig()
 		err := ParseRequest(r, &req)
 		if err != nil {
 			s.errorJSON(w, http.StatusUnauthorized, err)
@@ -139,20 +135,20 @@ func (s *Server) compressImage() http.HandlerFunc {
 
 		q, err := s.mq.DeclareQueue("publisher")
 		if err != nil {
-			logger.Fatalf("%s: %s", "Failed to declare a queue", err)
+			s.logger.Fatalf("%s: %s", "Failed to declare a queue", err)
 		}
 
 		err = s.mq.QosQueue()
 		if err != nil {
-			logger.Fatalf("%s: %s", "Failed to controls messages", err)
+			s.logger.Fatalf("%s: %s", "Failed to controls messages", err)
 		}
 
 		err = s.mq.Publish("", q.Name, string(models.Queued))
 		if err != nil {
-			logger.Fatalf("%s: %s", "Failed to publish a message", err)
+			s.logger.Fatalf("%s: %s", "Failed to publish a message", err)
 		}
 
-		err = s.service.Image.UpdateStatus(r.Context(), originalImage.ID, models.Processing)
+		err = s.service.ServiceOperations.UpdateStatus(r.Context(), originalImage.ID, models.Processing)
 		if err != nil {
 			s.errorJSON(w, http.StatusInternalServerError, err)
 			return
@@ -160,25 +156,25 @@ func (s *Server) compressImage() http.HandlerFunc {
 
 		err = s.mq.Publish("", q.Name, string(models.Processing))
 		if err != nil {
-			logger.Fatalf("%s: %s", "Failed to publish a message", err)
+			s.logger.Fatalf("%s: %s", "Failed to publish a message", err)
 		}
 
 		resultedName := newImgName("cmp-" + originalImage.Name)
 
-		img, format, file, err := prepareImage(originalImage, originalImage.Name, resultedName)
+		img, format, file, err := s.prepareImage(originalImage, originalImage.Name, resultedName)
 
 		if err != nil {
 			s.errorJSON(w, http.StatusInternalServerError, err)
 			return
 		}
 
-		resultedImage, err := s.service.Image.CompressImage(req.Width, format, resultedName, img, file, IsRemoteStorage)
+		resultedImage, err := s.service.ServiceOperations.CompressImage(req.Width, format, resultedName, img, file, conf.Storage)
 		if err != nil {
 			s.errorJSON(w, http.StatusInternalServerError, err)
 			return
 		}
 
-		err = s.service.Image.UpdateStatus(r.Context(), originalImage.ID, models.Done)
+		err = s.service.ServiceOperations.UpdateStatus(r.Context(), originalImage.ID, models.Done)
 		if err != nil {
 			s.errorJSON(w, http.StatusInternalServerError, err)
 			return
@@ -186,13 +182,13 @@ func (s *Server) compressImage() http.HandlerFunc {
 
 		err = s.mq.Publish("", q.Name, string(models.Done))
 		if err != nil {
-			logger.Fatalf("%s: %s", "Failed to publish a message", err)
+			s.logger.Fatalf("%s: %s", "Failed to publish a message", err)
 		}
 
 		endOfExecution := time.Now()
 		resultedImage.Service = models.Compression
 
-		requestID, err := s.service.CreateRequest(
+		requestID, err := s.service.ServiceOperations.CreateRequest(
 			r.Context(),
 			req.User,
 			originalImage,
@@ -217,10 +213,9 @@ func (s *Server) compressImage() http.HandlerFunc {
 
 type findCompressedImageRequest struct {
 	models.ResultedImage
-	User            models.User
-	requestID       uuid.UUID
-	isOriginal      bool
-	isRemoteStorage bool
+	User       models.User
+	requestID  uuid.UUID
+	isOriginal bool
 }
 
 // Build builds a request to find compressed image.
@@ -262,7 +257,6 @@ func (req *findCompressedImageRequest) Build(r *http.Request) error {
 
 	req.requestID = compressedID
 	req.isOriginal = convertedBool
-	req.isRemoteStorage = IsRemoteStorage
 
 	return nil
 }
@@ -275,6 +269,7 @@ func (req findCompressedImageRequest) Validate() error {
 func (s *Server) findCompressedImage() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		var req findCompressedImageRequest
+		conf := utils.NewConfig()
 
 		err := ParseRequest(r, &req)
 		if err != nil {
@@ -283,13 +278,13 @@ func (s *Server) findCompressedImage() http.HandlerFunc {
 		}
 
 		if req.isOriginal {
-			uploaded, err := s.service.Image.FindOriginalImage(r.Context(), req.requestID)
+			uploaded, err := s.service.FindOriginalImage(r.Context(), req.requestID)
 			if err != nil {
 				s.errorJSON(w, http.StatusInternalServerError, fmt.Errorf("%s:%s", utils.ErrFindImage, err))
 				return
 			}
 
-			file, err := s.service.Image.SaveImage(uploaded.Name, uploaded.Location, req.isRemoteStorage)
+			file, err := s.service.SaveImage(uploaded.Name, uploaded.Location, conf.Storage)
 			if err != nil {
 				s.errorJSON(w, http.StatusInternalServerError, fmt.Errorf("%s:%s", utils.ErrSaveImage, err))
 				return
@@ -299,13 +294,13 @@ func (s *Server) findCompressedImage() http.HandlerFunc {
 			return
 		}
 
-		resultedImage, err := s.service.Image.FindTheResultingImage(r.Context(), req.requestID, models.Compression)
+		resultedImage, err := s.service.FindTheResultingImage(r.Context(), req.requestID, models.Compression)
 		if err != nil {
 			s.errorJSON(w, http.StatusInternalServerError, fmt.Errorf("%s:%s", utils.ErrFindImage, err))
 			return
 		}
 
-		file, err := s.service.Image.SaveImage(resultedImage.Name, resultedImage.Location, req.isRemoteStorage)
+		file, err := s.service.SaveImage(resultedImage.Name, resultedImage.Location, conf.Storage)
 		if err != nil {
 			s.errorJSON(w, http.StatusInternalServerError, fmt.Errorf("%s:%s", utils.ErrSaveImage, err))
 			return
@@ -350,6 +345,7 @@ func (req convertImageRequest) Validate() error {
 func (s *Server) convertImage() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		var req convertImageRequest
+		conf := utils.NewConfig()
 
 		err := ParseRequest(r, &req)
 		if err != nil {
@@ -367,20 +363,20 @@ func (s *Server) convertImage() http.HandlerFunc {
 
 		q, err := s.mq.DeclareQueue("publisher")
 		if err != nil {
-			logger.Fatalf("%s: %s", "Failed to declare a queue", err)
+			s.logger.Fatalf("%s: %s", "Failed to declare a queue", err)
 		}
 
 		err = s.mq.QosQueue()
 		if err != nil {
-			logger.Fatalf("%s: %s", "Failed to controls messages", err)
+			s.logger.Fatalf("%s: %s", "Failed to controls messages", err)
 		}
 
 		err = s.mq.Publish("", q.Name, string(models.Queued))
 		if err != nil {
-			logger.Fatalf("%s: %s", "Failed to publish a message", err)
+			s.logger.Fatalf("%s: %s", "Failed to publish a message", err)
 		}
 
-		err = s.service.Image.UpdateStatus(r.Context(), originalImage.ID, models.Processing)
+		err = s.service.ServiceOperations.UpdateStatus(r.Context(), originalImage.ID, models.Processing)
 		if err != nil {
 			s.errorJSON(w, http.StatusInternalServerError, err)
 			return
@@ -388,10 +384,10 @@ func (s *Server) convertImage() http.HandlerFunc {
 
 		err = s.mq.Publish("", q.Name, string(models.Processing))
 		if err != nil {
-			logger.Fatalf("%s: %s", "Failed to publish a message", err)
+			s.logger.Fatalf("%s: %s", "Failed to publish a message", err)
 		}
 
-		convertedName, err := service.ChangeFormat(originalImage.Name)
+		convertedName, err := s.service.ServiceOperations.ChangeFormat(originalImage.Name)
 		if err != nil {
 			s.errorJSON(w, http.StatusInternalServerError, err)
 			return
@@ -399,19 +395,19 @@ func (s *Server) convertImage() http.HandlerFunc {
 
 		resultedName := newImgName("cnv-" + convertedName)
 
-		img, format, file, err := prepareImage(originalImage, originalImage.Name, resultedName)
+		img, format, file, err := s.prepareImage(originalImage, originalImage.Name, resultedName)
 		if err != nil {
 			s.errorJSON(w, http.StatusInternalServerError, err)
 			return
 		}
 
-		resultedImage, err := s.service.Image.ConvertToType(format, resultedName, img, file, IsRemoteStorage)
+		resultedImage, err := s.service.ServiceOperations.ConvertToType(format, resultedName, img, file, conf.Storage)
 		if err != nil {
 			s.errorJSON(w, http.StatusInternalServerError, err)
 			return
 		}
 
-		err = s.service.Image.UpdateStatus(r.Context(), originalImage.ID, models.Done)
+		err = s.service.ServiceOperations.UpdateStatus(r.Context(), originalImage.ID, models.Done)
 		if err != nil {
 			s.errorJSON(w, http.StatusInternalServerError, err)
 			return
@@ -419,13 +415,13 @@ func (s *Server) convertImage() http.HandlerFunc {
 
 		err = s.mq.Publish("", q.Name, string(models.Done))
 		if err != nil {
-			logger.Fatalf("%s: %s", "Failed to publish a message", err)
+			s.logger.Fatalf("%s: %s", "Failed to publish a message", err)
 		}
 
 		endOfExecution := time.Now()
 		resultedImage.Service = models.Conversion
 
-		requestID, err := s.service.CreateRequest(
+		requestID, err := s.service.ServiceOperations.CreateRequest(
 			r.Context(),
 			req.User,
 			originalImage,
@@ -450,10 +446,9 @@ func (s *Server) convertImage() http.HandlerFunc {
 
 type findConvertedImageRequest struct {
 	models.ResultedImage
-	User            models.User
-	requestID       uuid.UUID
-	isOriginal      bool
-	isRemoteStorage bool
+	User       models.User
+	requestID  uuid.UUID
+	isOriginal bool
 }
 
 // Build builds a request to find converted image.
@@ -495,7 +490,6 @@ func (req *findConvertedImageRequest) Build(r *http.Request) error {
 
 	req.requestID = convertedID
 	req.isOriginal = convertedBool
-	req.isRemoteStorage = IsRemoteStorage
 
 	return nil
 }
@@ -508,6 +502,7 @@ func (req findConvertedImageRequest) Validate() error {
 func (s *Server) findConvertedImage() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		var req findConvertedImageRequest
+		conf := utils.NewConfig()
 
 		err := ParseRequest(r, &req)
 		if err != nil {
@@ -516,13 +511,13 @@ func (s *Server) findConvertedImage() http.HandlerFunc {
 		}
 
 		if req.isOriginal {
-			uploaded, err := s.service.Image.FindOriginalImage(r.Context(), req.requestID)
+			uploaded, err := s.service.FindOriginalImage(r.Context(), req.requestID)
 			if err != nil {
 				s.errorJSON(w, http.StatusInternalServerError, fmt.Errorf("%s:%s", utils.ErrFindImage, err))
 				return
 			}
 
-			file, err := s.service.Image.SaveImage(uploaded.Name, "/uploads/", req.isRemoteStorage)
+			file, err := s.service.SaveImage(uploaded.Name, "/uploads/", conf.Storage)
 			if err != nil {
 				s.errorJSON(w, http.StatusInternalServerError, fmt.Errorf("%s:%s", utils.ErrSaveImage, err))
 				return
@@ -531,13 +526,13 @@ func (s *Server) findConvertedImage() http.HandlerFunc {
 			return
 		}
 
-		resultedImage, err := s.service.Image.FindTheResultingImage(r.Context(), req.requestID, models.Conversion)
+		resultedImage, err := s.service.FindTheResultingImage(r.Context(), req.requestID, models.Conversion)
 		if err != nil {
 			s.errorJSON(w, http.StatusInternalServerError, fmt.Errorf("%s:%s", utils.ErrFindImage, err))
 			return
 		}
 
-		file, err := s.service.Image.SaveImage(resultedImage.Name, "/results/", req.isRemoteStorage)
+		file, err := s.service.SaveImage(resultedImage.Name, "/results/", conf.Storage)
 		if err != nil {
 			s.errorJSON(w, http.StatusInternalServerError, fmt.Errorf("%s:%s", utils.ErrSaveImage, err))
 			return

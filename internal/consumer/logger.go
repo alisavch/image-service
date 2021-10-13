@@ -5,18 +5,12 @@ import (
 	"github.com/sirupsen/logrus"
 )
 
-// DisplayLog contains methods for log display.
-type DisplayLog interface {
-	Info(args ...interface{})
-	Fatalf(format string, args ...interface{})
-}
-
 // Logger unites interfaces.
 type Logger struct {
 	DisplayLog
 }
 
-// NewLogger is the logger constructor.
+// NewLogger configures Logger.
 func NewLogger() *Logger {
 	return &Logger{
 		DisplayLog: log.NewCustomLogger(logrus.New()),

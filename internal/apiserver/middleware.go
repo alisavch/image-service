@@ -24,8 +24,6 @@ import (
 
 type key string
 
-var remoteStorage = NewAWS()
-
 const (
 	authorizationHeader key = "Authorization"
 	userCtx             key = "userId"
@@ -83,7 +81,7 @@ func (s *Server) authorize(next http.Handler) http.HandlerFunc {
 			s.errorJSON(w, http.StatusBadRequest, err)
 		}
 
-		userID, err := s.service.Authorization.ParseToken(req.token)
+		userID, err := s.service.ParseToken(req.token)
 		if err != nil {
 			s.errorJSON(w, http.StatusUnauthorized, err)
 			return
@@ -130,8 +128,11 @@ func (s *Server) uploadImage(r *http.Request, uploadedImage models.UploadedImage
 
 	req.handler.Filename = strings.ReplaceAll(uuid.New().String(), "-", "") + req.handler.Filename
 
-	if IsRemoteStorage {
-		imageLocation, err := remoteStorage.UploadToS3Bucket(req.file, req.handler.Filename)
+	conf := utils.NewConfig()
+
+	if conf.Storage == "AWS" {
+		imageLocation, err := s.service.ServiceOperations.UploadToS3Bucket(req.file, req.handler.Filename)
+
 		if err != nil {
 			return models.UploadedImage{}, err
 		}
@@ -143,7 +144,7 @@ func (s *Server) uploadImage(r *http.Request, uploadedImage models.UploadedImage
 		uploadedImage.Name = req.handler.Filename
 		uploadedImage.Location = imageLocation
 
-		uploadedID, err := s.service.Image.UploadImage(r.Context(), uploadedImage)
+		uploadedID, err := s.service.ServiceOperations.UploadImage(r.Context(), uploadedImage)
 		if err != nil {
 			return models.UploadedImage{}, fmt.Errorf("%s:%s", utils.ErrUpload, err)
 		}
@@ -164,7 +165,7 @@ func (s *Server) uploadImage(r *http.Request, uploadedImage models.UploadedImage
 	defer func(out *os.File) {
 		err := out.Close()
 		if err != nil {
-			logger.Fatalf("%s:%s", "failed fileReader.Close", err)
+			s.logger.Fatalf("%s:%s", "failed fileReader.Close", err)
 		}
 	}(out)
 
@@ -175,14 +176,14 @@ func (s *Server) uploadImage(r *http.Request, uploadedImage models.UploadedImage
 	defer func(file multipart.File) {
 		err := file.Close()
 		if err != nil {
-			logger.Fatalf("%s:%s", "failed fileReader.Close", err)
+			s.logger.Fatalf("%s:%s", "failed fileReader.Close", err)
 		}
 	}(req.file)
 
 	uploadedImage.Name = req.handler.Filename
 	currentDir, _ := os.Getwd()
 	uploadedImage.Location = currentDir + "/uploads/"
-	uploadedID, err := s.service.Image.UploadImage(r.Context(), uploadedImage)
+	uploadedID, err := s.service.ServiceOperations.UploadImage(r.Context(), uploadedImage)
 	if err != nil {
 		return models.UploadedImage{}, utils.ErrUpload
 	}
@@ -191,22 +192,24 @@ func (s *Server) uploadImage(r *http.Request, uploadedImage models.UploadedImage
 	return uploadedImage, nil
 }
 
-func prepareImage(uploadedImage models.UploadedImage, originalImageName, resultedImageName string) (image.Image, string, *os.File, error) {
-	if IsRemoteStorage {
-		file, err := remoteStorage.DownloadFromS3Bucket(originalImageName)
+func (s *Server) prepareImage(uploadedImage models.UploadedImage, originalImageName, resultedImageName string) (image.Image, string, *os.File, error) {
+	conf := utils.NewConfig()
+
+	if conf.Storage == "AWS" {
+		file, err := s.service.ServiceOperations.DownloadFromS3Bucket(originalImageName)
 		if err != nil {
 			return nil, "", nil, err
 		}
 
 		img, format, err := image.Decode(file)
 		if err != nil {
-			logger.Fatalf("%s:%s", "Cannot decode file", err)
+			s.logger.Fatalf("%s:%s", "Cannot decode file", err)
 			return nil, "", nil, utils.ErrDecode
 		}
 
 		resultedFile, err := os.Create(resultedImageName)
 		if err != nil {
-			logger.Fatalf("%s:%s", "Cannot create resulted file", err)
+			s.logger.Fatalf("%s:%s", "Cannot create resulted file", err)
 		}
 
 		return img, format, resultedFile, nil

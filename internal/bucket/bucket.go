@@ -16,9 +16,8 @@ import (
 )
 
 var (
-	logger = NewLogger()
-	conf   = utils.NewConfig()
-	sess   = connectAWS(NewS3Session())
+	conf = utils.NewConfig()
+	sess = connectAWS(NewS3Session())
 )
 
 // S3Session contains an environment for the AWS bucket.
@@ -27,15 +26,17 @@ type S3Session struct {
 	region           string
 	credentialKey    string
 	credentialSecret string
+	logger           *Logger
 }
 
-// NewS3Session is the s3Session constructor.
+// NewS3Session configures S3Session.
 func NewS3Session() *S3Session {
 	return &S3Session{
 		bucketName:       conf.Bucket.BucketName,
 		region:           conf.Bucket.AWSRegion,
 		credentialKey:    conf.Bucket.AWSAccessKeyID,
 		credentialSecret: conf.Bucket.AWSSecretAccessKey,
+		logger:           NewLogger(),
 	}
 }
 
@@ -49,46 +50,46 @@ func connectAWS(s3sess *S3Session) *session.Session {
 				""),
 		})
 	if err != nil {
-		logger.Fatalf("%s:%s", "Failed to create session", err)
+		s3sess.logger.Fatalf("%s:%s", "Failed to create session", err)
 	}
 
 	return sess
 }
 
 // UploadToS3Bucket uploads an object to S3.
-func (as *S3Session) UploadToS3Bucket(file io.Reader, filename string) (string, error) {
+func (s3sess *S3Session) UploadToS3Bucket(file io.Reader, filename string) (string, error) {
 	uploader := s3manager.NewUploader(sess)
 
 	result, err := uploader.Upload(&s3manager.UploadInput{
 		Body:   file,
-		Bucket: aws.String(as.bucketName),
+		Bucket: aws.String(s3sess.bucketName),
 		Key:    aws.String(filename),
 	})
 	if err != nil {
-		return "", fmt.Errorf("%s:%s", "failed to upload file to S3 bucket", err)
+		return "", fmt.Errorf("%s:%s", utils.ErrS3Uploading, err)
 	}
 
-	logger.Printf("%s:%s", "Successfully uploaded", result.Location)
+	s3sess.logger.Printf("%s:%s", "Successfully uploaded", result.Location)
 	return result.Location, nil
 }
 
 // DownloadFromS3Bucket downloads objects from S3.
-func (as *S3Session) DownloadFromS3Bucket(filename string) (*os.File, error) {
+func (s3sess *S3Session) DownloadFromS3Bucket(filename string) (*os.File, error) {
 	downloader := s3manager.NewDownloader(sess)
 
 	file, err := os.Create(filename)
 	if err != nil {
-		return nil, fmt.Errorf("%s:%s", "failed to create file", err)
+		return nil, fmt.Errorf("%s:%s", utils.ErrCreateFile, err)
 	}
 
 	_, err = downloader.Download(file, &s3.GetObjectInput{
-		Bucket: aws.String(as.bucketName),
+		Bucket: aws.String(s3sess.bucketName),
 		Key:    aws.String(filename),
 	})
 	if err != nil {
 		return nil, fmt.Errorf("%s:%s", "failed get object", err)
 	}
 
-	logger.Printf("%s:%s", "Successfully downloaded", file.Name())
+	s3sess.logger.Printf("%s:%s", "Successfully downloaded", file.Name())
 	return file, nil
 }

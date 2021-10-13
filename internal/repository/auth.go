@@ -3,7 +3,8 @@ package repository
 import (
 	"context"
 	"database/sql"
-	"fmt"
+
+	"github.com/alisavch/image-service/internal/utils"
 
 	"github.com/google/uuid"
 
@@ -15,7 +16,7 @@ type AuthRepository struct {
 	db *sql.DB
 }
 
-// NewAuthRepository is constructor of the AuthRepository.
+// NewAuthRepository configures AuthRepository.
 func NewAuthRepository(db *sql.DB) *AuthRepository {
 	return &AuthRepository{db: db}
 }
@@ -25,7 +26,7 @@ func (r *AuthRepository) CreateUser(ctx context.Context, user models.User) (id u
 	query := "INSERT INTO image_service.user_account(username, password) VALUES ($1, $2) RETURNING id"
 	row := r.db.QueryRowContext(ctx, query, user.Username, user.Password)
 	if err := row.Scan(&id); err != nil {
-		return [16]byte{}, fmt.Errorf("cannot insert user into database")
+		return [16]byte{}, utils.ErrCreateUser
 	}
 	return id, nil
 }
@@ -36,7 +37,7 @@ func (r *AuthRepository) GetUser(ctx context.Context, username string) (models.U
 	query := "SELECT id, password FROM image_service.user_account where username=$1"
 	row := r.db.QueryRowContext(ctx, query, username)
 	if err := row.Scan(&user.ID, &user.Password); err != nil {
-		return models.User{}, fmt.Errorf("cannot find the user in database")
+		return models.User{}, utils.ErrFindUser
 	}
 	return user, nil
 }

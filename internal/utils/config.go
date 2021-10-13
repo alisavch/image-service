@@ -30,6 +30,7 @@ type Config struct {
 	TokenTTL string
 	Rabbitmq RabbitmqConfig
 	Bucket   BucketConfig
+	Storage  string
 }
 
 // NewConfig returns a new Config struct
@@ -52,6 +53,7 @@ func NewConfig() *Config {
 			AWSSecretAccessKey: getEnv("AWS_SECRET_ACCESS_KEY", ""),
 			BucketName:         getEnv("BUCKET_NAME", ""),
 		},
+		Storage: getEnv("REMOTE_STORAGE", "local"),
 	}
 }
 

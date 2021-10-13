@@ -10,7 +10,6 @@ import (
 	"github.com/alisavch/image-service/internal/utils"
 
 	"github.com/alisavch/image-service/internal/models"
-	"github.com/alisavch/image-service/internal/repository"
 	"github.com/dgrijalva/jwt-go"
 	"golang.org/x/crypto/bcrypt"
 )
@@ -26,11 +25,11 @@ type tokenClaims struct {
 
 // AuthService provides access to repository.
 type AuthService struct {
-	repo repository.Authorization
+	repo AuthorizationRepo
 }
 
-// NewAuthService is constructor of AuthService.
-func NewAuthService(repo repository.Authorization) *AuthService {
+// NewAuthService configures AuthService.
+func NewAuthService(repo AuthorizationRepo) *AuthService {
 	return &AuthService{repo: repo}
 }
 
@@ -38,7 +37,7 @@ func NewAuthService(repo repository.Authorization) *AuthService {
 func (s *AuthService) CreateUser(ctx context.Context, user models.User) (id uuid.UUID, err error) {
 	user.Password, err = generatePasswordHash(user.Password)
 	if err != nil {
-		return [16]byte{}, fmt.Errorf("%s:%s", "cannot generate password hash", err)
+		return [16]byte{}, fmt.Errorf("%s:%s", utils.ErrGenerateHash, err)
 	}
 	return s.repo.CreateUser(ctx, user)
 }

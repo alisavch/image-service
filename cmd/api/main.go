@@ -27,7 +27,6 @@ import (
 	"flag"
 
 	"github.com/alisavch/image-service/internal/apiserver"
-	_ "github.com/alisavch/image-service/internal/log"
 )
 
 //go:generate swagger generate spec

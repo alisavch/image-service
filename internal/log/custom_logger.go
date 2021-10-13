@@ -1,18 +1,17 @@
-package broker
+package log
 
 import (
-	"github.com/alisavch/image-service/internal/log"
 	"github.com/sirupsen/logrus"
 )
 
 // Logger unites interfaces.
 type Logger struct {
-	FormattingOutput
+	*CustomLogger
 }
 
 // NewLogger is the logger constructor.
 func NewLogger() *Logger {
 	return &Logger{
-		FormattingOutput: log.NewCustomLogger(logrus.New()),
+		CustomLogger: NewCustomLogger(logrus.New()),
 	}
 }

@@ -3,12 +3,16 @@ package apiserver
 import (
 	"bytes"
 	"fmt"
+	"image"
+	"image/color"
+	"image/jpeg"
 	"io"
 	"io/ioutil"
 	"mime/multipart"
 	"net/http"
 	"net/http/httptest"
 	"net/textproto"
+	"os"
 	"strconv"
 	"testing"
 
@@ -19,8 +23,6 @@ import (
 	"github.com/alisavch/image-service/internal/apiserver/mocks"
 
 	"github.com/alisavch/image-service/internal/utils"
-
-	_ "image/jpeg"
 
 	"github.com/alisavch/image-service/internal/models"
 	"github.com/google/uuid"
@@ -306,8 +308,21 @@ func TestHandler_compressImage(t *testing.T) {
 			s.router.HandleFunc(fmt.Sprintf(compressURL, "{userID}"),
 				s.authorize(s.compressImage())).Methods(http.MethodPost)
 
-			mediaData, err := ioutil.ReadFile("test/go.jpeg")
+			file, err := os.Create("test.jpeg")
 			require.NoError(t, err)
+
+			alpha := image.NewAlpha(image.Rect(0, 0, 100, 100))
+			for x := 0; x < 100; x++ {
+				for y := 0; y < 100; y++ {
+					alpha.Set(x, y, color.Alpha{A: uint8(x % 256)})
+				}
+			}
+			err = jpeg.Encode(file, alpha, nil)
+			require.NoError(t, err)
+
+			content, err := ioutil.ReadFile("test.jpeg")
+			require.NoError(t, err)
+
 			buf := &bytes.Buffer{}
 			writer := multipart.NewWriter(buf)
 			header := make(textproto.MIMEHeader)
@@ -316,9 +331,11 @@ func TestHandler_compressImage(t *testing.T) {
 
 			part, err := writer.CreatePart(header)
 			require.NoError(t, err)
-			_, err = io.Copy(part, bytes.NewReader(mediaData))
+			_, err = io.Copy(part, bytes.NewReader(content))
 			require.NoError(t, err)
 			err = writer.Close()
+			require.NoError(t, err)
+			err = file.Close()
 			require.NoError(t, err)
 
 			w := httptest.NewRecorder()
@@ -738,8 +755,21 @@ func TestHandler_convertImage(t *testing.T) {
 			s.router.HandleFunc(fmt.Sprintf(convertURL, "{userID}"),
 				s.authorize(s.convertImage())).Methods(http.MethodPost)
 
-			mediaData, err := ioutil.ReadFile("test/go.jpeg")
+			file, err := os.Create("test.jpeg")
 			require.NoError(t, err)
+
+			alpha := image.NewAlpha(image.Rect(0, 0, 100, 100))
+			for x := 0; x < 100; x++ {
+				for y := 0; y < 100; y++ {
+					alpha.Set(x, y, color.Alpha{A: uint8(x % 256)})
+				}
+			}
+			err = jpeg.Encode(file, alpha, nil)
+			require.NoError(t, err)
+
+			content, err := ioutil.ReadFile("test.jpeg")
+			require.NoError(t, err)
+
 			buf := &bytes.Buffer{}
 			writer := multipart.NewWriter(buf)
 			header := make(textproto.MIMEHeader)
@@ -747,7 +777,7 @@ func TestHandler_convertImage(t *testing.T) {
 			header.Set("Content-Type", "image/jpeg")
 			part, err := writer.CreatePart(header)
 			require.NoError(t, err)
-			_, err = io.Copy(part, bytes.NewReader(mediaData))
+			_, err = io.Copy(part, bytes.NewReader(content))
 			require.NoError(t, err)
 			err = writer.Close()
 			require.NoError(t, err)

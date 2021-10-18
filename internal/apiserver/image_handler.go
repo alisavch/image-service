@@ -168,13 +168,13 @@ func (s *Server) compressImage() http.HandlerFunc {
 			return
 		}
 
-		resultedImage, err := s.service.ServiceOperations.CompressImage(req.Width, format, resultedName, img, file, conf.Storage)
+		resultedImage, err := s.service.CompressImage(req.Width, format, resultedName, img, file, conf.Storage)
 		if err != nil {
 			s.errorJSON(w, http.StatusInternalServerError, err)
 			return
 		}
 
-		err = s.service.ServiceOperations.UpdateStatus(r.Context(), originalImage.ID, models.Done)
+		err = s.service.UpdateStatus(r.Context(), originalImage.ID, models.Done)
 		if err != nil {
 			s.errorJSON(w, http.StatusInternalServerError, err)
 			return
@@ -396,6 +396,7 @@ func (s *Server) convertImage() http.HandlerFunc {
 		resultedName := newImgName("cnv-" + convertedName)
 
 		img, format, file, err := s.prepareImage(originalImage, originalImage.Name, resultedName)
+
 		if err != nil {
 			s.errorJSON(w, http.StatusInternalServerError, err)
 			return

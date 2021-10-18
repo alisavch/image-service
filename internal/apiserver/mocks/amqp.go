@@ -13,34 +13,6 @@ type AMQP struct {
 	mock.Mock
 }
 
-// Connect provides a mock function with given fields:
-func (_m *AMQP) Connect() error {
-	ret := _m.Called()
-
-	var r0 error
-	if rf, ok := ret.Get(0).(func() error); ok {
-		r0 = rf()
-	} else {
-		r0 = ret.Error(0)
-	}
-
-	return r0
-}
-
-// ConsumeQueue provides a mock function with given fields: queue
-func (_m *AMQP) ConsumeQueue(queue string) error {
-	ret := _m.Called(queue)
-
-	var r0 error
-	if rf, ok := ret.Get(0).(func(string) error); ok {
-		r0 = rf(queue)
-	} else {
-		r0 = ret.Error(0)
-	}
-
-	return r0
-}
-
 // DeclareQueue provides a mock function with given fields: name
 func (_m *AMQP) DeclareQueue(name string) (amqp.Queue, error) {
 	ret := _m.Called(name)

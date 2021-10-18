@@ -129,9 +129,9 @@ func (s *Server) uploadImage(r *http.Request, uploadedImage models.UploadedImage
 	req.handler.Filename = strings.ReplaceAll(uuid.New().String(), "-", "") + req.handler.Filename
 
 	conf := utils.NewConfig()
-
-	if conf.Storage == "AWS" {
-		imageLocation, err := s.service.ServiceOperations.UploadToS3Bucket(req.file, req.handler.Filename)
+	switch conf.Storage {
+	case "AWS":
+		imageLocation, err := s.service.UploadToS3Bucket(req.file, req.handler.Filename)
 
 		if err != nil {
 			return models.UploadedImage{}, err
@@ -144,50 +144,49 @@ func (s *Server) uploadImage(r *http.Request, uploadedImage models.UploadedImage
 		uploadedImage.Name = req.handler.Filename
 		uploadedImage.Location = imageLocation
 
-		uploadedID, err := s.service.ServiceOperations.UploadImage(r.Context(), uploadedImage)
+		uploadedID, err := s.service.UploadImage(r.Context(), uploadedImage)
 		if err != nil {
 			return models.UploadedImage{}, fmt.Errorf("%s:%s", utils.ErrUpload, err)
 		}
 		uploadedImage.ID = uploadedID
 
-		return uploadedImage, nil
-	}
-
-	err = service.EnsureBaseDir("./uploads/")
-	if err != nil {
-		return models.UploadedImage{}, err
-	}
-
-	out, err := os.Create(fmt.Sprintf("./uploads/%s", req.handler.Filename))
-	if err != nil {
-		return models.UploadedImage{}, utils.ErrCreateFile
-	}
-	defer func(out *os.File) {
-		err := out.Close()
+	default:
+		err = service.EnsureBaseDir("./uploads/")
 		if err != nil {
-			s.logger.Fatalf("%s:%s", "failed fileReader.Close", err)
+			return models.UploadedImage{}, err
 		}
-	}(out)
 
-	_, err = io.Copy(out, req.file)
-	if err != nil {
-		return models.UploadedImage{}, utils.ErrCopyFile
-	}
-	defer func(file multipart.File) {
-		err := file.Close()
+		out, err := os.Create(fmt.Sprintf("./uploads/%s", req.handler.Filename))
 		if err != nil {
-			s.logger.Fatalf("%s:%s", "failed fileReader.Close", err)
+			return models.UploadedImage{}, utils.ErrCreateFile
 		}
-	}(req.file)
+		defer func(out *os.File) {
+			err := out.Close()
+			if err != nil {
+				s.logger.Fatalf("%s:%s", "failed fileReader.Close", err)
+			}
+		}(out)
 
-	uploadedImage.Name = req.handler.Filename
-	currentDir, _ := os.Getwd()
-	uploadedImage.Location = currentDir + "/uploads/"
-	uploadedID, err := s.service.ServiceOperations.UploadImage(r.Context(), uploadedImage)
-	if err != nil {
-		return models.UploadedImage{}, utils.ErrUpload
+		_, err = io.Copy(out, req.file)
+		if err != nil {
+			return models.UploadedImage{}, utils.ErrCopyFile
+		}
+		defer func(file multipart.File) {
+			err := file.Close()
+			if err != nil {
+				s.logger.Fatalf("%s:%s", "failed fileReader.Close", err)
+			}
+		}(req.file)
+
+		uploadedImage.Name = req.handler.Filename
+		currentDir, _ := os.Getwd()
+		uploadedImage.Location = currentDir + "/uploads/"
+		uploadedID, err := s.service.UploadImage(r.Context(), uploadedImage)
+		if err != nil {
+			return models.UploadedImage{}, utils.ErrUpload
+		}
+		uploadedImage.ID = uploadedID
 	}
-	uploadedImage.ID = uploadedID
 
 	return uploadedImage, nil
 }
@@ -196,7 +195,7 @@ func (s *Server) prepareImage(uploadedImage models.UploadedImage, originalImageN
 	conf := utils.NewConfig()
 
 	if conf.Storage == "AWS" {
-		file, err := s.service.ServiceOperations.DownloadFromS3Bucket(originalImageName)
+		file, err := s.service.DownloadFromS3Bucket(originalImageName)
 		if err != nil {
 			return nil, "", nil, err
 		}

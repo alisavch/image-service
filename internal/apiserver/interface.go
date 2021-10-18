@@ -14,10 +14,8 @@ import (
 
 // AMQP contains methods for working with message broker.
 type AMQP interface {
-	Connect() error
 	Publish(exchange, key string, body string) error
 	DeclareQueue(name string) (amqp.Queue, error)
-	ConsumeQueue(queue string) error
 	QosQueue() error
 }
 

@@ -17,7 +17,10 @@ import (
 	"github.com/alisavch/image-service/internal/models"
 )
 
-const aws = "AWS"
+const (
+	aws   = "AWS"
+	local = "local"
+)
 
 var (
 	convertedType = map[string]string{
@@ -89,7 +92,7 @@ func (s *ImageService) CompressImage(width int, format, resultedName string, img
 		result.Name = resultedName
 		result.Location = imageLocation
 
-	default:
+	case local:
 		currentDir, err := os.Getwd()
 		if err != nil {
 			return models.ResultedImage{}, utils.ErrGetDir
@@ -147,7 +150,7 @@ func (s *ImageService) ConvertToType(format, resultedName string, img image.Imag
 		result.Name = resultedName
 		result.Location = imageLocation
 
-	default:
+	case local:
 		currentDir, err := os.Getwd()
 		if err != nil {
 			return models.ResultedImage{}, utils.ErrGetDir
@@ -194,7 +197,7 @@ func (s *ImageService) SaveImage(filename, location, storage string) (*models.Im
 		}
 		file = f
 
-	default:
+	case local:
 		f, err := os.Open(location + filename)
 		if err != nil {
 			return &models.Image{}, utils.ErrOpen

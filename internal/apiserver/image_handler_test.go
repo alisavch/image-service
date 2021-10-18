@@ -3,6 +3,7 @@ package apiserver
 import (
 	"bytes"
 	"fmt"
+	"io"
 	"io/ioutil"
 	"mime/multipart"
 	"net/http"
@@ -11,15 +12,18 @@ import (
 	"strconv"
 	"testing"
 
+	"github.com/streadway/amqp"
+
 	"github.com/alisavch/image-service/internal/broker"
 
 	"github.com/alisavch/image-service/internal/apiserver/mocks"
 
 	"github.com/alisavch/image-service/internal/utils"
 
+	_ "image/jpeg"
+
 	"github.com/alisavch/image-service/internal/models"
 	"github.com/google/uuid"
-	"github.com/gorilla/mux"
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
 )
@@ -89,7 +93,7 @@ func TestHandler_findUserHistory(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			mockSO := new(mocks.ServiceOperations)
 
-			service := &Service{ServiceOperations: mockSO}
+			service := NewService(mockSO)
 			mq := broker.NewAMQPBroker()
 
 			s := NewServer(mq, service)
@@ -123,6 +127,8 @@ func TestHandler_compressImage(t *testing.T) {
 		Location: "location",
 	}
 
+	q := amqp.Queue{Name: "", Messages: 1, Consumers: 1}
+
 	type fnBehavior func(mockSO *mocks.ServiceOperations, mockAMQP *mocks.AMQP, token string, uplImg models.UploadedImage, isRemoteStorage bool)
 
 	tests := []struct {
@@ -138,34 +144,32 @@ func TestHandler_compressImage(t *testing.T) {
 		expectedStatusCode   int
 		expectedResponseBody string
 	}{
-		// {
-		//	name:            "Compress image without errors",
-		//	headerNames:     []string{"Authorization", "Content-Type"},
-		//	headerValues:    []string{"Bearer token", "image/jpeg", `multipart/form-data; boundary="foo123"`},
-		//	params:          params{name: "width", quantity: 100},
-		//	token:           "token",
-		//	userID:          [16]byte{00000000 - 0000 - 0000 - 0000 - 000000000000},
-		//	isRemoteStorage: true,
-		//	fn: func(mockSO *mocks.ServiceOperations, mockAMQP *mocks.AMQP, token string, uplImg models.UploadedImage, isRemoteStorage bool) {
-		//		asString := "00000000-0000-0000-0000-000000000000"
-		//		s := uuid.MustParse(asString)
-		//		mockSO.On("ParseToken", token).Return(s, nil)
-		//		if isRemoteStorage {
-		//			mockSO.On("UploadImage", mock.Anything, mock.Anything).Return(s, nil)
-		//		}
-		//		mockAMQP.On("DeclareQueue", "publisher").Return(q, nil)
-		//		mockAMQP.On("QosQueue").Return(nil)
-		//		mockAMQP.On("Publish", "", q.Name, string(models.Queued)).Return(nil).Return(nil)
-		//		mockSO.On("UpdateStatus", mock.Anything, 1, models.Processing).Return(nil)
-		//		mockAMQP.On("Publish", "", q.Name, string(models.Processing)).Return(nil).Return(nil)
-		//		mockSO.On("CompressImage", 100, mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(models.ResultedImage{ID: s, Name: "name", Location: "location"}, nil)
-		//		mockSO.On("UpdateStatus", mock.Anything, 1, models.Done).Return(nil)
-		//		mockAMQP.On("Publish", "", q.Name, string(models.Done)).Return(nil).Return(nil)
-		//		mockSO.On("CreateRequest", mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(1, nil)
-		//	},
-		//	expectedStatusCode:   500,
-		//	expectedResponseBody: "{\"Image ID\":1}\n",
-		// },
+		{
+			name:            "Compress image without errors",
+			headerNames:     []string{"Authorization", "Content-Type"},
+			headerValues:    []string{"Bearer token", "image/jpeg", `multipart/form-data; boundary="foo123"`},
+			params:          params{name: "width", quantity: 100},
+			token:           "token",
+			userID:          [16]byte{00000000 - 0000 - 0000 - 0000 - 000000000000},
+			isRemoteStorage: true,
+			fn: func(mockSO *mocks.ServiceOperations, mockAMQP *mocks.AMQP, token string, uplImg models.UploadedImage, isRemoteStorage bool) {
+				asString := "00000000-0000-0000-0000-000000000000"
+				s := uuid.MustParse(asString)
+				mockSO.On("ParseToken", token).Return(s, nil)
+				mockSO.On("UploadImage", mock.Anything, mock.Anything).Return(uplImg.ID, nil)
+				mockAMQP.On("DeclareQueue", "publisher").Return(q, nil)
+				mockAMQP.On("QosQueue").Return(nil)
+				mockAMQP.On("Publish", "", q.Name, string(models.Queued)).Return(nil).Return(nil)
+				mockSO.On("UpdateStatus", mock.Anything, uplImg.ID, models.Processing).Return(nil)
+				mockAMQP.On("Publish", "", q.Name, string(models.Processing)).Return(nil).Return(nil)
+				mockSO.On("CompressImage", 100, mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(models.ResultedImage{ID: uplImg.ID, Name: "name", Location: "location"}, nil)
+				mockSO.On("UpdateStatus", mock.Anything, uplImg.ID, models.Done).Return(nil)
+				mockAMQP.On("Publish", "", q.Name, string(models.Done)).Return(nil).Return(nil)
+				mockSO.On("CreateRequest", mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(s, nil)
+			},
+			expectedStatusCode:   200,
+			expectedResponseBody: "{\"Image ID\":\"00000000-0000-0000-0000-000000000000\"}\n",
+		},
 		{
 			name:         "Users IDs do not match",
 			headerNames:  []string{"Authorization"},
@@ -191,100 +195,100 @@ func TestHandler_compressImage(t *testing.T) {
 				asString := "00000000-0000-0000-0000-000000000000"
 				s := uuid.MustParse(asString)
 				mockSO.On("ParseToken", token).Return(s, nil)
-				mockSO.On("UploadImage", mock.Anything, mock.Anything).Return(s, utils.ErrUpload)
+				mockSO.On("UploadImage", mock.Anything, mock.Anything).Return(uplImg.ID, utils.ErrUpload)
 			},
 			expectedStatusCode:   500,
 			expectedResponseBody: "{\"error\":\"cannot upload the file\"}\n",
 		},
-		// {
-		//	name:         "Failed update status",
-		//	headerNames:  []string{"Authorization", "Content-Type"},
-		//	headerValues: []string{"Bearer token", "image/jpeg", `multipart/form-data; boundary="foo123"`},
-		//	params:       params{name: "width", quantity: 100},
-		//	token:        "token",
-		//	userID:       [16]byte{00000000 - 0000 - 0000 - 0000 - 000000000000},
-		//	fn: func(mockSO *mocks.ServiceOperations, mockAMQP *mocks.AMQP, token string, uplImg models.UploadedImage, isRemoteStorage bool) {
-		//		asString := "00000000-0000-0000-0000-000000000000"
-		//		s := uuid.MustParse(asString)
-		//		mockSO.On("ParseToken", token).Return(s, nil)
-		//		mockSO.On("UploadImage", mock.Anything, uplImg).Return(s, nil)
-		//		mockAMQP.On("DeclareQueue", "publisher").Return(q, nil)
-		//		mockAMQP.On("QosQueue").Return(nil)
-		//		mockAMQP.On("Publish", "", q.Name, string(models.Queued)).Return(nil)
-		//		mockSO.On("UpdateStatus", mock.Anything, s, models.Processing).Return(fmt.Errorf("cannot update image status"))
-		//	},
-		//	expectedStatusCode:   500,
-		//	expectedResponseBody: "{\"error\":\"cannot update image status\"}\n",
-		// },
-		// {
-		//	name:         "Failed compress image",
-		//	headerNames:  []string{"Authorization", "Content-Type"},
-		//	headerValues: []string{"Bearer token", "image/jpeg", `multipart/form-data; boundary="foo123"`},
-		//	params:       params{name: "width", quantity: 100},
-		//	token:        "token",
-		//	userID:       [16]byte{00000000 - 0000 - 0000 - 0000 - 000000000000},
-		//	fn: func(mockSO *mocks.ServiceOperations, mockAMQP *mocks.AMQP, token string, uplImg models.UploadedImage, isRemoteStorage bool) {
-		//		asString := "00000000-0000-0000-0000-000000000000"
-		//		s := uuid.MustParse(asString)
-		//		mockSO.On("ParseToken", token).Return(s, nil)
-		//		mockSO.On("UploadImage", mock.Anything, mock.Anything).Return(s, nil)
-		//		mockAMQP.On("DeclareQueue", "publisher").Return(q, nil)
-		//		mockAMQP.On("QosQueue").Return(nil)
-		//		mockAMQP.On("Publish", "", q.Name, string(models.Queued)).Return(nil).Return(nil)
-		//		mockSO.On("UpdateStatus", mock.Anything, 1, models.Processing).Return(nil)
-		//		mockAMQP.On("Publish", "", q.Name, string(models.Processing)).Return(nil).Return(nil)
-		//		mockSO.On("CompressImage", 100, mock.Anything).Return(models.ResultedImage{}, fmt.Errorf("cannot open image"))
-		//	},
-		//	expectedStatusCode:   500,
-		//	expectedResponseBody: "{\"error\":\"cannot open image\"}\n",
-		// },
-		// {
-		//	name:         "Failed convert image 2",
-		//	headerNames:  []string{"Authorization", "Content-Type"},
-		//	headerValues: []string{"Bearer token", "image/jpeg", `multipart/form-data; boundary="foo123"`},
-		//	token:        "token",
-		//	userID:       [16]byte{00000000 - 0000 - 0000 - 0000 - 000000000000},
-		//	fn: func(mockSO *mocks.ServiceOperations, mockAMQP *mocks.AMQP, token string, uplImg models.UploadedImage, isRemoteStorage bool) {
-		//		asString := "00000000-0000-0000-0000-000000000000"
-		//		s := uuid.MustParse(asString)
-		//		mockSO.On("ParseToken", token).Return(s, nil)
-		//		mockSO.On("UploadImage", mock.Anything, mock.Anything).Return(s, nil)
-		//		mockAMQP.On("DeclareQueue", "publisher").Return(q, nil)
-		//		mockAMQP.On("QosQueue").Return(nil)
-		//		mockAMQP.On("Publish", "", q.Name, string(models.Queued)).Return(nil).Return(nil)
-		//		mockSO.On("UpdateStatus", mock.Anything, 1, models.Processing).Return(nil)
-		//		mockAMQP.On("Publish", "", q.Name, string(models.Processing)).Return(nil).Return(nil)
-		//		mockSO.On("CompressImage", 150, mock.Anything).Return(models.ResultedImage{ID: s, Name: "name", Location: "location"}, nil)
-		//		mockSO.On("UpdateStatus", mock.Anything, 1, models.Done).Return(fmt.Errorf("cannot update image status"))
-		//	},
-		//	expectedStatusCode:   500,
-		//	expectedResponseBody: "{\"error\":\"cannot update image status\"}\n",
-		// },
-		// {
-		//	name:         "Failed create request",
-		//	headerNames:  []string{"Authorization", "Content-Type"},
-		//	headerValues: []string{"Bearer token", "image/jpeg", `multipart/form-data; boundary="foo123"`},
-		//	params:       params{name: "width", quantity: 100},
-		//	token:        "token",
-		//	userID:       [16]byte{00000000 - 0000 - 0000 - 0000 - 000000000000},
-		//	fn: func(mockSO *mocks.ServiceOperations, mockAMQP *mocks.AMQP, token string, uplImg models.UploadedImage, isRemoteStorage bool) {
-		//		asString := "00000000-0000-0000-0000-000000000000"
-		//		s := uuid.MustParse(asString)
-		//		mockSO.On("ParseToken", token).Return(s, nil)
-		//		mockSO.On("UploadImage", mock.Anything, mock.Anything).Return(s, nil)
-		//		mockAMQP.On("DeclareQueue", "publisher").Return(q, nil)
-		//		mockAMQP.On("QosQueue").Return(nil)
-		//		mockAMQP.On("Publish", "", q.Name, string(models.Queued)).Return(nil).Return(nil)
-		//		mockSO.On("UpdateStatus", mock.Anything, 1, models.Processing).Return(nil)
-		//		mockAMQP.On("Publish", "", q.Name, string(models.Processing)).Return(nil).Return(nil)
-		//		mockSO.On("CompressImage", 100, mock.Anything).Return(models.ResultedImage{ID: s, Name: "name", Location: "location"}, nil)
-		//		mockSO.On("UpdateStatus", mock.Anything, 1, models.Done).Return(nil)
-		//		mockAMQP.On("Publish", "", q.Name, string(models.Done)).Return(nil).Return(nil)
-		//		mockSO.On("CreateRequest", mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(0, fmt.Errorf("unable to insert resulted image into database"))
-		//	},
-		//	expectedStatusCode:   500,
-		//	expectedResponseBody: "{\"error\":\"unable to insert resulted image into database\"}\n",
-		// },
+		{
+			name:         "Failed update status",
+			headerNames:  []string{"Authorization", "Content-Type"},
+			headerValues: []string{"Bearer token", "image/jpeg", `multipart/form-data; boundary="foo123"`},
+			params:       params{name: "width", quantity: 100},
+			token:        "token",
+			userID:       [16]byte{00000000 - 0000 - 0000 - 0000 - 000000000000},
+			fn: func(mockSO *mocks.ServiceOperations, mockAMQP *mocks.AMQP, token string, uplImg models.UploadedImage, isRemoteStorage bool) {
+				asString := "00000000-0000-0000-0000-000000000000"
+				s := uuid.MustParse(asString)
+				mockSO.On("ParseToken", token).Return(s, nil)
+				mockSO.On("UploadImage", mock.Anything, mock.Anything).Return(uplImg.ID, nil)
+				mockAMQP.On("DeclareQueue", "publisher").Return(q, nil)
+				mockAMQP.On("QosQueue").Return(nil)
+				mockAMQP.On("Publish", "", q.Name, string(models.Queued)).Return(nil)
+				mockSO.On("UpdateStatus", mock.Anything, uplImg.ID, models.Processing).Return(utils.ErrUpdateStatusRequest)
+			},
+			expectedStatusCode:   500,
+			expectedResponseBody: "{\"error\":\"cannot update image status\"}\n",
+		},
+		{
+			name:         "Failed compress image",
+			headerNames:  []string{"Authorization", "Content-Type"},
+			headerValues: []string{"Bearer token", "image/jpeg", `multipart/form-data; boundary="foo123"`},
+			params:       params{name: "width", quantity: 100},
+			token:        "token",
+			userID:       [16]byte{00000000 - 0000 - 0000 - 0000 - 000000000000},
+			fn: func(mockSO *mocks.ServiceOperations, mockAMQP *mocks.AMQP, token string, uplImg models.UploadedImage, isRemoteStorage bool) {
+				asString := "00000000-0000-0000-0000-000000000000"
+				s := uuid.MustParse(asString)
+				mockSO.On("ParseToken", token).Return(s, nil)
+				mockSO.On("UploadImage", mock.Anything, mock.Anything).Return(uplImg.ID, nil)
+				mockAMQP.On("DeclareQueue", "publisher").Return(q, nil)
+				mockAMQP.On("QosQueue").Return(nil).Once()
+				mockAMQP.On("Publish", "", q.Name, string(models.Queued)).Return(nil)
+				mockSO.On("UpdateStatus", mock.Anything, uplImg.ID, models.Processing).Return(nil)
+				mockAMQP.On("Publish", "", q.Name, string(models.Processing)).Return(nil)
+				mockSO.On("CompressImage", mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(models.ResultedImage{}, utils.ErrCompress)
+			},
+			expectedStatusCode:   500,
+			expectedResponseBody: "{\"error\":\"cannot compress\"}\n",
+		},
+		{
+			name:         "Failed convert image 2",
+			headerNames:  []string{"Authorization", "Content-Type"},
+			headerValues: []string{"Bearer token", "image/jpeg", `multipart/form-data; boundary="foo123"`},
+			token:        "token",
+			userID:       [16]byte{00000000 - 0000 - 0000 - 0000 - 000000000000},
+			fn: func(mockSO *mocks.ServiceOperations, mockAMQP *mocks.AMQP, token string, uplImg models.UploadedImage, isRemoteStorage bool) {
+				asString := "00000000-0000-0000-0000-000000000000"
+				s := uuid.MustParse(asString)
+				mockSO.On("ParseToken", token).Return(s, nil)
+				mockSO.On("UploadImage", mock.Anything, mock.Anything).Return(uplImg.ID, nil)
+				mockAMQP.On("DeclareQueue", "publisher").Return(q, nil)
+				mockAMQP.On("QosQueue").Return(nil)
+				mockAMQP.On("Publish", "", q.Name, string(models.Queued)).Return(nil).Return(nil)
+				mockSO.On("UpdateStatus", mock.Anything, uplImg.ID, models.Processing).Return(nil)
+				mockAMQP.On("Publish", "", q.Name, string(models.Processing)).Return(nil).Return(nil)
+				mockSO.On("CompressImage", mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(models.ResultedImage{}, nil)
+				mockSO.On("UpdateStatus", mock.Anything, uplImg.ID, models.Done).Return(utils.ErrUpdateStatusRequest)
+			},
+			expectedStatusCode:   500,
+			expectedResponseBody: "{\"error\":\"cannot update image status\"}\n",
+		},
+		{
+			name:         "Failed create request",
+			headerNames:  []string{"Authorization", "Content-Type"},
+			headerValues: []string{"Bearer token", "image/jpeg", `multipart/form-data; boundary="foo123"`},
+			params:       params{name: "width", quantity: 100},
+			token:        "token",
+			userID:       [16]byte{00000000 - 0000 - 0000 - 0000 - 000000000000},
+			fn: func(mockSO *mocks.ServiceOperations, mockAMQP *mocks.AMQP, token string, uplImg models.UploadedImage, isRemoteStorage bool) {
+				asString := "00000000-0000-0000-0000-000000000000"
+				s := uuid.MustParse(asString)
+				mockSO.On("ParseToken", token).Return(s, nil)
+				mockSO.On("UploadImage", mock.Anything, mock.Anything).Return(uplImg.ID, nil)
+				mockAMQP.On("DeclareQueue", "publisher").Return(q, nil)
+				mockAMQP.On("QosQueue").Return(nil)
+				mockAMQP.On("Publish", "", q.Name, string(models.Queued)).Return(nil).Return(nil)
+				mockSO.On("UpdateStatus", mock.Anything, uplImg.ID, models.Processing).Return(nil)
+				mockAMQP.On("Publish", "", q.Name, string(models.Processing)).Return(nil).Return(nil)
+				mockSO.On("CompressImage", 100, mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(models.ResultedImage{}, nil)
+				mockSO.On("UpdateStatus", mock.Anything, uplImg.ID, models.Done).Return(nil)
+				mockAMQP.On("Publish", "", q.Name, string(models.Done)).Return(nil).Return(nil)
+				mockSO.On("CreateRequest", mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(uplImg.ID, fmt.Errorf("unable to insert resulted image into database"))
+			},
+			expectedStatusCode:   500,
+			expectedResponseBody: "{\"error\":\"unable to insert resulted image into database\"}\n",
+		},
 	}
 
 	compressURL := "/api/user/%s/compress"
@@ -296,23 +300,23 @@ func TestHandler_compressImage(t *testing.T) {
 
 			tt.fn(mockSO, mockAMQP, tt.token, uplImg, tt.isRemoteStorage)
 
-			service := &Service{ServiceOperations: mockSO}
-			mq := broker.NewAMQPBroker()
-
-			s := NewServer(mq, service)
+			service := NewService(mockSO)
+			s := NewServer(mockAMQP, service)
 
 			s.router.HandleFunc(fmt.Sprintf(compressURL, "{userID}"),
 				s.authorize(s.compressImage())).Methods(http.MethodPost)
 
-			imageBytes := []byte("uploadFile: undefined")
+			mediaData, err := ioutil.ReadFile("test/go.jpeg")
+			require.NoError(t, err)
 			buf := &bytes.Buffer{}
 			writer := multipart.NewWriter(buf)
 			header := make(textproto.MIMEHeader)
 			header.Set("Content-Disposition", `form-data; name="uploadFile"; filename="filename.jpeg"`)
 			header.Set("Content-Type", "image/jpeg")
+
 			part, err := writer.CreatePart(header)
 			require.NoError(t, err)
-			_, err = part.Write(imageBytes)
+			_, err = io.Copy(part, bytes.NewReader(mediaData))
 			require.NoError(t, err)
 			err = writer.Close()
 			require.NoError(t, err)
@@ -506,10 +510,8 @@ func TestHandler_findCompressedImage(t *testing.T) {
 
 			tt.fn(mockSO, tt.token, tt.compressedID, tt.params.isOriginal)
 
-			service := &Service{ServiceOperations: mockSO}
-			mq := broker.NewAMQPBroker()
-
-			s := NewServer(mq, service)
+			service := NewService(mockSO)
+			s := NewServer(nil, service)
 
 			s.router.HandleFunc(fmt.Sprintf(getCompressedURL, "{userID}", "{compressedID}"),
 				s.authorize(s.findCompressedImage())).Methods(http.MethodGet)
@@ -540,6 +542,8 @@ func TestHandler_convertImage(t *testing.T) {
 		Location: "location",
 	}
 
+	q := amqp.Queue{Name: "", Messages: 1, Consumers: 1}
+
 	tests := []struct {
 		name                 string
 		headerNames          []string
@@ -553,30 +557,31 @@ func TestHandler_convertImage(t *testing.T) {
 		expectedStatusCode   int
 		expectedResponseBody string
 	}{
-		// {
-		//	name:         "Convert image without errors",
-		//	headerNames:  []string{"Authorization", "Content-Type"},
-		//	headerValues: []string{"Bearer token", "image/jpeg", `multipart/form-data; boundary="foo123"`},
-		//	token:        "token",
-		//	userID:       [16]byte{00000000 - 0000 - 0000 - 0000 - 000000000000},
-		//	fn: func(mockSO *mocks.ServiceOperations, mockAMQP *mocks.AMQP, token string, uplImg models.UploadedImage) {
-		//		asString := "00000000-0000-0000-0000-000000000000"
-		//		s := uuid.MustParse(asString)
-		//		mockSO.On("ParseToken", token).Return(s, nil)
-		//		mockSO.On("UploadImage", mock.Anything, mock.Anything).Return(s, nil)
-		//		mockAMQP.On("DeclareQueue", "publisher").Return(q, nil)
-		//		mockAMQP.On("QosQueue").Return(nil)
-		//		mockAMQP.On("Publish", "", q.Name, string(models.Queued)).Return(nil).Return(nil)
-		//		mockSO.On("UpdateStatus", mock.Anything, s, models.Processing).Return(nil)
-		//		mockAMQP.On("Publish", "", q.Name, string(models.Processing)).Return(nil).Return(nil)
-		//		mockSO.On("ConvertToType", mock.Anything).Return(models.ResultedImage{ID: s, Name: "name", Location: "location"}, nil)
-		//		mockSO.On("UpdateStatus", mock.Anything, s, models.Done).Return(nil)
-		//		mockAMQP.On("Publish", "", q.Name, string(models.Done)).Return(nil).Return(nil)
-		//		mockSO.On("CreateRequest", mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(1, nil)
-		//	},
-		//	expectedStatusCode:   200,
-		//	expectedResponseBody: "{\"Image ID\":1}\n",
-		// },
+		{
+			name:         "Convert image without errors",
+			headerNames:  []string{"Authorization", "Content-Type"},
+			headerValues: []string{"Bearer token", "image/jpeg", `multipart/form-data; boundary="foo123"`},
+			token:        "token",
+			userID:       [16]byte{00000000 - 0000 - 0000 - 0000 - 000000000000},
+			fn: func(mockSO *mocks.ServiceOperations, mockAMQP *mocks.AMQP, token string, uplImg models.UploadedImage) {
+				asString := "00000000-0000-0000-0000-000000000000"
+				s := uuid.MustParse(asString)
+				mockSO.On("ParseToken", token).Return(s, nil)
+				mockSO.On("UploadImage", mock.Anything, mock.Anything).Return(uplImg.ID, nil)
+				mockAMQP.On("DeclareQueue", "publisher").Return(q, nil)
+				mockAMQP.On("QosQueue").Return(nil)
+				mockAMQP.On("Publish", "", q.Name, string(models.Queued)).Return(nil).Return(nil)
+				mockSO.On("UpdateStatus", mock.Anything, uplImg.ID, models.Processing).Return(nil)
+				mockAMQP.On("Publish", "", q.Name, string(models.Processing)).Return(nil).Return(nil)
+				mockSO.On("ChangeFormat", mock.Anything).Return(mock.Anything, nil)
+				mockSO.On("ConvertToType", mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(models.ResultedImage{ID: uplImg.ID, Name: "name", Location: "location"}, nil)
+				mockSO.On("UpdateStatus", mock.Anything, uplImg.ID, models.Done).Return(nil)
+				mockAMQP.On("Publish", "", q.Name, string(models.Done)).Return(nil).Return(nil)
+				mockSO.On("CreateRequest", mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(uplImg.ID, nil)
+			},
+			expectedStatusCode:   200,
+			expectedResponseBody: "{\"Image ID\":\"00000000-0000-0000-0000-000000000000\"}\n",
+		},
 		{
 			name:         "Inequality of identifiers",
 			headerNames:  []string{"Authorization"},
@@ -606,92 +611,116 @@ func TestHandler_convertImage(t *testing.T) {
 			expectedStatusCode:   500,
 			expectedResponseBody: "{\"error\":\"cannot upload the file\"}\n",
 		},
-		// {
-		//	name:         "Failed update status",
-		//	headerNames:  []string{"Authorization", "Content-Type"},
-		//	headerValues: []string{"Bearer token", "image/jpeg", `multipart/form-data; boundary="foo123"`},
-		//	token:        "token",
-		//	userID:       [16]byte{00000000 - 0000 - 0000 - 0000 - 000000000000},
-		//	fn: func(mockSO *mocks.ServiceOperations, mockAMQP *mocks.AMQP, token string, uplImg models.UploadedImage) {
-		//		asString := "00000000-0000-0000-0000-000000000000"
-		//		s := uuid.MustParse(asString)
-		//		mockSO.On("ParseToken", token).Return(s, nil)
-		//		mockSO.On("UploadImage", mock.Anything, mock.Anything).Return(s, nil)
-		//		//mockAMQP.On("DeclareQueue", "publisher").Return(q, nil)
-		//		//mockAMQP.On("QosQueue").Return(nil)
-		//		//mockAMQP.On("Publish", "", q.Name, string(models.Queued)).Return(nil).Return(nil)
-		//		//mockSO.On("UpdateStatus", mock.Anything, s, models.Processing).Return(fmt.Errorf("cannot update image status"))
-		//	},
-		//	expectedStatusCode:   500,
-		//	expectedResponseBody: "{\"error\":\"cannot update image status\"}\n",
-		// },
-		// {
-		//	name:         "Failed convert image",
-		//	headerNames:  []string{"Authorization", "Content-Type"},
-		//	headerValues: []string{"Bearer token", "image/jpeg", `multipart/form-data; boundary="foo123"`},
-		//	token:        "token",
-		//	userID:       [16]byte{00000000 - 0000 - 0000 - 0000 - 000000000000},
-		//	fn: func(mockSO *mocks.ServiceOperations, mockAMQP *mocks.AMQP, token string, uplImg models.UploadedImage) {
-		//		asString := "00000000-0000-0000-0000-000000000000"
-		//		s := uuid.MustParse(asString)
-		//		mockSO.On("ParseToken", token).Return(s, nil)
-		//		mockSO.On("UploadImage", mock.Anything, mock.Anything).Return(s, nil)
-		//		mockAMQP.On("DeclareQueue", "publisher").Return(q, nil)
-		//		mockAMQP.On("QosQueue").Return(nil)
-		//		mockAMQP.On("Publish", "", q.Name, string(models.Queued)).Return(nil).Return(nil)
-		//		mockSO.On("UpdateStatus", mock.Anything, s, models.Processing).Return(nil)
-		//		mockAMQP.On("Publish", "", q.Name, string(models.Processing)).Return(nil).Return(nil)
-		//		mockSO.On("ConvertToType", mock.Anything).Return(models.ResultedImage{}, fmt.Errorf("cannot convert"))
-		//	},
-		//	expectedStatusCode:   500,
-		//	expectedResponseBody: "{\"error\":\"cannot convert\"}\n",
-		// },
-		// {
-		//	name:         "Failed convert image 2",
-		//	headerNames:  []string{"Authorization", "Content-Type"},
-		//	headerValues: []string{"Bearer token", "image/jpeg", `multipart/form-data; boundary="foo123"`},
-		//	token:        "token",
-		//	userID:       [16]byte{00000000 - 0000 - 0000 - 0000 - 000000000000},
-		//	fn: func(mockSO *mocks.ServiceOperations, mockAMQP *mocks.AMQP, token string, uplImg models.UploadedImage) {
-		//		asString := "00000000-0000-0000-0000-000000000000"
-		//		s := uuid.MustParse(asString)
-		//		mockSO.On("ParseToken", token).Return(s, nil)
-		//		mockSO.On("UploadImage", mock.Anything, mock.Anything).Return(s, nil)
-		//		mockAMQP.On("DeclareQueue", "publisher").Return(q, nil)
-		//		mockAMQP.On("QosQueue").Return(nil)
-		//		mockAMQP.On("Publish", "", q.Name, string(models.Queued)).Return(nil).Return(nil)
-		//		mockSO.On("UpdateStatus", mock.Anything, s, models.Processing).Return(nil)
-		//		mockAMQP.On("Publish", "", q.Name, string(models.Processing)).Return(nil).Return(nil)
-		//		mockSO.On("ConvertToType", mock.Anything).Return(models.ResultedImage{ID: s, Name: "name", Location: "location"}, nil)
-		//		mockSO.On("UpdateStatus", mock.Anything, s, models.Done).Return(fmt.Errorf("cannot update image status"))
-		//	},
-		//	expectedStatusCode:   500,
-		//	expectedResponseBody: "{\"error\":\"cannot update image status\"}\n",
-		// },
-		// {
-		//	name:         "Failed create request",
-		//	headerNames:  []string{"Authorization", "Content-Type"},
-		//	headerValues: []string{"Bearer token", "image/jpeg", `multipart/form-data; boundary="foo123"`},
-		//	token:        "token",
-		//	userID:       [16]byte{00000000 - 0000 - 0000 - 0000 - 000000000000},
-		//	fn: func(mockSO *mocks.ServiceOperations, mockAMQP *mocks.AMQP, token string, uplImg models.UploadedImage) {
-		//		asString := "00000000-0000-0000-0000-000000000000"
-		//		s := uuid.MustParse(asString)
-		//		mockSO.On("ParseToken", token).Return(s, nil)
-		//		mockSO.On("UploadImage", mock.Anything, mock.Anything).Return(s, nil)
-		//		mockAMQP.On("DeclareQueue", "publisher").Return(q, nil)
-		//		mockAMQP.On("QosQueue").Return(nil)
-		//		mockAMQP.On("Publish", "", q.Name, string(models.Queued)).Return(nil).Return(nil)
-		//		mockSO.On("UpdateStatus", mock.Anything, s, models.Processing).Return(nil)
-		//		mockAMQP.On("Publish", "", q.Name, string(models.Processing)).Return(nil).Return(nil)
-		//		mockSO.On("ConvertToType", mock.Anything).Return(models.ResultedImage{ID: s, Name: "name", Location: "location"}, nil)
-		//		mockSO.On("UpdateStatus", mock.Anything, s, models.Done).Return(nil)
-		//		mockAMQP.On("Publish", "", q.Name, string(models.Done)).Return(nil).Return(nil)
-		//		mockSO.On("CreateRequest", mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(0, fmt.Errorf("unable to insert resulted image into database"))
-		//	},
-		//	expectedStatusCode:   500,
-		//	expectedResponseBody: "{\"error\":\"unable to insert resulted image into database\"}\n",
-		// },
+		{
+			name:         "Failed update status",
+			headerNames:  []string{"Authorization", "Content-Type"},
+			headerValues: []string{"Bearer token", "image/jpeg", `multipart/form-data; boundary="foo123"`},
+			token:        "token",
+			userID:       [16]byte{00000000 - 0000 - 0000 - 0000 - 000000000000},
+			fn: func(mockSO *mocks.ServiceOperations, mockAMQP *mocks.AMQP, token string, uplImg models.UploadedImage) {
+				asString := "00000000-0000-0000-0000-000000000000"
+				s := uuid.MustParse(asString)
+				mockSO.On("ParseToken", token).Return(s, nil)
+				mockSO.On("UploadImage", mock.Anything, mock.Anything).Return(uplImg.ID, nil)
+				mockAMQP.On("DeclareQueue", "publisher").Return(q, nil)
+				mockAMQP.On("QosQueue").Return(nil)
+				mockAMQP.On("Publish", "", q.Name, string(models.Queued)).Return(nil).Return(nil)
+				mockSO.On("UpdateStatus", mock.Anything, uplImg.ID, models.Processing).Return(utils.ErrUpdateStatusRequest)
+			},
+			expectedStatusCode:   500,
+			expectedResponseBody: "{\"error\":\"cannot update image status\"}\n",
+		},
+		{
+			name:         "Failed change format",
+			headerNames:  []string{"Authorization", "Content-Type"},
+			headerValues: []string{"Bearer token", "image/jpeg", `multipart/form-data; boundary="foo123"`},
+			token:        "token",
+			userID:       [16]byte{00000000 - 0000 - 0000 - 0000 - 000000000000},
+			fn: func(mockSO *mocks.ServiceOperations, mockAMQP *mocks.AMQP, token string, uplImg models.UploadedImage) {
+				asString := "00000000-0000-0000-0000-000000000000"
+				s := uuid.MustParse(asString)
+				mockSO.On("ParseToken", token).Return(s, nil)
+				mockSO.On("UploadImage", mock.Anything, mock.Anything).Return(uplImg.ID, nil)
+				mockAMQP.On("DeclareQueue", "publisher").Return(q, nil)
+				mockAMQP.On("QosQueue").Return(nil)
+				mockAMQP.On("Publish", "", q.Name, string(models.Queued)).Return(nil).Return(nil)
+				mockSO.On("UpdateStatus", mock.Anything, uplImg.ID, models.Processing).Return(nil)
+				mockAMQP.On("Publish", "", q.Name, string(models.Processing)).Return(nil).Return(nil)
+				mockSO.On("ChangeFormat", mock.Anything).Return(mock.Anything, utils.ErrUnsupportedFormat)
+			},
+			expectedStatusCode:   500,
+			expectedResponseBody: "{\"error\":\"unsupported file format\"}\n",
+		},
+		{
+			name:         "Failed convert image",
+			headerNames:  []string{"Authorization", "Content-Type"},
+			headerValues: []string{"Bearer token", "image/jpeg", `multipart/form-data; boundary="foo123"`},
+			token:        "token",
+			userID:       [16]byte{00000000 - 0000 - 0000 - 0000 - 000000000000},
+			fn: func(mockSO *mocks.ServiceOperations, mockAMQP *mocks.AMQP, token string, uplImg models.UploadedImage) {
+				asString := "00000000-0000-0000-0000-000000000000"
+				s := uuid.MustParse(asString)
+				mockSO.On("ParseToken", token).Return(s, nil)
+				mockSO.On("UploadImage", mock.Anything, mock.Anything).Return(uplImg.ID, nil)
+				mockAMQP.On("DeclareQueue", "publisher").Return(q, nil)
+				mockAMQP.On("QosQueue").Return(nil)
+				mockAMQP.On("Publish", "", q.Name, string(models.Queued)).Return(nil).Return(nil)
+				mockSO.On("UpdateStatus", mock.Anything, uplImg.ID, models.Processing).Return(nil)
+				mockAMQP.On("Publish", "", q.Name, string(models.Processing)).Return(nil).Return(nil)
+				mockSO.On("ChangeFormat", mock.Anything).Return(mock.Anything, nil)
+				mockSO.On("ConvertToType", mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(models.ResultedImage{}, utils.ErrConvert)
+			},
+			expectedStatusCode:   500,
+			expectedResponseBody: "{\"error\":\"cannot convert\"}\n",
+		},
+		{
+			name:         "Failed update status",
+			headerNames:  []string{"Authorization", "Content-Type"},
+			headerValues: []string{"Bearer token", "image/jpeg", `multipart/form-data; boundary="foo123"`},
+			token:        "token",
+			userID:       [16]byte{00000000 - 0000 - 0000 - 0000 - 000000000000},
+			fn: func(mockSO *mocks.ServiceOperations, mockAMQP *mocks.AMQP, token string, uplImg models.UploadedImage) {
+				asString := "00000000-0000-0000-0000-000000000000"
+				s := uuid.MustParse(asString)
+				mockSO.On("ParseToken", token).Return(s, nil)
+				mockSO.On("UploadImage", mock.Anything, mock.Anything).Return(uplImg.ID, nil)
+				mockAMQP.On("DeclareQueue", "publisher").Return(q, nil)
+				mockAMQP.On("QosQueue").Return(nil)
+				mockAMQP.On("Publish", "", q.Name, string(models.Queued)).Return(nil).Return(nil)
+				mockSO.On("UpdateStatus", mock.Anything, uplImg.ID, models.Processing).Return(nil)
+				mockAMQP.On("Publish", "", q.Name, string(models.Processing)).Return(nil).Return(nil)
+				mockSO.On("ChangeFormat", mock.Anything).Return(mock.Anything, nil)
+				mockSO.On("ConvertToType", mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(models.ResultedImage{ID: uplImg.ID, Name: "name", Location: "location"}, nil)
+				mockSO.On("UpdateStatus", mock.Anything, uplImg.ID, models.Done).Return(utils.ErrUpdateStatusRequest)
+			},
+			expectedStatusCode:   500,
+			expectedResponseBody: "{\"error\":\"cannot update image status\"}\n",
+		},
+		{
+			name:         "Failed create request",
+			headerNames:  []string{"Authorization", "Content-Type"},
+			headerValues: []string{"Bearer token", "image/jpeg", `multipart/form-data; boundary="foo123"`},
+			token:        "token",
+			userID:       [16]byte{00000000 - 0000 - 0000 - 0000 - 000000000000},
+			fn: func(mockSO *mocks.ServiceOperations, mockAMQP *mocks.AMQP, token string, uplImg models.UploadedImage) {
+				asString := "00000000-0000-0000-0000-000000000000"
+				s := uuid.MustParse(asString)
+				mockSO.On("ParseToken", token).Return(s, nil)
+				mockSO.On("UploadImage", mock.Anything, mock.Anything).Return(s, nil)
+				mockAMQP.On("DeclareQueue", "publisher").Return(q, nil)
+				mockAMQP.On("QosQueue").Return(nil)
+				mockAMQP.On("Publish", "", q.Name, string(models.Queued)).Return(nil).Return(nil)
+				mockSO.On("UpdateStatus", mock.Anything, uplImg.ID, models.Processing).Return(nil)
+				mockAMQP.On("Publish", "", q.Name, string(models.Processing)).Return(nil).Return(nil)
+				mockSO.On("ChangeFormat", mock.Anything).Return(mock.Anything, nil)
+				mockSO.On("ConvertToType", mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(models.ResultedImage{ID: s, Name: "name", Location: "location"}, nil)
+				mockSO.On("UpdateStatus", mock.Anything, uplImg.ID, models.Done).Return(nil)
+				mockAMQP.On("Publish", "", q.Name, string(models.Done)).Return(nil).Return(nil)
+				mockSO.On("CreateRequest", mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(s, utils.ErrUploadImageToDB)
+			},
+			expectedStatusCode:   500,
+			expectedResponseBody: "{\"error\":\"cannot create request:unable to insert image into database\"}\n",
+		},
 	}
 
 	convertURL := "/api/user/%s/convert"
@@ -703,14 +732,14 @@ func TestHandler_convertImage(t *testing.T) {
 
 			tt.fn(mockSO, mockAMQP, tt.token, uplImg)
 
-			service := &Service{ServiceOperations: mockSO}
-			mq := broker.NewAMQPBroker()
-			s := Server{router: mux.NewRouter(), service: service, mq: mq}
+			service := NewService(mockSO)
+			s := NewServer(mockAMQP, service)
 
 			s.router.HandleFunc(fmt.Sprintf(convertURL, "{userID}"),
 				s.authorize(s.convertImage())).Methods(http.MethodPost)
 
-			imageBytes := []byte("1111")
+			mediaData, err := ioutil.ReadFile("test/go.jpeg")
+			require.NoError(t, err)
 			buf := &bytes.Buffer{}
 			writer := multipart.NewWriter(buf)
 			header := make(textproto.MIMEHeader)
@@ -718,7 +747,7 @@ func TestHandler_convertImage(t *testing.T) {
 			header.Set("Content-Type", "image/jpeg")
 			part, err := writer.CreatePart(header)
 			require.NoError(t, err)
-			_, err = part.Write(imageBytes)
+			_, err = io.Copy(part, bytes.NewReader(mediaData))
 			require.NoError(t, err)
 			err = writer.Close()
 			require.NoError(t, err)
@@ -920,8 +949,8 @@ func TestHandler_findConvertedImage(t *testing.T) {
 
 			tt.fn(mockSO, tt.token, tt.convertedID, tt.params.isOriginal)
 
-			service := &Service{ServiceOperations: mockSO}
-			s := Server{router: mux.NewRouter(), service: service}
+			service := NewService(mockSO)
+			s := NewServer(nil, service)
 
 			s.router.HandleFunc(fmt.Sprintf(getConvertedURL, "{userID}", "{convertedID}"),
 				s.authorize(s.findConvertedImage())).Methods(http.MethodGet)

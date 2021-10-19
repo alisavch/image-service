@@ -14,7 +14,11 @@ before_install:
 
 script:
   - make lint test
-  - docker-compose up --build
+  - docker build -t postgresql .
+  - docker build -t rabbitmq .
+  - docker build -t image_service .
+  - docker build -t consumer .
+
 
 deploy:
   - provider: script

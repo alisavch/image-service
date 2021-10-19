@@ -2,16 +2,32 @@ language: go
 
 go:
   - 1.x
+  - main
+
+services:
+  - docker
+  - rabbitmq
+  - postgresql
 
 before_install:
   - curl -sSfL https://raw.githubusercontent.com/golangci/golangci-lint/master/install.sh | sh -s -- -b $(go env GOPATH)/bin v1.24.0
 
 script:
   - make lint test
-  - docker build -t image_service .
+  - docker-compose up --build
 
 deploy:
-  provider: script
-  script: bash .docker_push
-  on:
-    branch: main
+  - provider: script
+    script: bash .docker_push
+    on:
+      branch: main
+  - provider: s3
+    access_key_id: $AWS_ACCESS_KEY_ID
+    secret_access_key: $AWS_SECRET_ACCESS_KEY
+    bucket: $BUCKET_NAME
+    region: $AWS_REGION
+    skip_cleanup: true
+  - provider: codedeploy
+
+after_script:
+  - docker-compose down

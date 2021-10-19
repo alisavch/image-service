@@ -19,7 +19,6 @@ script:
   - docker build -t image_service .
   - docker build -t consumer .
 
-
 deploy:
   - provider: script
     script: bash .docker_push
@@ -31,7 +30,6 @@ deploy:
     bucket: $BUCKET_NAME
     region: $AWS_REGION
     skip_cleanup: true
-  - provider: codedeploy
 
 after_script:
   - docker-compose down

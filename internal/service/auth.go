@@ -5,12 +5,11 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/google/uuid"
-
+	"github.com/alisavch/image-service/internal/models"
 	"github.com/alisavch/image-service/internal/utils"
 
-	"github.com/alisavch/image-service/internal/models"
 	"github.com/dgrijalva/jwt-go"
+	"github.com/google/uuid"
 	"golang.org/x/crypto/bcrypt"
 )
 

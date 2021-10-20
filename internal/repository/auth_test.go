@@ -4,8 +4,9 @@ import (
 	"context"
 	"testing"
 
-	"github.com/DATA-DOG/go-sqlmock"
 	"github.com/alisavch/image-service/internal/models"
+
+	"github.com/DATA-DOG/go-sqlmock"
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/assert"
 )

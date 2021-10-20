@@ -16,19 +16,44 @@ import (
 	"strconv"
 	"testing"
 
-	"github.com/streadway/amqp"
-
-	"github.com/alisavch/image-service/internal/broker"
-
 	"github.com/alisavch/image-service/internal/apiserver/mocks"
-
+	"github.com/alisavch/image-service/internal/broker"
+	"github.com/alisavch/image-service/internal/models"
 	"github.com/alisavch/image-service/internal/utils"
 
-	"github.com/alisavch/image-service/internal/models"
 	"github.com/google/uuid"
+	"github.com/streadway/amqp"
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
 )
+
+func createImage(t *testing.T, filename string) ([]byte, multipart.File) {
+	file, err := os.Create(filename)
+	require.NoError(t, err)
+
+	alpha := image.NewAlpha(image.Rect(0, 0, 100, 100))
+	for x := 0; x < 100; x++ {
+		for y := 0; y < 100; y++ {
+			alpha.Set(x, y, color.Alpha{A: uint8(x % 256)})
+		}
+	}
+	err = jpeg.Encode(file, alpha, nil)
+	require.NoError(t, err)
+
+	content, err := ioutil.ReadFile(filename)
+	require.NoError(t, err)
+
+	return content, file
+}
+
+func cleanAfterTest(t *testing.T, filename string) {
+	err := os.RemoveAll("./uploads/")
+	require.NoError(t, err)
+	err = os.RemoveAll("./results/")
+	require.NoError(t, err)
+	err = os.Remove(filename)
+	require.NoError(t, err)
+}
 
 func TestHandler_findUserHistory(t *testing.T) {
 	type fnBehavior func(mockSO *mocks.ServiceOperations, token string, r *http.Request)
@@ -308,26 +333,13 @@ func TestHandler_compressImage(t *testing.T) {
 			s.router.HandleFunc(fmt.Sprintf(compressURL, "{userID}"),
 				s.authorize(s.compressImage())).Methods(http.MethodPost)
 
-			file, err := os.Create("test.jpeg")
-			require.NoError(t, err)
-
-			alpha := image.NewAlpha(image.Rect(0, 0, 100, 100))
-			for x := 0; x < 100; x++ {
-				for y := 0; y < 100; y++ {
-					alpha.Set(x, y, color.Alpha{A: uint8(x % 256)})
-				}
-			}
-			err = jpeg.Encode(file, alpha, nil)
-			require.NoError(t, err)
-
-			content, err := ioutil.ReadFile("test.jpeg")
-			require.NoError(t, err)
-
 			buf := &bytes.Buffer{}
 			writer := multipart.NewWriter(buf)
 			header := make(textproto.MIMEHeader)
 			header.Set("Content-Disposition", `form-data; name="uploadFile"; filename="filename.jpeg"`)
 			header.Set("Content-Type", "image/jpeg")
+
+			content, file := createImage(t, "filename.jpeg")
 
 			part, err := writer.CreatePart(header)
 			require.NoError(t, err)
@@ -354,12 +366,15 @@ func TestHandler_compressImage(t *testing.T) {
 			req.URL.RawQuery = q.Encode()
 
 			err = req.Body.Close()
+
 			require.NoError(t, err)
 			s.ServeHTTP(w, req)
 			mockSO.AssertExpectations(t)
 			mockAMQP.AssertExpectations(t)
 			require.Equal(t, tt.expectedStatusCode, w.Code)
 			require.Equal(t, tt.expectedResponseBody, w.Body.String())
+
+			cleanAfterTest(t, "filename.jpeg")
 		})
 	}
 }
@@ -755,20 +770,7 @@ func TestHandler_convertImage(t *testing.T) {
 			s.router.HandleFunc(fmt.Sprintf(convertURL, "{userID}"),
 				s.authorize(s.convertImage())).Methods(http.MethodPost)
 
-			file, err := os.Create("test.jpeg")
-			require.NoError(t, err)
-
-			alpha := image.NewAlpha(image.Rect(0, 0, 100, 100))
-			for x := 0; x < 100; x++ {
-				for y := 0; y < 100; y++ {
-					alpha.Set(x, y, color.Alpha{A: uint8(x % 256)})
-				}
-			}
-			err = jpeg.Encode(file, alpha, nil)
-			require.NoError(t, err)
-
-			content, err := ioutil.ReadFile("test.jpeg")
-			require.NoError(t, err)
+			content, file := createImage(t, "filename.jpeg")
 
 			buf := &bytes.Buffer{}
 			writer := multipart.NewWriter(buf)
@@ -780,6 +782,8 @@ func TestHandler_convertImage(t *testing.T) {
 			_, err = io.Copy(part, bytes.NewReader(content))
 			require.NoError(t, err)
 			err = writer.Close()
+			require.NoError(t, err)
+			err = file.Close()
 			require.NoError(t, err)
 
 			w := httptest.NewRecorder()
@@ -800,6 +804,8 @@ func TestHandler_convertImage(t *testing.T) {
 			mockSO.AssertExpectations(t)
 			require.Equal(t, tt.expectedStatusCode, w.Code)
 			require.Equal(t, tt.expectedResponseBody, w.Body.String())
+
+			cleanAfterTest(t, "filename.jpeg")
 		})
 	}
 }

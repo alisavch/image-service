@@ -7,8 +7,8 @@ import (
 	"os"
 
 	"github.com/alisavch/image-service/internal/models"
-	"github.com/google/uuid"
 
+	"github.com/google/uuid"
 	"github.com/streadway/amqp"
 )
 
@@ -45,6 +45,8 @@ type Image interface {
 	SaveImage(filename, location, storage string) (*models.Image, error)
 	UpdateStatus(ctx context.Context, id uuid.UUID, status models.Status) error
 	ChangeFormat(filename string) (string, error)
+	FillInTheResultingImageForAWS(resultedName string) (models.ResultedImage, error)
+	FillInTheResultingImage(storage, resultedName string, newImg *os.File) (models.ResultedImage, error)
 }
 
 // S3Bucket contains the basic functions for interacting with the bucket.

@@ -106,6 +106,48 @@ func (_m *Image) CreateRequest(ctx context.Context, user models.User, uplImg mod
 	return r0, r1
 }
 
+// FillInTheResultingImage provides a mock function with given fields: storage, resultedName, newImg
+func (_m *Image) FillInTheResultingImage(storage string, resultedName string, newImg *os.File) (models.ResultedImage, error) {
+	ret := _m.Called(storage, resultedName, newImg)
+
+	var r0 models.ResultedImage
+	if rf, ok := ret.Get(0).(func(string, string, *os.File) models.ResultedImage); ok {
+		r0 = rf(storage, resultedName, newImg)
+	} else {
+		r0 = ret.Get(0).(models.ResultedImage)
+	}
+
+	var r1 error
+	if rf, ok := ret.Get(1).(func(string, string, *os.File) error); ok {
+		r1 = rf(storage, resultedName, newImg)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
+}
+
+// FillInTheResultingImageForAWS provides a mock function with given fields: resultedName
+func (_m *Image) FillInTheResultingImageForAWS(resultedName string) (models.ResultedImage, error) {
+	ret := _m.Called(resultedName)
+
+	var r0 models.ResultedImage
+	if rf, ok := ret.Get(0).(func(string) models.ResultedImage); ok {
+		r0 = rf(resultedName)
+	} else {
+		r0 = ret.Get(0).(models.ResultedImage)
+	}
+
+	var r1 error
+	if rf, ok := ret.Get(1).(func(string) error); ok {
+		r1 = rf(resultedName)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
+}
+
 // FindOriginalImage provides a mock function with given fields: ctx, id
 func (_m *Image) FindOriginalImage(ctx context.Context, id uuid.UUID) (models.UploadedImage, error) {
 	ret := _m.Called(ctx, id)

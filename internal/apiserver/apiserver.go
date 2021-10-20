@@ -6,14 +6,11 @@ import (
 	"net/http"
 
 	"github.com/alisavch/image-service/internal/broker"
-
 	"github.com/alisavch/image-service/internal/repository"
-
 	"github.com/alisavch/image-service/internal/service"
+	"github.com/alisavch/image-service/internal/utils"
 
 	"github.com/joho/godotenv"
-
-	"github.com/alisavch/image-service/internal/utils"
 	_ "github.com/lib/pq" // Registers database.
 )
 

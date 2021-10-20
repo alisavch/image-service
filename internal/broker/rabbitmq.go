@@ -4,6 +4,7 @@ import (
 	"fmt"
 
 	"github.com/alisavch/image-service/internal/utils"
+
 	"github.com/streadway/amqp"
 )
 

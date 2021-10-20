@@ -4,11 +4,10 @@ import (
 	"context"
 	"database/sql"
 
+	"github.com/alisavch/image-service/internal/models"
 	"github.com/alisavch/image-service/internal/utils"
 
 	"github.com/google/uuid"
-
-	"github.com/alisavch/image-service/internal/models"
 )
 
 // AuthRepository provides access to the database.

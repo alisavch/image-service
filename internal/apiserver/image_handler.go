@@ -6,11 +6,10 @@ import (
 	"strconv"
 	"time"
 
-	"github.com/google/uuid"
-
 	"github.com/alisavch/image-service/internal/models"
 	"github.com/alisavch/image-service/internal/utils"
 
+	"github.com/google/uuid"
 	"github.com/gorilla/mux"
 )
 
@@ -168,13 +167,13 @@ func (s *Server) compressImage() http.HandlerFunc {
 			return
 		}
 
-		resultedImage, err := s.service.CompressImage(req.Width, format, resultedName, img, file, conf.Storage)
+		resultedImage, err := s.service.ServiceOperations.CompressImage(req.Width, format, resultedName, img, file, conf.Storage)
 		if err != nil {
 			s.errorJSON(w, http.StatusInternalServerError, err)
 			return
 		}
 
-		err = s.service.UpdateStatus(r.Context(), originalImage.ID, models.Done)
+		err = s.service.ServiceOperations.UpdateStatus(r.Context(), originalImage.ID, models.Done)
 		if err != nil {
 			s.errorJSON(w, http.StatusInternalServerError, err)
 			return
@@ -278,13 +277,13 @@ func (s *Server) findCompressedImage() http.HandlerFunc {
 		}
 
 		if req.isOriginal {
-			uploaded, err := s.service.FindOriginalImage(r.Context(), req.requestID)
+			uploaded, err := s.service.ServiceOperations.FindOriginalImage(r.Context(), req.requestID)
 			if err != nil {
 				s.errorJSON(w, http.StatusInternalServerError, fmt.Errorf("%s:%s", utils.ErrFindImage, err))
 				return
 			}
 
-			file, err := s.service.SaveImage(uploaded.Name, uploaded.Location, conf.Storage)
+			file, err := s.service.ServiceOperations.SaveImage(uploaded.Name, uploaded.Location, conf.Storage)
 			if err != nil {
 				s.errorJSON(w, http.StatusInternalServerError, fmt.Errorf("%s:%s", utils.ErrSaveImage, err))
 				return
@@ -294,13 +293,13 @@ func (s *Server) findCompressedImage() http.HandlerFunc {
 			return
 		}
 
-		resultedImage, err := s.service.FindTheResultingImage(r.Context(), req.requestID, models.Compression)
+		resultedImage, err := s.service.ServiceOperations.FindTheResultingImage(r.Context(), req.requestID, models.Compression)
 		if err != nil {
 			s.errorJSON(w, http.StatusInternalServerError, fmt.Errorf("%s:%s", utils.ErrFindImage, err))
 			return
 		}
 
-		file, err := s.service.SaveImage(resultedImage.Name, resultedImage.Location, conf.Storage)
+		file, err := s.service.ServiceOperations.SaveImage(resultedImage.Name, resultedImage.Location, conf.Storage)
 		if err != nil {
 			s.errorJSON(w, http.StatusInternalServerError, fmt.Errorf("%s:%s", utils.ErrSaveImage, err))
 			return
@@ -512,13 +511,13 @@ func (s *Server) findConvertedImage() http.HandlerFunc {
 		}
 
 		if req.isOriginal {
-			uploaded, err := s.service.FindOriginalImage(r.Context(), req.requestID)
+			uploaded, err := s.service.ServiceOperations.FindOriginalImage(r.Context(), req.requestID)
 			if err != nil {
 				s.errorJSON(w, http.StatusInternalServerError, fmt.Errorf("%s:%s", utils.ErrFindImage, err))
 				return
 			}
 
-			file, err := s.service.SaveImage(uploaded.Name, "/uploads/", conf.Storage)
+			file, err := s.service.ServiceOperations.SaveImage(uploaded.Name, "/uploads/", conf.Storage)
 			if err != nil {
 				s.errorJSON(w, http.StatusInternalServerError, fmt.Errorf("%s:%s", utils.ErrSaveImage, err))
 				return
@@ -527,13 +526,13 @@ func (s *Server) findConvertedImage() http.HandlerFunc {
 			return
 		}
 
-		resultedImage, err := s.service.FindTheResultingImage(r.Context(), req.requestID, models.Conversion)
+		resultedImage, err := s.service.ServiceOperations.FindTheResultingImage(r.Context(), req.requestID, models.Conversion)
 		if err != nil {
 			s.errorJSON(w, http.StatusInternalServerError, fmt.Errorf("%s:%s", utils.ErrFindImage, err))
 			return
 		}
 
-		file, err := s.service.SaveImage(resultedImage.Name, "/results/", conf.Storage)
+		file, err := s.service.ServiceOperations.SaveImage(resultedImage.Name, "/results/", conf.Storage)
 		if err != nil {
 			s.errorJSON(w, http.StatusInternalServerError, fmt.Errorf("%s:%s", utils.ErrSaveImage, err))
 			return

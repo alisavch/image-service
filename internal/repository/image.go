@@ -6,11 +6,10 @@ import (
 	"fmt"
 	_ "time" // Registers time.
 
+	"github.com/alisavch/image-service/internal/models"
 	"github.com/alisavch/image-service/internal/utils"
 
 	"github.com/google/uuid"
-
-	"github.com/alisavch/image-service/internal/models"
 )
 
 // ImageRepository provides access to the database.

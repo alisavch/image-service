@@ -4,8 +4,9 @@ import (
 	"encoding/json"
 	"net/http"
 
-	"github.com/alisavch/image-service/internal/models"
+	"github.com/google/uuid"
 
+	"github.com/alisavch/image-service/internal/models"
 	"github.com/alisavch/image-service/internal/utils"
 )
 
@@ -48,7 +49,7 @@ func (s *Server) signUp() http.HandlerFunc {
 			s.errorJSON(w, http.StatusInternalServerError, err)
 			return
 		}
-		s.respondJSON(w, http.StatusCreated, id)
+		s.respondJSON(w, http.StatusCreated, map[string]uuid.UUID{"User ID": id})
 	}
 }
 

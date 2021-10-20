@@ -2,6 +2,7 @@ package broker
 
 import (
 	"github.com/alisavch/image-service/internal/log"
+
 	"github.com/sirupsen/logrus"
 )
 

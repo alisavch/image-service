@@ -7,14 +7,12 @@ import (
 	"net/http/httptest"
 	"testing"
 
-	"github.com/alisavch/image-service/internal/broker"
-
 	"github.com/alisavch/image-service/internal/apiserver/mocks"
-
-	"github.com/google/uuid"
-
+	"github.com/alisavch/image-service/internal/broker"
 	"github.com/alisavch/image-service/internal/models"
 	"github.com/alisavch/image-service/internal/utils"
+
+	"github.com/google/uuid"
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
 )
@@ -44,7 +42,7 @@ func TestHandler_signUp(t *testing.T) {
 				mockAuthorization.On("CreateUser", mock.Anything, user).Return(s, nil)
 			},
 			expectedStatusCode:   201,
-			expectedResponseBody: "\"00000000-0000-0000-0000-000000000000\"\n",
+			expectedResponseBody: "{\"User ID\":\"00000000-0000-0000-0000-000000000000\"}\n",
 		},
 		{
 			name:      "Password must not be empty",

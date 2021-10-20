@@ -9,11 +9,9 @@ import (
 	"strconv"
 
 	"github.com/alisavch/image-service/internal/log"
-
-	"github.com/google/uuid"
-
 	"github.com/alisavch/image-service/internal/models"
 
+	"github.com/google/uuid"
 	"github.com/gorilla/mux"
 )
 

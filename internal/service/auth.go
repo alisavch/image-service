@@ -13,10 +13,6 @@ import (
 	"golang.org/x/crypto/bcrypt"
 )
 
-const (
-	signingKey = "QTicXLOhp5uxp80xTGrosP5Hpa9C"
-)
-
 type tokenClaims struct {
 	jwt.StandardClaims
 	UserID uuid.UUID `json:"user_id"`
@@ -54,7 +50,7 @@ func (s *AuthService) GenerateToken(ctx context.Context, username, password stri
 	}
 
 	conf := utils.NewConfig()
-	jwtTTL, err := time.ParseDuration(conf.TokenTTL)
+	jwtTTL, err := time.ParseDuration(conf.Auth.TokenTTL)
 	if err != nil {
 		return "error getting jwt ttl", nil
 	}
@@ -66,16 +62,17 @@ func (s *AuthService) GenerateToken(ctx context.Context, username, password stri
 		},
 		user.ID,
 	})
-	return token.SignedString([]byte(signingKey))
+	return token.SignedString([]byte(conf.Auth.SigningKey))
 }
 
 // ParseToken parses token.
 func (s *AuthService) ParseToken(accessToken string) (uuid.UUID, error) {
+	conf := utils.NewConfig()
 	token, err := jwt.ParseWithClaims(accessToken, &tokenClaims{}, func(token *jwt.Token) (interface{}, error) {
 		if _, ok := token.Method.(*jwt.SigningMethodHMAC); !ok {
 			return nil, utils.ErrSigningMethod
 		}
-		return []byte(signingKey), nil
+		return []byte(conf.Auth.SigningKey), nil
 	})
 	if err != nil {
 		return [16]byte{}, nil

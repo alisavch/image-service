@@ -8,7 +8,7 @@ type DBConfig struct {
 	Password string
 	Host     string
 	Port     string
-	Name     string
+	DBName   string
 }
 
 // RabbitmqConfig includes rabbitmq variables.
@@ -24,10 +24,16 @@ type BucketConfig struct {
 	BucketName         string
 }
 
+// Authentication includes variables for generating token.
+type Authentication struct {
+	TokenTTL   string
+	SigningKey string
+}
+
 // Config includes config variables.
 type Config struct {
 	DBConfig DBConfig
-	TokenTTL string
+	Auth     Authentication
 	Rabbitmq RabbitmqConfig
 	Bucket   BucketConfig
 	Storage  string
@@ -41,9 +47,12 @@ func NewConfig() *Config {
 			Password: getEnv("DB_PASSWORD", ""),
 			Host:     getEnv("DB_HOST", ""),
 			Port:     getEnv("DB_PORT", ""),
-			Name:     getEnv("DB_NAME", ""),
+			DBName:   getEnv("DB_NAME", ""),
 		},
-		TokenTTL: getEnv("TOKEN_TTL", "12h"),
+		Auth: Authentication{
+			TokenTTL:   getEnv("TOKEN_TTL", "12h"),
+			SigningKey: getEnv("SIGNING_KEY", ""),
+		},
 		Rabbitmq: RabbitmqConfig{
 			RabbitmqURL: getEnv("RABBITMQ_URL", ""),
 		},

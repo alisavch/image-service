@@ -25,7 +25,7 @@ type EncodeConfig struct {
 
 var defaultEncodeConfig = EncodeConfig{
 	jpegQuality:         95,
-	pngCompressionLevel: 0,
+	pngCompressionLevel: 9,
 }
 
 // EncodeOption sets an optional parameter for to Encode and Save functions.

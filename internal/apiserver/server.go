@@ -66,8 +66,8 @@ func (s *Server) errorJSON(w http.ResponseWriter, code int, err error) {
 }
 
 func (s *Server) respondJSON(w http.ResponseWriter, code int, data interface{}) {
-	w.WriteHeader(code)
 	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(code)
 	if data != nil {
 		_ = json.NewEncoder(w).Encode(data)
 	}

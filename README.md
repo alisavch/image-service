@@ -1,10 +1,8 @@
 # **Image Service**
-***
 Image service is a service that allows compressing and converting images and after that getting them for saving.
 
 
 ## Installation
-***
 To start using image-service, Install Go and run go get:
 
 ```
@@ -12,7 +10,6 @@ go get -u github.com/alisavch/image-service
 ```
 
 ## Start service (requires docker)
-***
 
 server app listening on http://localhost:8080
 ```
@@ -65,7 +62,6 @@ GET  - /api/user/{userID}/convert/{convertedID}?original={value} - get/download 
 ~~~
 
 ## Testing
-***
 Running test:
 ```
 make test

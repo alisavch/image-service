@@ -19,8 +19,6 @@ run:
 mocks:
 	mockery --case underscore --dir ./internal/apiserver/ --output ./internal/apiserver/mocks --all --disable-version-string
 
-
-
 .PHONY: lint
 lint:
 	$(LINTER) run --config .golangci.yaml
@@ -32,5 +30,9 @@ test:
 .PHONY: generate-spec
 generate-spec:
 	swagger generate spec -m -o swagger.yaml
+
+.PHONY: build-containers
+build-containers:
+	docker-compose up --build
 
 .DEFAULT_GOAL := test

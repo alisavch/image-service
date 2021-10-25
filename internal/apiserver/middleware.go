@@ -164,7 +164,7 @@ func (s *Server) uploadImageLocally(r *http.Request, req uploaded) (models.Uploa
 
 	uploadedID, err := s.service.ServiceOperations.UploadImage(r.Context(), uploadedImage)
 	if err != nil {
-		return models.UploadedImage{}, utils.ErrUpload
+		return models.UploadedImage{}, fmt.Errorf("%s:%s", utils.ErrUpload, err)
 	}
 	uploadedImage.ID = uploadedID
 

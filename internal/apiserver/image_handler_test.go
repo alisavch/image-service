@@ -259,13 +259,15 @@ func TestHandler_compressImage(t *testing.T) {
 				mockSO.On("ParseToken", token).Return(s, nil)
 				switch storage {
 				case aws:
-					mockSO.On("UploadToS3Bucket", mock.Anything, mock.Anything).Return(mock.Anything, utils.ErrUpload)
+					mockSO.On("UploadToS3Bucket", mock.Anything, mock.Anything).Return(mock.Anything, nil)
+					mockSO.On("UploadImage", mock.Anything, mock.Anything).Return(uplImg.ID, utils.ErrUpload)
+
 				case local:
 					mockSO.On("UploadImage", mock.Anything, mock.Anything).Return(uplImg.ID, utils.ErrUpload)
 				}
 			},
 			expectedStatusCode:   500,
-			expectedResponseBody: "{\"error\":\"cannot upload the file\"}\n",
+			expectedResponseBody: "{\"error\":\"cannot upload the file:cannot upload the file\"}\n",
 		},
 		{
 			name:         "Failed update status",

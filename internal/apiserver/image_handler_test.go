@@ -47,7 +47,7 @@ func createImage(t *testing.T, filename string) ([]byte, multipart.File) {
 	return content, file
 }
 
-func cleanAfterTest(t *testing.T, filename string) {
+func cleanAfterTest(t *testing.T) {
 	err := os.RemoveAll("./uploads/")
 	require.NoError(t, err)
 	err = os.RemoveAll("./results/")
@@ -438,7 +438,7 @@ func TestHandler_compressImage(t *testing.T) {
 			require.Equal(t, tt.expectedStatusCode, w.Code)
 			require.Equal(t, tt.expectedResponseBody, w.Body.String())
 
-			cleanAfterTest(t, "filename.jpeg")
+			cleanAfterTest(t)
 		})
 	}
 }
@@ -969,7 +969,7 @@ func TestHandler_convertImage(t *testing.T) {
 			require.Equal(t, tt.expectedStatusCode, w.Code)
 			require.Equal(t, tt.expectedResponseBody, w.Body.String())
 
-			cleanAfterTest(t, "filename.jpeg")
+			cleanAfterTest(t)
 		})
 	}
 }

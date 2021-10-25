@@ -11,7 +11,7 @@ type UploadedImage struct {
 	// the ID for this uploaded image
 	//
 	// required: false
-	ID uuid.UUID `gorm:"type:uuid;primary_key;" json:"id"`
+	ID uuid.UUID `json:"id"`
 
 	// the Name for this uploaded image
 	//

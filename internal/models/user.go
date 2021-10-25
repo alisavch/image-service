@@ -11,7 +11,7 @@ type User struct {
 	// the ID for this user
 	//
 	// required: false
-	ID uuid.UUID `gorm:"type:uuid;primary_key;" json:"id"`
+	ID uuid.UUID `json:"id"`
 
 	// the username for this user
 	//

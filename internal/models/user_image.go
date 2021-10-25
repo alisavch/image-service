@@ -4,7 +4,7 @@ import "github.com/google/uuid"
 
 // UserImage contains details of a single request.
 type UserImage struct {
-	ID              uuid.UUID `gorm:"type:uuid;primary_key;" json:"id"`
+	ID              uuid.UUID `json:"id"`
 	UserAccountID   uuid.UUID `json:"user_account_id,omitempty"`
 	UploadedImageID uuid.UUID `json:"uploaded_image_id,omitempty"`
 	ResultedImageID uuid.UUID `json:"resulted_image_id,omitempty"`

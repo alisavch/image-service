@@ -66,7 +66,7 @@ func cleanAfterTest(t *testing.T) {
 
 	for _, file := range files {
 		if file.Mode().IsRegular() {
-			if filepath.Ext(file.Name()) == ".jpeg" {
+			if filepath.Ext(file.Name()) == ".jpeg" || filepath.Ext(file.Name()) == ".Anything" {
 				err := os.Remove(file.Name())
 				require.NoError(t, err)
 			}

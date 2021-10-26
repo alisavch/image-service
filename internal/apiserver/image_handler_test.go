@@ -138,8 +138,9 @@ func TestHandler_findUserHistory(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			mockSO := new(mocks.ServiceOperations)
+			mockAWS := new(mocks.S3Bucket)
 
-			service := NewService(mockSO)
+			service := NewService(mockSO, mockAWS)
 			mq := broker.NewAMQPBroker()
 
 			s := NewServer(mq, service)
@@ -175,7 +176,7 @@ func TestHandler_compressImage(t *testing.T) {
 
 	q := amqp.Queue{Name: "", Messages: 1, Consumers: 1}
 
-	type fnBehavior func(mockSO *mocks.ServiceOperations, mockAMQP *mocks.AMQP, token string, uplImg models.UploadedImage, storage string)
+	type fnBehavior func(mockSO *mocks.ServiceOperations, mockBucket *mocks.S3Bucket, mockAMQP *mocks.AMQP, token string, uplImg models.UploadedImage, storage string)
 
 	tests := []struct {
 		name                 string
@@ -196,7 +197,7 @@ func TestHandler_compressImage(t *testing.T) {
 			params:       params{name: "width", quantity: 100},
 			token:        "token",
 			userID:       [16]byte{00000000 - 0000 - 0000 - 0000 - 000000000000},
-			fn: func(mockSO *mocks.ServiceOperations, mockAMQP *mocks.AMQP, token string, uplImg models.UploadedImage, storage string) {
+			fn: func(mockSO *mocks.ServiceOperations, mockBucket *mocks.S3Bucket, mockAMQP *mocks.AMQP, token string, uplImg models.UploadedImage, storage string) {
 				asString := "00000000-0000-0000-0000-000000000000"
 				s := uuid.MustParse(asString)
 				mockSO.On("ParseToken", token).Return(s, nil)
@@ -204,14 +205,14 @@ func TestHandler_compressImage(t *testing.T) {
 				case aws:
 					file, err := os.Open("filename.jpeg")
 					require.NoError(t, err)
-					mockSO.On("UploadToS3Bucket", mock.Anything, mock.Anything).Return(mock.Anything, nil)
+					mockBucket.On("UploadToS3Bucket", mock.Anything, mock.Anything).Return(mock.Anything, nil)
 					mockSO.On("UploadImage", mock.Anything, mock.Anything).Return(uplImg.ID, nil)
 					mockAMQP.On("DeclareQueue", "publisher").Return(q, nil)
 					mockAMQP.On("QosQueue").Return(nil)
 					mockAMQP.On("Publish", "", q.Name, string(models.Queued)).Return(nil).Return(nil)
 					mockSO.On("UpdateStatus", mock.Anything, uplImg.ID, models.Processing).Return(nil)
 					mockAMQP.On("Publish", "", q.Name, string(models.Processing)).Return(nil).Return(nil)
-					mockSO.On("DownloadFromS3Bucket", mock.Anything).Return(file, nil)
+					mockBucket.On("DownloadFromS3Bucket", mock.Anything).Return(file, nil)
 					mockSO.On("CompressImage", 100, mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(models.ResultedImage{ID: uplImg.ID, Name: "name", Location: "location"}, nil)
 					mockSO.On("UpdateStatus", mock.Anything, uplImg.ID, models.Done).Return(nil)
 					mockAMQP.On("Publish", "", q.Name, string(models.Done)).Return(nil).Return(nil)
@@ -238,7 +239,7 @@ func TestHandler_compressImage(t *testing.T) {
 			headerValues: []string{"Bearer token"},
 			token:        "token",
 			userID:       [16]byte{00000000 - 0000 - 0000 - 0000 - 000000000000},
-			fn: func(mockSO *mocks.ServiceOperations, mockAMQP *mocks.AMQP, token string, uplImg models.UploadedImage, storage string) {
+			fn: func(mockSO *mocks.ServiceOperations, mockBucket *mocks.S3Bucket, mockAMQP *mocks.AMQP, token string, uplImg models.UploadedImage, storage string) {
 				asString := "00000000-0000-0000-0000-000000000001"
 				s := uuid.MustParse(asString)
 				mockSO.On("ParseToken", token).Return(s, nil)
@@ -253,13 +254,13 @@ func TestHandler_compressImage(t *testing.T) {
 			params:       params{name: "width", quantity: 100},
 			token:        "token",
 			userID:       [16]byte{00000000 - 0000 - 0000 - 0000 - 000000000000},
-			fn: func(mockSO *mocks.ServiceOperations, mockAMQP *mocks.AMQP, token string, uplImg models.UploadedImage, storage string) {
+			fn: func(mockSO *mocks.ServiceOperations, mockBucket *mocks.S3Bucket, mockAMQP *mocks.AMQP, token string, uplImg models.UploadedImage, storage string) {
 				asString := "00000000-0000-0000-0000-000000000000"
 				s := uuid.MustParse(asString)
 				mockSO.On("ParseToken", token).Return(s, nil)
 				switch storage {
 				case aws:
-					mockSO.On("UploadToS3Bucket", mock.Anything, mock.Anything).Return(mock.Anything, nil)
+					mockBucket.On("UploadToS3Bucket", mock.Anything, mock.Anything).Return(mock.Anything, nil)
 					mockSO.On("UploadImage", mock.Anything, mock.Anything).Return(uplImg.ID, utils.ErrUpload)
 
 				case local:
@@ -276,13 +277,13 @@ func TestHandler_compressImage(t *testing.T) {
 			params:       params{name: "width", quantity: 100},
 			token:        "token",
 			userID:       [16]byte{00000000 - 0000 - 0000 - 0000 - 000000000000},
-			fn: func(mockSO *mocks.ServiceOperations, mockAMQP *mocks.AMQP, token string, uplImg models.UploadedImage, storage string) {
+			fn: func(mockSO *mocks.ServiceOperations, mockBucket *mocks.S3Bucket, mockAMQP *mocks.AMQP, token string, uplImg models.UploadedImage, storage string) {
 				asString := "00000000-0000-0000-0000-000000000000"
 				s := uuid.MustParse(asString)
 				mockSO.On("ParseToken", token).Return(s, nil)
 				switch storage {
 				case aws:
-					mockSO.On("UploadToS3Bucket", mock.Anything, mock.Anything).Return(mock.Anything, nil)
+					mockBucket.On("UploadToS3Bucket", mock.Anything, mock.Anything).Return(mock.Anything, nil)
 					mockSO.On("UploadImage", mock.Anything, mock.Anything).Return(uplImg.ID, nil)
 					mockAMQP.On("DeclareQueue", "publisher").Return(q, nil)
 					mockAMQP.On("QosQueue").Return(nil)
@@ -306,7 +307,7 @@ func TestHandler_compressImage(t *testing.T) {
 			params:       params{name: "width", quantity: 100},
 			token:        "token",
 			userID:       [16]byte{00000000 - 0000 - 0000 - 0000 - 000000000000},
-			fn: func(mockSO *mocks.ServiceOperations, mockAMQP *mocks.AMQP, token string, uplImg models.UploadedImage, storage string) {
+			fn: func(mockSO *mocks.ServiceOperations, mockBucket *mocks.S3Bucket, mockAMQP *mocks.AMQP, token string, uplImg models.UploadedImage, storage string) {
 				asString := "00000000-0000-0000-0000-000000000000"
 				s := uuid.MustParse(asString)
 				mockSO.On("ParseToken", token).Return(s, nil)
@@ -314,14 +315,14 @@ func TestHandler_compressImage(t *testing.T) {
 				case aws:
 					file, err := os.Open("filename.jpeg")
 					require.NoError(t, err)
-					mockSO.On("UploadToS3Bucket", mock.Anything, mock.Anything).Return(mock.Anything, nil)
+					mockBucket.On("UploadToS3Bucket", mock.Anything, mock.Anything).Return(mock.Anything, nil)
 					mockSO.On("UploadImage", mock.Anything, mock.Anything).Return(uplImg.ID, nil)
 					mockAMQP.On("DeclareQueue", "publisher").Return(q, nil)
 					mockAMQP.On("QosQueue").Return(nil)
 					mockAMQP.On("Publish", "", q.Name, string(models.Queued)).Return(nil).Return(nil)
 					mockSO.On("UpdateStatus", mock.Anything, uplImg.ID, models.Processing).Return(nil)
 					mockAMQP.On("Publish", "", q.Name, string(models.Processing)).Return(nil).Return(nil)
-					mockSO.On("DownloadFromS3Bucket", mock.Anything).Return(file, nil)
+					mockBucket.On("DownloadFromS3Bucket", mock.Anything).Return(file, nil)
 					mockSO.On("CompressImage", mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(models.ResultedImage{}, utils.ErrCompress)
 				case local:
 					mockSO.On("UploadImage", mock.Anything, mock.Anything).Return(uplImg.ID, nil)
@@ -343,7 +344,7 @@ func TestHandler_compressImage(t *testing.T) {
 			params:       params{name: "width", quantity: 100},
 			token:        "token",
 			userID:       [16]byte{00000000 - 0000 - 0000 - 0000 - 000000000000},
-			fn: func(mockSO *mocks.ServiceOperations, mockAMQP *mocks.AMQP, token string, uplImg models.UploadedImage, storage string) {
+			fn: func(mockSO *mocks.ServiceOperations, mockBucket *mocks.S3Bucket, mockAMQP *mocks.AMQP, token string, uplImg models.UploadedImage, storage string) {
 				asString := "00000000-0000-0000-0000-000000000000"
 				s := uuid.MustParse(asString)
 				mockSO.On("ParseToken", token).Return(s, nil)
@@ -351,14 +352,14 @@ func TestHandler_compressImage(t *testing.T) {
 				case aws:
 					file, err := os.Open("filename.jpeg")
 					require.NoError(t, err)
-					mockSO.On("UploadToS3Bucket", mock.Anything, mock.Anything).Return(mock.Anything, nil)
+					mockBucket.On("UploadToS3Bucket", mock.Anything, mock.Anything).Return(mock.Anything, nil)
 					mockSO.On("UploadImage", mock.Anything, mock.Anything).Return(uplImg.ID, nil)
 					mockAMQP.On("DeclareQueue", "publisher").Return(q, nil)
 					mockAMQP.On("QosQueue").Return(nil)
 					mockAMQP.On("Publish", "", q.Name, string(models.Queued)).Return(nil).Return(nil)
 					mockSO.On("UpdateStatus", mock.Anything, uplImg.ID, models.Processing).Return(nil)
 					mockAMQP.On("Publish", "", q.Name, string(models.Processing)).Return(nil).Return(nil)
-					mockSO.On("DownloadFromS3Bucket", mock.Anything).Return(file, nil)
+					mockBucket.On("DownloadFromS3Bucket", mock.Anything).Return(file, nil)
 					mockSO.On("CompressImage", 100, mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(models.ResultedImage{ID: uplImg.ID, Name: "name", Location: "location"}, nil)
 					mockSO.On("UpdateStatus", mock.Anything, uplImg.ID, models.Done).Return(nil)
 					mockAMQP.On("Publish", "", q.Name, string(models.Done)).Return(nil).Return(nil)
@@ -390,8 +391,9 @@ func TestHandler_compressImage(t *testing.T) {
 
 			mockSO := new(mocks.ServiceOperations)
 			mockAMQP := new(mocks.AMQP)
+			mockBucket := new(mocks.S3Bucket)
 
-			service := NewService(mockSO)
+			service := NewService(mockSO, mockBucket)
 			s := NewServer(mockAMQP, service)
 
 			s.router.HandleFunc(fmt.Sprintf(compressURL, "{userID}"),
@@ -414,7 +416,7 @@ func TestHandler_compressImage(t *testing.T) {
 			err = file.Close()
 			require.NoError(t, err)
 
-			tt.fn(mockSO, mockAMQP, tt.token, uplImg, conf.Storage)
+			tt.fn(mockSO, mockBucket, mockAMQP, tt.token, uplImg, conf.Storage)
 
 			w := httptest.NewRecorder()
 			req := httptest.NewRequest(http.MethodPost, fmt.Sprintf(compressURL, tt.userID), buf)
@@ -605,10 +607,11 @@ func TestHandler_findCompressedImage(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			mockSO := new(mocks.ServiceOperations)
+			mockAWS := new(mocks.S3Bucket)
 
 			tt.fn(mockSO, tt.token, tt.compressedID, tt.params.isOriginal)
 
-			service := NewService(mockSO)
+			service := NewService(mockSO, mockAWS)
 			s := NewServer(nil, service)
 
 			s.router.HandleFunc(fmt.Sprintf(getCompressedURL, "{userID}", "{compressedID}"),
@@ -632,7 +635,7 @@ func TestHandler_findCompressedImage(t *testing.T) {
 }
 
 func TestHandler_convertImage(t *testing.T) {
-	type fnBehavior func(mockSO *mocks.ServiceOperations, mockAMQP *mocks.AMQP, token string, uplImg models.UploadedImage, storage string)
+	type fnBehavior func(mockSO *mocks.ServiceOperations, mockBucket *mocks.S3Bucket, mockAMQP *mocks.AMQP, token string, uplImg models.UploadedImage, storage string)
 
 	uplImg := models.UploadedImage{
 		ID:       [16]byte{00000000 - 0000 - 0000 - 0000 - 000000000000},
@@ -661,7 +664,7 @@ func TestHandler_convertImage(t *testing.T) {
 			headerValues: []string{"Bearer token", "image/jpeg", `multipart/form-data; boundary="foo123"`},
 			token:        "token",
 			userID:       [16]byte{00000000 - 0000 - 0000 - 0000 - 000000000000},
-			fn: func(mockSO *mocks.ServiceOperations, mockAMQP *mocks.AMQP, token string, uplImg models.UploadedImage, storage string) {
+			fn: func(mockSO *mocks.ServiceOperations, mockBucket *mocks.S3Bucket, mockAMQP *mocks.AMQP, token string, uplImg models.UploadedImage, storage string) {
 				asString := "00000000-0000-0000-0000-000000000000"
 				s := uuid.MustParse(asString)
 				mockSO.On("ParseToken", token).Return(s, nil)
@@ -669,7 +672,7 @@ func TestHandler_convertImage(t *testing.T) {
 				case aws:
 					file, err := os.Open("filename.jpeg")
 					require.NoError(t, err)
-					mockSO.On("UploadToS3Bucket", mock.Anything, mock.Anything).Return(mock.Anything, nil)
+					mockBucket.On("UploadToS3Bucket", mock.Anything, mock.Anything).Return(mock.Anything, nil)
 					mockSO.On("UploadImage", mock.Anything, mock.Anything).Return(uplImg.ID, nil)
 					mockAMQP.On("DeclareQueue", "publisher").Return(q, nil)
 					mockAMQP.On("QosQueue").Return(nil)
@@ -677,7 +680,7 @@ func TestHandler_convertImage(t *testing.T) {
 					mockSO.On("UpdateStatus", mock.Anything, uplImg.ID, models.Processing).Return(nil)
 					mockAMQP.On("Publish", "", q.Name, string(models.Processing)).Return(nil).Return(nil)
 					mockSO.On("ChangeFormat", mock.Anything).Return(mock.Anything, nil)
-					mockSO.On("DownloadFromS3Bucket", mock.Anything).Return(file, nil)
+					mockBucket.On("DownloadFromS3Bucket", mock.Anything).Return(file, nil)
 					mockSO.On("ConvertToType", mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(models.ResultedImage{}, nil)
 					mockSO.On("UpdateStatus", mock.Anything, uplImg.ID, models.Done).Return(nil)
 					mockAMQP.On("Publish", "", q.Name, string(models.Done)).Return(nil).Return(nil)
@@ -705,7 +708,7 @@ func TestHandler_convertImage(t *testing.T) {
 			headerValues: []string{"Bearer token"},
 			token:        "token",
 			userID:       [16]byte{00000000 - 0000 - 0000 - 0000 - 000000000000},
-			fn: func(mockSO *mocks.ServiceOperations, mockAMQP *mocks.AMQP, token string, uplImg models.UploadedImage, storage string) {
+			fn: func(mockSO *mocks.ServiceOperations, mockBucket *mocks.S3Bucket, mockAMQP *mocks.AMQP, token string, uplImg models.UploadedImage, storage string) {
 				asString := "00000000-0000-0000-0000-000000000001"
 				s := uuid.MustParse(asString)
 				mockSO.On("ParseToken", token).Return(s, nil)
@@ -719,13 +722,13 @@ func TestHandler_convertImage(t *testing.T) {
 			headerValues: []string{"Bearer token", "image/jpeg", `multipart/form-data; boundary="foo123"`},
 			token:        "token",
 			userID:       [16]byte{00000000 - 0000 - 0000 - 0000 - 000000000000},
-			fn: func(mockSO *mocks.ServiceOperations, mockAMQP *mocks.AMQP, token string, uplImg models.UploadedImage, storage string) {
+			fn: func(mockSO *mocks.ServiceOperations, mockBucket *mocks.S3Bucket, mockAMQP *mocks.AMQP, token string, uplImg models.UploadedImage, storage string) {
 				asString := "00000000-0000-0000-0000-000000000000"
 				s := uuid.MustParse(asString)
 				mockSO.On("ParseToken", token).Return(s, nil)
 				switch storage {
 				case aws:
-					mockSO.On("UploadToS3Bucket", mock.Anything, mock.Anything).Return(mock.Anything, nil)
+					mockBucket.On("UploadToS3Bucket", mock.Anything, mock.Anything).Return(mock.Anything, nil)
 					mockSO.On("UploadImage", mock.Anything, mock.Anything).Return(uplImg.ID, utils.ErrUploadImageToDB)
 				case local:
 					mockSO.On("UploadImage", mock.Anything, mock.Anything).Return(uplImg.ID, utils.ErrUploadImageToDB)
@@ -740,13 +743,13 @@ func TestHandler_convertImage(t *testing.T) {
 			headerValues: []string{"Bearer token", "image/jpeg", `multipart/form-data; boundary="foo123"`},
 			token:        "token",
 			userID:       [16]byte{00000000 - 0000 - 0000 - 0000 - 000000000000},
-			fn: func(mockSO *mocks.ServiceOperations, mockAMQP *mocks.AMQP, token string, uplImg models.UploadedImage, storage string) {
+			fn: func(mockSO *mocks.ServiceOperations, mockBucket *mocks.S3Bucket, mockAMQP *mocks.AMQP, token string, uplImg models.UploadedImage, storage string) {
 				asString := "00000000-0000-0000-0000-000000000000"
 				s := uuid.MustParse(asString)
 				mockSO.On("ParseToken", token).Return(s, nil)
 				switch storage {
 				case aws:
-					mockSO.On("UploadToS3Bucket", mock.Anything, mock.Anything).Return(mock.Anything, nil)
+					mockBucket.On("UploadToS3Bucket", mock.Anything, mock.Anything).Return(mock.Anything, nil)
 					mockSO.On("UploadImage", mock.Anything, mock.Anything).Return(uplImg.ID, nil)
 					mockAMQP.On("DeclareQueue", "publisher").Return(q, nil)
 					mockAMQP.On("QosQueue").Return(nil)
@@ -769,13 +772,13 @@ func TestHandler_convertImage(t *testing.T) {
 			headerValues: []string{"Bearer token", "image/jpeg", `multipart/form-data; boundary="foo123"`},
 			token:        "token",
 			userID:       [16]byte{00000000 - 0000 - 0000 - 0000 - 000000000000},
-			fn: func(mockSO *mocks.ServiceOperations, mockAMQP *mocks.AMQP, token string, uplImg models.UploadedImage, storage string) {
+			fn: func(mockSO *mocks.ServiceOperations, mockBucket *mocks.S3Bucket, mockAMQP *mocks.AMQP, token string, uplImg models.UploadedImage, storage string) {
 				asString := "00000000-0000-0000-0000-000000000000"
 				s := uuid.MustParse(asString)
 				mockSO.On("ParseToken", token).Return(s, nil)
 				switch storage {
 				case aws:
-					mockSO.On("UploadToS3Bucket", mock.Anything, mock.Anything).Return(mock.Anything, nil)
+					mockBucket.On("UploadToS3Bucket", mock.Anything, mock.Anything).Return(mock.Anything, nil)
 					mockSO.On("UploadImage", mock.Anything, mock.Anything).Return(uplImg.ID, nil)
 					mockAMQP.On("DeclareQueue", "publisher").Return(q, nil)
 					mockAMQP.On("QosQueue").Return(nil)
@@ -802,7 +805,7 @@ func TestHandler_convertImage(t *testing.T) {
 			headerValues: []string{"Bearer token", "image/jpeg", `multipart/form-data; boundary="foo123"`},
 			token:        "token",
 			userID:       [16]byte{00000000 - 0000 - 0000 - 0000 - 000000000000},
-			fn: func(mockSO *mocks.ServiceOperations, mockAMQP *mocks.AMQP, token string, uplImg models.UploadedImage, storage string) {
+			fn: func(mockSO *mocks.ServiceOperations, mockBucket *mocks.S3Bucket, mockAMQP *mocks.AMQP, token string, uplImg models.UploadedImage, storage string) {
 				asString := "00000000-0000-0000-0000-000000000000"
 				s := uuid.MustParse(asString)
 				mockSO.On("ParseToken", token).Return(s, nil)
@@ -810,7 +813,7 @@ func TestHandler_convertImage(t *testing.T) {
 				case aws:
 					file, err := os.Open("filename.jpeg")
 					require.NoError(t, err)
-					mockSO.On("UploadToS3Bucket", mock.Anything, mock.Anything).Return(mock.Anything, nil)
+					mockBucket.On("UploadToS3Bucket", mock.Anything, mock.Anything).Return(mock.Anything, nil)
 					mockSO.On("UploadImage", mock.Anything, mock.Anything).Return(uplImg.ID, nil)
 					mockAMQP.On("DeclareQueue", "publisher").Return(q, nil)
 					mockAMQP.On("QosQueue").Return(nil)
@@ -818,7 +821,7 @@ func TestHandler_convertImage(t *testing.T) {
 					mockSO.On("UpdateStatus", mock.Anything, uplImg.ID, models.Processing).Return(nil)
 					mockAMQP.On("Publish", "", q.Name, string(models.Processing)).Return(nil).Return(nil)
 					mockSO.On("ChangeFormat", mock.Anything).Return(mock.Anything, nil)
-					mockSO.On("DownloadFromS3Bucket", mock.Anything).Return(file, nil)
+					mockBucket.On("DownloadFromS3Bucket", mock.Anything).Return(file, nil)
 					mockSO.On("ConvertToType", mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(models.ResultedImage{}, utils.ErrConvert)
 				case local:
 					mockSO.On("UploadImage", mock.Anything, mock.Anything).Return(uplImg.ID, nil)
@@ -840,7 +843,7 @@ func TestHandler_convertImage(t *testing.T) {
 			headerValues: []string{"Bearer token", "image/jpeg", `multipart/form-data; boundary="foo123"`},
 			token:        "token",
 			userID:       [16]byte{00000000 - 0000 - 0000 - 0000 - 000000000000},
-			fn: func(mockSO *mocks.ServiceOperations, mockAMQP *mocks.AMQP, token string, uplImg models.UploadedImage, storage string) {
+			fn: func(mockSO *mocks.ServiceOperations, mockBucket *mocks.S3Bucket, mockAMQP *mocks.AMQP, token string, uplImg models.UploadedImage, storage string) {
 				asString := "00000000-0000-0000-0000-000000000000"
 				s := uuid.MustParse(asString)
 				mockSO.On("ParseToken", token).Return(s, nil)
@@ -848,7 +851,7 @@ func TestHandler_convertImage(t *testing.T) {
 				case aws:
 					file, err := os.Open("filename.jpeg")
 					require.NoError(t, err)
-					mockSO.On("UploadToS3Bucket", mock.Anything, mock.Anything).Return(mock.Anything, nil)
+					mockBucket.On("UploadToS3Bucket", mock.Anything, mock.Anything).Return(mock.Anything, nil)
 					mockSO.On("UploadImage", mock.Anything, mock.Anything).Return(uplImg.ID, nil)
 					mockAMQP.On("DeclareQueue", "publisher").Return(q, nil)
 					mockAMQP.On("QosQueue").Return(nil)
@@ -856,7 +859,7 @@ func TestHandler_convertImage(t *testing.T) {
 					mockSO.On("UpdateStatus", mock.Anything, uplImg.ID, models.Processing).Return(nil)
 					mockAMQP.On("Publish", "", q.Name, string(models.Processing)).Return(nil).Return(nil)
 					mockSO.On("ChangeFormat", mock.Anything).Return(mock.Anything, nil)
-					mockSO.On("DownloadFromS3Bucket", mock.Anything).Return(file, nil)
+					mockBucket.On("DownloadFromS3Bucket", mock.Anything).Return(file, nil)
 					mockSO.On("ConvertToType", mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(models.ResultedImage{}, nil)
 					mockSO.On("UpdateStatus", mock.Anything, uplImg.ID, models.Done).Return(utils.ErrUpdateStatusRequest)
 				case local:
@@ -880,7 +883,7 @@ func TestHandler_convertImage(t *testing.T) {
 			headerValues: []string{"Bearer token", "image/jpeg", `multipart/form-data; boundary="foo123"`},
 			token:        "token",
 			userID:       [16]byte{00000000 - 0000 - 0000 - 0000 - 000000000000},
-			fn: func(mockSO *mocks.ServiceOperations, mockAMQP *mocks.AMQP, token string, uplImg models.UploadedImage, storage string) {
+			fn: func(mockSO *mocks.ServiceOperations, mockBucket *mocks.S3Bucket, mockAMQP *mocks.AMQP, token string, uplImg models.UploadedImage, storage string) {
 				asString := "00000000-0000-0000-0000-000000000000"
 				s := uuid.MustParse(asString)
 				mockSO.On("ParseToken", token).Return(s, nil)
@@ -888,7 +891,7 @@ func TestHandler_convertImage(t *testing.T) {
 				case aws:
 					file, err := os.Open("filename.jpeg")
 					require.NoError(t, err)
-					mockSO.On("UploadToS3Bucket", mock.Anything, mock.Anything).Return(mock.Anything, nil)
+					mockBucket.On("UploadToS3Bucket", mock.Anything, mock.Anything).Return(mock.Anything, nil)
 					mockSO.On("UploadImage", mock.Anything, mock.Anything).Return(uplImg.ID, nil)
 					mockAMQP.On("DeclareQueue", "publisher").Return(q, nil)
 					mockAMQP.On("QosQueue").Return(nil)
@@ -896,7 +899,7 @@ func TestHandler_convertImage(t *testing.T) {
 					mockSO.On("UpdateStatus", mock.Anything, uplImg.ID, models.Processing).Return(nil)
 					mockAMQP.On("Publish", "", q.Name, string(models.Processing)).Return(nil).Return(nil)
 					mockSO.On("ChangeFormat", mock.Anything).Return(mock.Anything, nil)
-					mockSO.On("DownloadFromS3Bucket", mock.Anything).Return(file, nil)
+					mockBucket.On("DownloadFromS3Bucket", mock.Anything).Return(file, nil)
 					mockSO.On("ConvertToType", mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(models.ResultedImage{}, nil)
 					mockSO.On("UpdateStatus", mock.Anything, uplImg.ID, models.Done).Return(nil)
 					mockAMQP.On("Publish", "", q.Name, string(models.Done)).Return(nil).Return(nil)
@@ -926,9 +929,11 @@ func TestHandler_convertImage(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			mockSO := new(mocks.ServiceOperations)
 			mockAMQP := new(mocks.AMQP)
+			mockBucket := new(mocks.S3Bucket)
+
 			conf := utils.NewConfig()
 
-			service := NewService(mockSO)
+			service := NewService(mockSO, mockBucket)
 			s := NewServer(mockAMQP, service)
 
 			s.router.HandleFunc(fmt.Sprintf(convertURL, "{userID}"),
@@ -950,7 +955,7 @@ func TestHandler_convertImage(t *testing.T) {
 			err = file.Close()
 			require.NoError(t, err)
 
-			tt.fn(mockSO, mockAMQP, tt.token, uplImg, conf.Storage)
+			tt.fn(mockSO, mockBucket, mockAMQP, tt.token, uplImg, conf.Storage)
 
 			w := httptest.NewRecorder()
 			req := httptest.NewRequest(http.MethodPost, fmt.Sprintf(convertURL, tt.userID),
@@ -1148,10 +1153,11 @@ func TestHandler_findConvertedImage(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			mockSO := new(mocks.ServiceOperations)
+			mockAWS := new(mocks.S3Bucket)
 
 			tt.fn(mockSO, tt.token, tt.convertedID, tt.params.isOriginal)
 
-			service := NewService(mockSO)
+			service := NewService(mockSO, mockAWS)
 			s := NewServer(nil, service)
 
 			s.router.HandleFunc(fmt.Sprintf(getConvertedURL, "{userID}", "{convertedID}"),

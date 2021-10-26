@@ -7,7 +7,6 @@ import (
 	"os"
 	"strings"
 
-	"github.com/alisavch/image-service/internal/bucket"
 	"github.com/alisavch/image-service/internal/log"
 	"github.com/alisavch/image-service/internal/models"
 	"github.com/alisavch/image-service/internal/utils"
@@ -36,10 +35,10 @@ type ImageService struct {
 }
 
 // NewImageService configures ImageService.
-func NewImageService(repo ImageRepo) *ImageService {
+func NewImageService(repo ImageRepo, bucket S3Bucket) *ImageService {
 	return &ImageService{
 		repo:   repo,
-		bucket: bucket.NewAWS(),
+		bucket: bucket,
 		logger: log.NewLogger(),
 	}
 }

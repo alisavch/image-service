@@ -59,5 +59,4 @@ type S3Bucket interface {
 type ServiceOperations interface {
 	Authorization
 	Image
-	S3Bucket
 }

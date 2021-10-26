@@ -6,6 +6,7 @@ import (
 	"net/http"
 
 	"github.com/alisavch/image-service/internal/broker"
+	"github.com/alisavch/image-service/internal/bucket"
 	"github.com/alisavch/image-service/internal/repository"
 	"github.com/alisavch/image-service/internal/service"
 	"github.com/alisavch/image-service/internal/utils"
@@ -33,8 +34,9 @@ func Start() error {
 	}(db)
 
 	repos := repository.NewRepository(db)
-	services := service.NewService(repos)
-	currentService := NewService(services)
+	aws := bucket.NewAWS()
+	services := service.NewService(repos, aws)
+	currentService := NewService(services, aws)
 	rabbit := broker.NewAMQPBroker()
 
 	err = rabbit.Connect()

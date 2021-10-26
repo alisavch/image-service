@@ -28,12 +28,14 @@ func NewLogger() *Logger {
 // Service combines the interfaces for interaction with the service.
 type Service struct {
 	ServiceOperations
+	S3Bucket
 }
 
 // NewService configures Service.
-func NewService(operations ServiceOperations) *Service {
+func NewService(operations ServiceOperations, bucket S3Bucket) *Service {
 	return &Service{
 		ServiceOperations: operations,
+		S3Bucket:          bucket,
 	}
 }
 
@@ -42,7 +44,7 @@ type Server struct {
 	router  *mux.Router
 	mq      AMQP
 	service *Service
-	logger  *Logger
+	logger  DisplayLog
 }
 
 // NewServer configures Server.

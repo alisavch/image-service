@@ -1,7 +1,6 @@
 package service
 
 import (
-	"github.com/alisavch/image-service/internal/bucket"
 	"github.com/alisavch/image-service/internal/repository"
 )
 
@@ -9,14 +8,12 @@ import (
 type Service struct {
 	*AuthService
 	*ImageService
-	*bucket.AWS
 }
 
 // NewService configures Service.
-func NewService(repo *repository.Repository) *Service {
+func NewService(repo *repository.Repository, bucket S3Bucket) *Service {
 	return &Service{
 		AuthService:  NewAuthService(repo.AuthRepository),
-		ImageService: NewImageService(repo.ImageRepository),
-		AWS:          bucket.NewAWS(),
+		ImageService: NewImageService(repo.ImageRepository, bucket),
 	}
 }

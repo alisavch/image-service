@@ -14,9 +14,6 @@
 .idea
 .database
 
-# Dependency directories (remove the comment below to include it)
-# vendor/
-
 ### Go Patch ###
 /vendor/
 /Godeps/
@@ -25,7 +22,8 @@
 *.env
 /postgres-data/
 /rabbitmq-data/
-# images #
+
+# images
 /results/
 /uploads/
 *.jpg

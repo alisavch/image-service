@@ -21,6 +21,7 @@
 /vendor/
 /Godeps/
 
+# Environment
 *.env
 /postgres-data/
 /rabbitmq-data/

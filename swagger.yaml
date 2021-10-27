@@ -2,14 +2,20 @@ basePath: /
 consumes:
 - application/json
 definitions:
+  UUID:
+    description: |-
+      A UUID is a 128 bit (16 byte) Universal Unique IDentifier as defined in RFC
+      4122.
+    items:
+      format: uint8
+      type: integer
+    type: array
+    x-go-package: github.com/google/uuid
   UploadedImage:
     description: Uploaded image is the general information.
     properties:
       id:
-        description: the ID for this uploaded image
-        format: int64
-        type: integer
-        x-go-name: ID
+        $ref: '#/definitions/UUID'
       uploaded_location:
         description: the Location for this uploaded image
         type: string
@@ -25,10 +31,7 @@ definitions:
     description: A user is the security principal for this application.
     properties:
       id:
-        description: the ID for this user
-        format: int64
-        type: integer
-        x-go-name: ID
+        $ref: '#/definitions/UUID'
       password:
         description: the password for this user
         type: string

@@ -12,10 +12,22 @@
 # Output of the go coverage tool, specifically when used with LiteIDE
 *.out
 .idea
-
-# Dependency directories (remove the comment below to include it)
-# vendor/
+.database
 
 ### Go Patch ###
 /vendor/
 /Godeps/
+
+# Environment
+*.env
+/postgres-data/
+/rabbitmq-data/
+
+# images
+/results/
+/uploads/
+*.jpg
+*.jpeg
+*.JPG
+*.png
+*.tiff

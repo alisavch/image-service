@@ -17,6 +17,16 @@ deploy:
     script: bash .docker_push
     on:
       branch: main
+  - provider: elasticbeanstalk
+    region: $AWS_REGION
+    app: $AWS_EB_APP_NAME
+    env: $AWS_EB_APP_ENV
+    bucket_name: $AWS_EB_BUCKET_NAME
+    bucket_path: $AWS_EB_APP_NAME
+    on:
+      branch: main
+    access_key_id: $AWS_ACCESS_KEY
+    secret_access_key: $AWS_SECRET_ACCESS_KEY
 
 after_script:
   - docker-compose down

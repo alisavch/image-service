@@ -47,7 +47,7 @@ services:
       retries: 1
 
   image-service:
-    image: image-service:latest
+    image: alisavch/image-service:latest
     build:
       context: .
       dockerfile: Dockerfile

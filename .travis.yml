@@ -10,7 +10,8 @@ before_install:
   - curl -sSfL https://raw.githubusercontent.com/golangci/golangci-lint/master/install.sh | sh -s -- -b $(go env GOPATH)/bin v1.24.0
 
 script:
-  - docker build -t alisavch/image-service:latest -f Dockerfile .
+  - docker build -t alisavch/backend:latest -f Dockerfile .
+  - docker build -t alisavch/consumer:latest -f Dockerfile-consumer .
 
 deploy:
   - provider: script

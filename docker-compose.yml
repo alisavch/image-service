@@ -3,7 +3,6 @@ version: '3.3'
 services:
   postgresql:
     image: postgres:latest
-    restart: always
     container_name: postgresql
     env_file: .env
     environment:
@@ -15,74 +14,44 @@ services:
     volumes:
       - ~/.docker-conf/postgresql:/var/lib/postgresql/data
       - ./sql/01-init.sh:/docker-entrypoint-initdb.d/01-init.sh
-    networks:
-      - fullstack
-    healthcheck:
-      test: [ "CMD", "nc", "-z", "localhost", "5432" ]
-      interval: 5s
-      timeout: 15s
-      retries: 1
 
   rabbitmq:
     image: rabbitmq:management
     restart: always
     container_name: rabbitmq
     env_file: .env
-    environment:
-      - RABBITMQ_DEFAULT_PASS=test
-      - RABBITMQ_DEFAULT_USER=test
     ports:
       - "8002:5672"
       - "8004:15672"
+      - "8005:5671"
     volumes:
       - ~/.docker-conf/rabbitmq:/var/lib/rabbitmq/
       - ~/.docker-conf/rabbitmq:/var/log/rabbitmq/
       - ~/.docker-conf/rabbitmq:/etc/rabbitmq/
-    networks:
-      - fullstack
-    healthcheck:
-      test: [ "CMD", "nc", "-z", "localhost", "15672" ]
-      interval: 5s
-      timeout: 15s
-      retries: 1
+    depends_on:
+    - backend
+    - consumer
 
-  image-service:
-    image: alisavch/image-service:latest
+  backend:
+    image: alisavch/backend:latest
     build:
       context: .
       dockerfile: Dockerfile
-    container_name: image-service
+    container_name: backend
     env_file: .env
-    restart: always
+    restart: on-failure
     ports:
       - "8080:8080"
     volumes:
       - ./uploads://uploads
       - ./results://results
       - $HOME/Downloads://root/Downloads
-    depends_on:
-      - postgresql
-      - rabbitmq
-    networks:
-      - fullstack
 
   consumer:
+    image: alisavch/consumer:latest
     build:
       context: .
       dockerfile: Dockerfile-consumer
     container_name: consumer
-    environment:
-      - RABBITMQ_URL=amqp://test:test@rabbitmq:5672
-    restart: always
-    depends_on:
-      - image-service
-      - rabbitmq
-    networks:
-      - fullstack
-
-volumes:
-  api:
-  database_postgres:
-networks:
-  fullstack:
-    driver: bridge
+    env_file: .env
+    restart: on-failure

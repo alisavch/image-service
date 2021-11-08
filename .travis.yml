@@ -29,7 +29,7 @@ deploy:
     access_key_id: $AWS_ACCESS_KEY
     secret_access_key: $AWS_SECRET_ACCESS_KEY
     skip_cleanup: true
-    - provider: elasticbeanstalk
+  - provider: elasticbeanstalk
     region: $AWS_REGION
     app: $AWS_EB_APP_NAME
     env: $AWS_EB_APP_ENV

@@ -1,37 +1,6 @@
 version: '3.3'
 
 services:
-  postgresql:
-    image: postgres:latest
-    container_name: postgresql
-    env_file: .env
-    environment:
-      - POSTGRES_USER=${POSTGRES_USER}
-      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
-      - POSTGRES_DB=${DB_NAME}
-    ports:
-      - "8001:5432"
-    volumes:
-      - ~/.docker-conf/postgresql:/var/lib/postgresql/data
-      - ./sql/01-init.sh:/docker-entrypoint-initdb.d/01-init.sh
-
-  rabbitmq:
-    image: rabbitmq:management
-    restart: always
-    container_name: rabbitmq
-    env_file: .env
-    ports:
-      - "8002:5672"
-      - "8004:15672"
-      - "8005:5671"
-    volumes:
-      - ~/.docker-conf/rabbitmq:/var/lib/rabbitmq/
-      - ~/.docker-conf/rabbitmq:/var/log/rabbitmq/
-      - ~/.docker-conf/rabbitmq:/etc/rabbitmq/
-    depends_on:
-    - backend
-    - consumer
-
   backend:
     image: alisavch/backend:latest
     build:
@@ -39,13 +8,9 @@ services:
       dockerfile: Dockerfile
     container_name: backend
     env_file: .env
-    restart: on-failure
+    restart: always
     ports:
       - "8080:8080"
-    volumes:
-      - ./uploads://uploads
-      - ./results://results
-      - $HOME/Downloads://root/Downloads
 
   consumer:
     image: alisavch/consumer:latest
@@ -54,4 +19,6 @@ services:
       dockerfile: Dockerfile-consumer
     container_name: consumer
     env_file: .env
-    restart: on-failure
+    restart: always
+    depends_on:
+      - backend

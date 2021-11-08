@@ -28,6 +28,18 @@ deploy:
       branch: main
     access_key_id: $AWS_ACCESS_KEY
     secret_access_key: $AWS_SECRET_ACCESS_KEY
+    skip_cleanup: true
+    - provider: elasticbeanstalk
+    region: $AWS_REGION
+    app: $AWS_EB_APP_NAME
+    env: $AWS_EB_APP_ENV
+    bucket_name: $AWS_EB_BUCKET_NAME2
+    bucket_path: $AWS_EB_APP_NAME2
+    on:
+      branch: main
+    access_key_id: $AWS_ACCESS_KEY
+    secret_access_key: $AWS_SECRET_ACCESS_KEY
+    skip_cleanup: true
 
 after_script:
   - docker-compose down

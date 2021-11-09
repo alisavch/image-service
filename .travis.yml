@@ -10,25 +10,12 @@ before_install:
   - curl -sSfL https://raw.githubusercontent.com/golangci/golangci-lint/master/install.sh | sh -s -- -b $(go env GOPATH)/bin v1.24.0
 
 script:
-  - docker build -t alisavch/backend:latest -f Dockerfile .
-  - docker build -t alisavch/consumer:latest -f Dockerfile-consumer .
-
-deploy:
-  - provider: script
-    script: bash .docker_push
-    on:
-      branch: main
-  - provider: elasticbeanstalk
-    region: $AWS_REGION
-    app: $AWS_EB_APP_NAME
-    env: $AWS_EB_APP_ENV
-    bucket_name: $AWS_EB_BUCKET_NAME
-    bucket_path: $AWS_EB_APP_NAME
-    on:
-      branch: main
-    access_key_id: $AWS_ACCESS_KEY
-    secret_access_key: $AWS_SECRET_ACCESS_KEY
-    skip_cleanup: true
+  - docker build -t backend:latest -f Dockerfile .
+  - docker tag backend:latest $AWS_ACCOUNT.dkr.ecr.$AWS_REGION.amazonaws.com/backend:latest
+  - docker build -t consumer:latest -f Dockerfile-consumer .
+  - docker tag consumer:latest $AWS_ACCOUNT.dkr.ecr.$AWS_REGION.amazonaws.com/consumer:latest
 
 after_script:
+  - docker push $AWS_ACCOUNT.dkr.ecr.$AWS_REGION.amazonaws.com/backend:latest
+  - docker push $AWS_ACCOUNT.dkr.ecr.$AWS_REGION.amazonaws.com/consumer:latest
   - docker-compose down

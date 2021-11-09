@@ -1,0 +1,4 @@
+#!/bin/bash
+docker login -u AWS -p $AWS_PASSWORD $AWS_ACCOUNT.dkr.ecr.$AWS_REGION.amazonaws.com
+docker push $AWS_ACCOUNT.dkr.ecr.$AWS_REGION.amazonaws.com/backend:latest
+docker push $AWS_ACCOUNT.dkr.ecr.$AWS_REGION.amazonaws.com/consumer:latest

@@ -9,12 +9,11 @@ services:
 before_install:
   - curl -sSfL https://raw.githubusercontent.com/golangci/golangci-lint/master/install.sh | sh -s -- -b $(go env GOPATH)/bin v1.24.0
 
-script:
-  - eval $(aws ecr get-login --no-include-email --region $AWS_REGION)
-  - docker build -t backend:latest -f Dockerfile .
-  - docker build -t consumer:latest -f Dockerfile-consumer .
-  - docker push $AWS_ACCOUNT.dkr.ecr.$AWS_REGION.amazonaws.com/backend:latest
-  - docker push $AWS_ACCOUNT.dkr.ecr.$AWS_REGION.amazonaws.com/consumer:latest
+deploy:
+  provider: script
+  script: bash .aws_ecs_push
+  on:
+    branch: main
 
 after_script:
   - docker-compose down

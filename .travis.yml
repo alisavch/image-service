@@ -12,6 +12,8 @@ before_install:
 deploy:
   provider: script
   script: bash .aws_ecs_push
+  access_key_id: $AWS_ACCESS_KEY_ID
+  secret_access_key: $AWS_SECRET_ACCESS_KEY
   on:
     branch: main
 

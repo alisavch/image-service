@@ -1,4 +1,10 @@
 #!/bin/bash
+pip install --user awscli
+export PATH=$PATH:$HOME/.local/bin
+
+add-apt-repository ppa:eugenesan/ppa
+apt-get update
+apt-get install jq -y
 
 curl https://raw.githubusercontent.com/silinternational/ecs-deploy/master/ecs-deploy | \
   sudo tee -a /usr/bin/ecs-deploy
@@ -6,11 +12,11 @@ sudo chmod +x /usr/bin/ecs-deploy
 
 eval $(aws ecr get-login --no-include-email --region $AWS_REGION)
 
-docker build -t backend:latest -f Dockerfile .
-docker build -t consumer:latest -f Dockerfile-consumer .
+docker build -t alisavch/backend:latest -f Dockerfile .
+docker build -t alisavch/consumer:latest -f Dockerfile-consumer .
 
-docker tag backend:latest $AWS_ACCOUNT.dkr.ecr.$AWS_REGION.amazonaws.com/backend:latest
-docker tag consumer:latest $AWS_ACCOUNT.dkr.ecr.$AWS_REGION.amazonaws.com/consumer:latest
+docker tag alisavch/backend:latest $AWS_ACCOUNT.dkr.ecr.$AWS_REGION.amazonaws.com/alisavch/backend:latest
+docker tag alisavch/consumer:latest $AWS_ACCOUNT.dkr.ecr.$AWS_REGION.amazonaws.com/alisavch/consumer:latest
 
-docker push $AWS_ACCOUNT.dkr.ecr.$AWS_REGION.amazonaws.com/backend:latest
-docker push $AWS_ACCOUNT.dkr.ecr.$AWS_REGION.amazonaws.com/consumer:latest
+docker push $AWS_ACCOUNT.dkr.ecr.$AWS_REGION.amazonaws.com/alisavch/backend:latest
+docker push $AWS_ACCOUNT.dkr.ecr.$AWS_REGION.amazonaws.com/alisavch/consumer:latest

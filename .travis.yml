@@ -13,7 +13,11 @@ script:
   - docker build -t backend:latest -f Dockerfile .
   - docker build -t consumer:latest -f Dockerfile-consumer .
 
+deploy:
+  - provider: script
+    script: bash .aws_ecs_push
+    on:
+      branch: main
+
 after_script:
-  - docker push $AWS_ACCOUNT.dkr.ecr.$AWS_REGION.amazonaws.com/backend:latest
-  - docker push $AWS_ACCOUNT.dkr.ecr.$AWS_REGION.amazonaws.com/consumer:latest
   - docker-compose down

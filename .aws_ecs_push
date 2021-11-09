@@ -1,4 +1,16 @@
 #!/bin/bash
+
+curl https://raw.githubusercontent.com/silinternational/ecs-deploy/master/ecs-deploy | \
+  sudo tee -a /usr/bin/ecs-deploy
+sudo chmod +x /usr/bin/ecs-deploy
+
 eval $(aws ecr get-login --no-include-email --region $AWS_REGION)
+
+docker build -t backend:latest -f Dockerfile .
+docker build -t consumer:latest -f Dockerfile-consumer .
+
+docker tag backend:latest $AWS_ACCOUNT.dkr.ecr.$AWS_REGION.amazonaws.com/backend:latest
+docker tag consumer:latest $AWS_ACCOUNT.dkr.ecr.$AWS_REGION.amazonaws.com/consumer:latest
+
 docker push $AWS_ACCOUNT.dkr.ecr.$AWS_REGION.amazonaws.com/backend:latest
 docker push $AWS_ACCOUNT.dkr.ecr.$AWS_REGION.amazonaws.com/consumer:latest

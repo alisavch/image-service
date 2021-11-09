@@ -9,15 +9,11 @@ services:
 before_install:
   - curl -sSfL https://raw.githubusercontent.com/golangci/golangci-lint/master/install.sh | sh -s -- -b $(go env GOPATH)/bin v1.24.0
 
-script:
-  - docker build -t backend:latest -f Dockerfile .
-  - docker build -t consumer:latest -f Dockerfile-consumer .
-
 deploy:
-  - provider: script
-    script: bash .aws_ecs_push
-    on:
-      branch: main
+  provider: script
+  script: bash .aws_ecs_push
+  on:
+    branch: main
 
 after_script:
   - docker-compose down

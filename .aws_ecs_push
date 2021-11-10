@@ -14,6 +14,9 @@ eval $(aws ecr get-login --no-include-email --region $AWS_REGION)
 
 # docker login --username $DOCKER_USERNAME --password $DOCKER_PASSWORD
 
+aws ecr create-repository --repository-name backend
+aws ecr create-repository --repository-name consumer
+
 docker build -t backend -f Dockerfile .
 docker build -t consumer -f Dockerfile-consumer .
 

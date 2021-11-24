@@ -2,9 +2,8 @@ package apiserver
 
 import (
 	"encoding/json"
+	"errors"
 	"net/http"
-
-	"github.com/google/uuid"
 
 	"github.com/alisavch/image-service/internal/models"
 	"github.com/alisavch/image-service/internal/utils"
@@ -40,16 +39,20 @@ func (s *Server) signUp() http.HandlerFunc {
 
 		err := ParseRequest(r, &req)
 		if err != nil {
-			s.errorJSON(w, http.StatusUnauthorized, err)
+			s.errorJSON(w, http.StatusBadRequest, err)
 			return
 		}
 
-		id, err := s.service.CreateUser(r.Context(), req.User)
+		_, err = s.service.CreateUser(r.Context(), req.User)
+		if errors.Is(err, utils.ErrUserAlreadyExists) {
+			s.errorJSON(w, http.StatusConflict, err)
+			return
+		}
 		if err != nil {
 			s.errorJSON(w, http.StatusInternalServerError, err)
 			return
 		}
-		s.respondJSON(w, http.StatusCreated, map[string]uuid.UUID{"User ID": id})
+		s.respondJSON(w, http.StatusCreated, "User registered successfully")
 	}
 }
 
@@ -83,13 +86,13 @@ func (s *Server) signIn() http.HandlerFunc {
 		var req signInRequest
 		err := ParseRequest(r, &req)
 		if err != nil {
-			s.errorJSON(w, http.StatusForbidden, err)
+			s.errorJSON(w, http.StatusUnauthorized, err)
 			return
 		}
 
 		token, err := s.service.GenerateToken(r.Context(), req.Username, req.Password)
 		if err != nil {
-			s.errorJSON(w, http.StatusInternalServerError, err)
+			s.errorJSON(w, http.StatusUnauthorized, err)
 			return
 		}
 		s.respondJSON(w, http.StatusOK, token)

@@ -2,6 +2,33 @@ basePath: /
 consumes:
 - application/json
 definitions:
+  Image:
+    description: An image is what is processed in the application.
+    properties:
+      id:
+        $ref: '#/definitions/UUID'
+      resulted_location:
+        description: the resulted location for this image
+        type: string
+        x-go-name: ResultedLocation
+      resulted_name:
+        description: the resulted name for this image
+        type: string
+        x-go-name: ResultedName
+      uploaded_location:
+        description: the uploaded location for this image
+        type: string
+        x-go-name: UploadedLocation
+      uploaded_name:
+        description: the uploaded name for this image
+        type: string
+        x-go-name: UploadedName
+    required:
+    - uploaded_name
+    - uploaded_location
+    title: Image contains details of a single request.
+    type: object
+    x-go-package: github.com/alisavch/image-service/internal/models
   UUID:
     description: |-
       A UUID is a 128 bit (16 byte) Universal Unique IDentifier as defined in RFC
@@ -11,22 +38,6 @@ definitions:
       type: integer
     type: array
     x-go-package: github.com/google/uuid
-  UploadedImage:
-    description: Uploaded image is the general information.
-    properties:
-      id:
-        $ref: '#/definitions/UUID'
-      uploaded_location:
-        description: the Location for this uploaded image
-        type: string
-        x-go-name: Location
-      uploaded_name:
-        description: the Name for this uploaded image
-        type: string
-        x-go-name: Name
-    title: UploadedImage contains information about uploaded image.
-    type: object
-    x-go-package: github.com/alisavch/image-service/internal/models
   User:
     description: A user is the security principal for this application.
     properties:
@@ -52,57 +63,12 @@ info:
   title: Golang SwaggerUI image-service
   version: 1.0.0
 paths:
-  /api/sign-in:
-    post:
-      description: Only authorized user has access.
-      operationId: sign-in
-      parameters:
-      - description: the user to create
-        in: body
-        name: user
-        schema:
-          $ref: '#/definitions/User'
-      responses:
-        "200":
-          description: successful operation
-        "403":
-          description: not enough right
-        "500":
-          description: internal server error
-      summary: Authorizes the user.
-      tags:
-      - sign-in
-  /api/sign-up:
-    post:
-      description: Could be any user.
-      operationId: sign-up
-      parameters:
-      - description: the user to create
-        in: body
-        name: user
-        schema:
-          $ref: '#/definitions/User'
-      responses:
-        "201":
-          description: user created successfully
-        "401":
-          description: unauthorized user
-        "500":
-          description: internal server error
-      summary: Registers a user.
-      tags:
-      - sign-up
-  /api/user/{userID}/compress:
+  /api/compress:
     post:
       description: Receives an image from an input form and compresses it, also allows
         you to enter width in the query string.
       operationId: compress
       parameters:
-      - description: userID to filter by id
-        in: path
-        name: userID
-        required: true
-        type: integer
       - in: query
         name: width
         type: integer
@@ -110,27 +76,22 @@ paths:
         name: uploadFile
         required: true
         schema:
-          $ref: '#/definitions/UploadedImage'
+          $ref: '#/definitions/Image'
       responses:
         "200":
           description: successful operation
         "401":
-          description: unauthorized
+          description: unauthorized user
         "500":
           description: internal server error
       summary: Compresses the image.
       tags:
       - compress
-  /api/user/{userID}/compress/{compressedID}:
+  /api/compress/{compressedID}:
     get:
       description: Downloads the compressed image and original if required.
-      operationId: findCompressed
+      operationId: findCompressedImage
       parameters:
-      - description: userID to filter by id
-        in: path
-        name: userID
-        required: true
-        type: integer
       - description: compressedID to filter by id
         in: path
         name: compressedID
@@ -148,22 +109,19 @@ paths:
         "500":
           description: internal server error
       summary: Finds the compressed image.
-  /api/user/{userID}/convert:
+      tags:
+      - findCompressedImage
+  /api/convert:
     post:
       description: Receives an image from an input form and converts it PNG to JPG
         and vice versa.
       operationId: convert
       parameters:
-      - description: userID to filter by id
-        in: path
-        name: userID
-        required: true
-        type: integer
       - in: body
         name: uploadFile
         required: true
         schema:
-          $ref: '#/definitions/UploadedImage'
+          $ref: '#/definitions/Image'
       responses:
         "200":
           description: successful operation
@@ -174,16 +132,11 @@ paths:
       summary: Converts the image.
       tags:
       - convert
-  /api/user/{userID}/convert/{convertedID}:
+  /api/convert/{convertedID}:
     get:
       description: Downloads the converted image and original if required.
-      operationId: findConverted
+      operationId: findConvertedImage
       parameters:
-      - description: userID to filter by id
-        in: path
-        name: userID
-        required: true
-        type: integer
       - description: convertedID to filter by id
         in: path
         name: convertedID
@@ -201,24 +154,62 @@ paths:
         "500":
           description: internal server error
       summary: Finds the converted image.
-  /api/user/{userID}/history:
+      tags:
+      - findConvertedImage
+  /api/history:
     get:
       description: Lists all queries created by user.
       operationId: history
-      parameters:
-      - description: userID to filter by id
-        in: path
-        name: userID
-        required: true
-        type: integer
       responses:
         "200":
           description: successful operation
         "401":
-          description: unauthorized
+          description: unauthorized user
         "500":
           description: internal server error
       summary: Finds users history.
+      tags:
+      - history
+  /api/sign-in:
+    post:
+      description: Only authorized user has access.
+      operationId: sign-in
+      parameters:
+      - description: the user to create
+        in: body
+        name: user
+        schema:
+          $ref: '#/definitions/User'
+      responses:
+        "200":
+          description: successful operation
+        "401":
+          description: unauthorized user
+      summary: Authorizes the user.
+      tags:
+      - sign-in
+  /api/sign-up:
+    post:
+      description: Could be any user.
+      operationId: sign-up
+      parameters:
+      - description: the user to create
+        in: body
+        name: user
+        schema:
+          $ref: '#/definitions/User'
+      responses:
+        "201":
+          description: user created successfully
+        "400":
+          description: bad request
+        "409":
+          description: user already exists
+        "500":
+          description: internal server error
+      summary: Registers a user.
+      tags:
+      - sign-up
 produces:
 - application/json
 schemes:

@@ -33,8 +33,6 @@ var (
 	ErrSaveImage = errors.New("cannot save image")
 	// ErrConvert the correctness of converting the image is checked.
 	ErrConvert = errors.New("cannot convert")
-	// ErrMultipartForm the correctness of parse multipart form.
-	ErrMultipartForm = errors.New("cannot parse multipart form")
 	// ErrEmptyUsername checks username.
 	ErrEmptyUsername = errors.New("username must not be empty")
 	// ErrEmptyPassword checks password.
@@ -43,8 +41,6 @@ var (
 	ErrIncorrectRatio = errors.New("input ratio is incorrect. it should not exceed the image size")
 	// ErrMissingParams checks id in params.
 	ErrMissingParams = errors.New("id is missing in parameters")
-	// ErrPrivacy checks for equality of user ids from context and from parameters.
-	ErrPrivacy = errors.New("users IDs do not match")
 	// ErrAtoi checks to convert to type int.
 	ErrAtoi = errors.New("cannot convert string to int")
 	// ErrGetDir finds current location.
@@ -63,8 +59,8 @@ var (
 	ErrCreateRequest = errors.New("cannot create request")
 	// ErrS3Uploading checks if the file can be uploaded to aws s3 bucket.
 	ErrS3Uploading = errors.New("failed to upload file to S3 bucket")
-	// ErrCreateUser checks the ability to create a user.
-	ErrCreateUser = errors.New("cannot insert user into database")
+	// ErrUserAlreadyExists checks the ability to create a user.
+	ErrUserAlreadyExists = errors.New("user already exists")
 	// ErrFindUser checks the ability to find the user.
 	ErrFindUser = errors.New("cannot find the user in database")
 	// ErrCreateQuery checks the possibility of creating a request.
@@ -73,8 +69,6 @@ var (
 	ErrGetHistory = errors.New("cannot get history lines")
 	// ErrUploadImageToDB verifies that the image information can be loaded into the database.
 	ErrUploadImageToDB = errors.New("unable to insert image into database")
-	// ErrTransaction checks if the transaction can be started.
-	ErrTransaction = errors.New("cannot start transaction")
 	// ErrFindTheResultingImage checks if the resulting image can be found.
 	ErrFindTheResultingImage = errors.New("cannot complete request to get resulting image")
 	// ErrFindOriginalImage checks if the original image can be found.
@@ -91,4 +85,10 @@ var (
 	ErrRemoteDownload = errors.New("cannot download from s3 bucket")
 	// ErrGetContentType checks the ability to get the content type of the file.
 	ErrGetContentType = errors.New("cannot get file content type")
+	// ErrRowsAffected checks affected rows.
+	ErrRowsAffected = errors.New("cannot return the number of affected rows")
+	// ErrExpectedAffected checks expected affected rows.
+	ErrExpectedAffected = errors.New("expected to affect 1 row, affected")
+	// ErrSetCompletedTime verifies the ability to set a processing completion time.
+	ErrSetCompletedTime = errors.New("cannot set the processing completion time")
 )

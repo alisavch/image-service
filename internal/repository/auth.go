@@ -4,11 +4,15 @@ import (
 	"context"
 	"database/sql"
 
+	"github.com/lib/pq"
+
 	"github.com/alisavch/image-service/internal/models"
 	"github.com/alisavch/image-service/internal/utils"
 
 	"github.com/google/uuid"
 )
+
+const codeUniqueViolation = "23505"
 
 // AuthRepository provides access to the database.
 type AuthRepository struct {
@@ -23,11 +27,11 @@ func NewAuthRepository(db *sql.DB) *AuthRepository {
 // CreateUser provides adding new user.
 func (r *AuthRepository) CreateUser(ctx context.Context, user models.User) (id uuid.UUID, err error) {
 	query := "INSERT INTO image_service.user_account(username, password) VALUES ($1, $2) RETURNING id"
-	row := r.db.QueryRowContext(ctx, query, user.Username, user.Password)
-	if err := row.Scan(&id); err != nil {
-		return [16]byte{}, utils.ErrCreateUser
+	err = r.db.QueryRowContext(ctx, query, user.Username, user.Password).Scan(&id)
+	if err, ok := err.(*pq.Error); ok && err.Code == codeUniqueViolation {
+		return [16]byte{}, utils.ErrUserAlreadyExists
 	}
-	return id, nil
+	return id, err
 }
 
 // GetUser gets the user.

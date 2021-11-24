@@ -6,6 +6,6 @@ type AMQPBroker struct {
 }
 
 // NewAMQPBroker is the AMQP constructor.
-func NewAMQPBroker() *AMQPBroker {
-	return &AMQPBroker{NewRabbitMQ()}
+func NewAMQPBroker(image Image, bucket S3Bucket) *AMQPBroker {
+	return &AMQPBroker{NewRabbitMQ(NewService(image, bucket))}
 }

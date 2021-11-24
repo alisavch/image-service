@@ -42,7 +42,7 @@ func TestHandler_signUp(t *testing.T) {
 				mockAuthorization.On("CreateUser", mock.Anything, user).Return(s, nil)
 			},
 			expectedStatusCode:   201,
-			expectedResponseBody: "{\"User ID\":\"00000000-0000-0000-0000-000000000000\"}\n",
+			expectedResponseBody: "\"User registered successfully\"\n",
 		},
 		{
 			name:      "Password must not be empty",
@@ -54,7 +54,7 @@ func TestHandler_signUp(t *testing.T) {
 			fn: func(mockAuthorization *mocks.ServiceOperations, user models.User) {
 				mockAuthorization.On("CreateUser", mock.Anything, user).Return(s, nil)
 			},
-			expectedStatusCode:   401,
+			expectedStatusCode:   400,
 			expectedResponseBody: "{\"error\":\"password must not be empty\"}\n",
 		},
 		{
@@ -80,7 +80,7 @@ func TestHandler_signUp(t *testing.T) {
 			fn: func(mockAuthorization *mocks.ServiceOperations, user models.User) {
 				mockAuthorization.On("CreateUser", mock.Anything, mock.Anything).Return(s, utils.ErrEmptyUsername)
 			},
-			expectedStatusCode:   401,
+			expectedStatusCode:   400,
 			expectedResponseBody: "{\"error\":\"username must not be empty\"}\n",
 		},
 		{
@@ -93,20 +93,22 @@ func TestHandler_signUp(t *testing.T) {
 			fn: func(mockAuthorization *mocks.ServiceOperations, user models.User) {
 				mockAuthorization.On("CreateUser", mock.Anything, mock.Anything).Return(s, fmt.Errorf("EOF"))
 			},
-			expectedStatusCode:   401,
+			expectedStatusCode:   400,
 			expectedResponseBody: "{\"error\":\"EOF\"}\n",
 		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+			mockBucket := new(mocks.S3Bucket)
 			mockSO := new(mocks.ServiceOperations)
+
+			currentService := NewAPI(mockSO, mockBucket)
+			mq := broker.NewAMQPBroker(mockSO, mockBucket)
+
+			s := NewServer(mq, currentService)
+
 			tt.fn(mockSO, tt.inputUser)
-
-			service := &Service{ServiceOperations: mockSO}
-			mq := broker.NewAMQPBroker()
-
-			s := NewServer(mq, service)
 
 			s.router.HandleFunc("/api/sign-up", s.signUp()).Methods(http.MethodPost)
 
@@ -151,7 +153,7 @@ func TestHandler_singIn(t *testing.T) {
 			fn: func(mockAuthorization *mocks.ServiceOperations, username string, password string) {
 				mockAuthorization.On("GenerateToken", mock.Anything, username, password).Return("", utils.ErrEmptyPassword)
 			},
-			expectedStatusCode:   403,
+			expectedStatusCode:   401,
 			expectedResponseBody: "{\"error\":\"password must not be empty\"}\n",
 		},
 		{
@@ -161,7 +163,7 @@ func TestHandler_singIn(t *testing.T) {
 			fn: func(mockAuthorization *mocks.ServiceOperations, username string, password string) {
 				mockAuthorization.On("GenerateToken", mock.Anything, username, password).Return("", utils.ErrEmptyHeader)
 			},
-			expectedStatusCode:   500,
+			expectedStatusCode:   401,
 			expectedResponseBody: "{\"error\":\"auth header is empty\"}\n",
 		},
 		{
@@ -171,7 +173,7 @@ func TestHandler_singIn(t *testing.T) {
 			fn: func(mockAuthorization *mocks.ServiceOperations, username string, password string) {
 				mockAuthorization.On("GenerateToken", mock.Anything, username, password).Return("token", nil)
 			},
-			expectedStatusCode:   403,
+			expectedStatusCode:   401,
 			expectedResponseBody: "{\"error\":\"username must not be empty\"}\n",
 		},
 		{
@@ -181,20 +183,22 @@ func TestHandler_singIn(t *testing.T) {
 			fn: func(mockAuthorization *mocks.ServiceOperations, username string, password string) {
 				mockAuthorization.On("GenerateToken", mock.Anything, username, password).Return("token", nil)
 			},
-			expectedStatusCode:   403,
+			expectedStatusCode:   401,
 			expectedResponseBody: "{\"error\":\"EOF\"}\n",
 		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+			mockBucket := new(mocks.S3Bucket)
 			mockSO := new(mocks.ServiceOperations)
+
+			currentService := NewAPI(mockSO, mockBucket)
+			mq := broker.NewAMQPBroker(mockSO, mockBucket)
+
+			s := NewServer(mq, currentService)
+
 			tt.fn(mockSO, tt.inputUser.username, tt.inputUser.password)
-
-			service := &Service{ServiceOperations: mockSO}
-			mq := broker.NewAMQPBroker()
-
-			s := NewServer(mq, service)
 
 			s.router.HandleFunc("/api/sign-in", s.signIn()).Methods(http.MethodPost)
 

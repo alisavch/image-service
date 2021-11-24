@@ -3,7 +3,6 @@ package apiserver
 import (
 	"context"
 	"fmt"
-	"image"
 	_ "image/jpeg" // It allows using jpeg
 	_ "image/png"  // It allows using png
 	"io"
@@ -118,11 +117,11 @@ func (req uploaded) Validate() error {
 	return nil
 }
 
-func (s *Server) uploadImage(r *http.Request, uploadedImage models.UploadedImage) (models.UploadedImage, error) {
+func (s *Server) uploadImage(r *http.Request, uploadedImage models.Image) (models.Image, error) {
 	var req uploaded
 	err := ParseRequest(r, &req)
 	if err != nil {
-		return models.UploadedImage{}, err
+		return models.Image{}, err
 	}
 
 	req.handler.Filename = strings.ReplaceAll(uuid.New().String(), "-", "") + req.handler.Filename
@@ -132,7 +131,7 @@ func (s *Server) uploadImage(r *http.Request, uploadedImage models.UploadedImage
 	case aws:
 		uploadedImage, err := s.uploadImageToAWS(r, req)
 		if err != nil {
-			return models.UploadedImage{}, err
+			return models.Image{}, err
 		}
 
 		return uploadedImage, nil
@@ -140,7 +139,7 @@ func (s *Server) uploadImage(r *http.Request, uploadedImage models.UploadedImage
 	case local:
 		uploadedImage, err := s.uploadImageLocally(r, req)
 		if err != nil {
-			return models.UploadedImage{}, err
+			return models.Image{}, err
 		}
 
 		return uploadedImage, nil
@@ -149,70 +148,48 @@ func (s *Server) uploadImage(r *http.Request, uploadedImage models.UploadedImage
 	return uploadedImage, nil
 }
 
-func (s *Server) uploadImageLocally(r *http.Request, req uploaded) (models.UploadedImage, error) {
+func (s *Server) uploadImageLocally(r *http.Request, req uploaded) (models.Image, error) {
 	err := s.prepareImageForLocalLoading(req)
 	if err != nil {
-		return models.UploadedImage{}, err
+		return models.Image{}, err
 	}
 
 	currentDir, err := os.Getwd()
 	if err != nil {
-		return models.UploadedImage{}, err
+		return models.Image{}, err
 	}
 
 	uploadedImage := fillInTheUploadedImageNameAndLocation(req.handler.Filename, currentDir+"/uploads/")
 
 	uploadedID, err := s.service.ServiceOperations.UploadImage(r.Context(), uploadedImage)
 	if err != nil {
-		return models.UploadedImage{}, fmt.Errorf("%s:%s", utils.ErrUpload, err)
+		return models.Image{}, fmt.Errorf("%s:%s", utils.ErrUpload, err)
 	}
 	uploadedImage.ID = uploadedID
 
 	return uploadedImage, nil
 }
 
-func (s *Server) uploadImageToAWS(r *http.Request, req uploaded) (models.UploadedImage, error) {
+func (s *Server) uploadImageToAWS(r *http.Request, req uploaded) (models.Image, error) {
 	imageLocation, err := s.service.UploadToS3Bucket(req.file, req.handler.Filename)
 	if err != nil {
-		return models.UploadedImage{}, err
+		return models.Image{}, err
 	}
 
 	err = req.file.Close()
 	if err != nil {
-		return models.UploadedImage{}, err
+		return models.Image{}, err
 	}
 
 	uploadedImage := fillInTheUploadedImageNameAndLocation(req.handler.Filename, imageLocation)
 
 	uploadedID, err := s.service.ServiceOperations.UploadImage(r.Context(), uploadedImage)
 	if err != nil {
-		return models.UploadedImage{}, fmt.Errorf("%s:%s", utils.ErrUpload, err)
+		return models.Image{}, fmt.Errorf("%s:%s", utils.ErrUpload, err)
 	}
 	uploadedImage.ID = uploadedID
 
 	return uploadedImage, nil
-}
-
-func (s *Server) prepareImage(uploadedImage models.UploadedImage, originalImageName, resultedImageName string) (image.Image, string, *os.File, error) {
-	conf := utils.NewConfig()
-
-	switch conf.Storage {
-	case aws:
-		img, format, resultedFile, err := s.downloadOriginalImageFormAWS(originalImageName, resultedImageName)
-		if err != nil {
-			return nil, "", nil, err
-		}
-		return img, format, resultedFile, nil
-
-	case local:
-		img, format, resultedFile, err := getOriginalImageLocally(uploadedImage, resultedImageName)
-		if err != nil {
-			return nil, "", nil, err
-		}
-		return img, format, resultedFile, nil
-	}
-
-	return nil, "", nil, nil
 }
 
 func (s *Server) prepareImageForLocalLoading(req uploaded) error {
@@ -246,61 +223,9 @@ func (s *Server) prepareImageForLocalLoading(req uploaded) error {
 	return nil
 }
 
-func (s *Server) downloadOriginalImageFormAWS(originalImageName, resultedImageName string) (image.Image, string, *os.File, error) {
-	file, err := s.service.DownloadFromS3Bucket(originalImageName)
-	if err != nil {
-		return nil, "", nil, err
-	}
-
-	img, format, err := image.Decode(file)
-	if err != nil {
-		return nil, "", nil, utils.ErrDecode
-	}
-
-	resultedFile, err := os.Create(resultedImageName)
-	if err != nil {
-		return nil, "", nil, utils.ErrCreateFile
-	}
-
-	return img, format, resultedFile, nil
-}
-
-func newImgName(str string) string {
-	return str
-}
-
-func fillInTheUploadedImageNameAndLocation(name, location string) models.UploadedImage {
-	var uploadedImage models.UploadedImage
-	uploadedImage.Name = name
-	uploadedImage.Location = location
+func fillInTheUploadedImageNameAndLocation(name, location string) models.Image {
+	var uploadedImage models.Image
+	uploadedImage.UploadedName = name
+	uploadedImage.UploadedLocation = location
 	return uploadedImage
-}
-
-func getOriginalImageLocally(uploadedImage models.UploadedImage, resultedImageName string) (image.Image, string, *os.File, error) {
-	file, err := os.Open(uploadedImage.Location + uploadedImage.Name)
-	if err != nil {
-		return nil, "", nil, utils.ErrOpen
-	}
-
-	img, format, err := image.Decode(file)
-	if err != nil {
-		return nil, "", nil, utils.ErrDecode
-	}
-
-	err = file.Close()
-	if err != nil {
-		return nil, "", nil, err
-	}
-
-	err = service.EnsureBaseDir("./results/")
-	if err != nil {
-		return nil, "", nil, utils.ErrEnsureDir
-	}
-
-	resultedFile, err := os.Create(fmt.Sprintf("./results/%s", resultedImageName))
-	if err != nil {
-		return nil, "", nil, utils.ErrCreateFile
-	}
-
-	return img, format, resultedFile, nil
 }

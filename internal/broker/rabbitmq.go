@@ -1,8 +1,11 @@
 package broker
 
 import (
+	"bytes"
+	"encoding/json"
 	"fmt"
 
+	"github.com/alisavch/image-service/internal/models"
 	"github.com/alisavch/image-service/internal/utils"
 
 	"github.com/streadway/amqp"
@@ -10,15 +13,16 @@ import (
 
 // RabbitMQ Operate Wrapper.
 type RabbitMQ struct {
+	*Service
 	conn   *amqp.Connection
 	ch     *amqp.Channel
 	done   chan error
 	logger *Logger
 }
 
-// NewRabbitMQ is constructor of the RabbitMQ.
-func NewRabbitMQ() *RabbitMQ {
-	return &RabbitMQ{logger: NewLogger()}
+// NewRabbitMQ configures RabbitMQ.
+func NewRabbitMQ(service *Service) *RabbitMQ {
+	return &RabbitMQ{Service: service, logger: NewLogger()}
 }
 
 // Connect instantiates the RabbitMW instances using configuration defined in environment variables.
@@ -41,11 +45,16 @@ func (r *RabbitMQ) Connect() error {
 }
 
 // Publish sends data to the queue.
-func (r *RabbitMQ) Publish(exchange, key, body string) error {
-	err := r.ch.Publish(exchange, key, false, false,
+func (r *RabbitMQ) Publish(exchange, key string, message models.QueuedMessage) error {
+	body, err := json.Marshal(message)
+	if err != nil {
+		return fmt.Errorf("can't marshal queue message: %w", err)
+	}
+
+	err = r.ch.Publish(exchange, key, false, false,
 		amqp.Publishing{
 			ContentType: "application/json",
-			Body:        []byte(body),
+			Body:        body,
 		})
 	if err != nil {
 		r.logger.Fatalf("%s:%s", "Failed to publish a message", err)
@@ -64,21 +73,36 @@ func (r *RabbitMQ) DeclareQueue(name string) (amqp.Queue, error) {
 
 // ConsumeQueue starts delivering queued messages.
 func (r *RabbitMQ) ConsumeQueue(queue string) error {
+	var message models.QueuedMessage
 	deliveries, err := r.ch.Consume(queue, "", false, false, false, false, nil)
 	if err != nil {
 		return fmt.Errorf("%s: %s", "Failed to register consumer", err)
 	}
 	forever := make(chan bool)
-	go func() {
-		for d := range deliveries {
-			r.logger.Printf("%s: %s", "Received a message", d.Body)
+	for d := range deliveries {
+		go func() {
+			err := json.NewDecoder(bytes.NewReader(d.Body)).Decode(&message)
+			if err != nil {
+				r.logger.Fatalf("%s: %s", "Failed to decode json", err)
+				return
+			}
 
-			err := d.Ack(false)
+			err = r.Process(message)
+			if err != nil {
+				r.logger.Fatalf("%s: %s", "Failed to process image", err)
+				return
+			}
+
+			err = d.Ack(false)
 			if err != nil {
 				r.logger.Printf("%s: %s", "Failed to delegates acknowledgment", d.Body)
+				return
 			}
+		}()
+		if err != nil {
+			return err
 		}
-	}()
+	}
 	<-forever
 	return nil
 }

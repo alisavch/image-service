@@ -111,43 +111,43 @@ func GetFileSize(file *os.File) (int64, error) {
 }
 
 // FillInTheReceivedNameAndLocation fills name and location
-func FillInTheReceivedNameAndLocation(name, location string) models.ResultedImage {
-	var result models.ResultedImage
+func FillInTheReceivedNameAndLocation(name, location string) models.Image {
+	var result models.Image
 
-	result.Name = name
-	result.Location = location
+	result.ResultedName = name
+	result.ResultedLocation = location
 
 	return result
 }
 
-// FillInTheImage fills models.Image.
-func FillInTheImage(img models.Image, file *os.File) (models.Image, error) {
+// FillInTheImage fills models.SavedImage.
+func FillInTheImage(img models.SavedImage, file *os.File) (models.SavedImage, error) {
 	var err error
 	img.File = file
 
 	img.ContentType, err = GetFileContentType(file)
 	if err != nil {
-		return models.Image{}, fmt.Errorf("%s:%s", utils.ErrGetContentType, err)
+		return models.SavedImage{}, fmt.Errorf("%s:%s", utils.ErrGetContentType, err)
 	}
 
 	img.Filesize, err = GetFileSize(file)
 	if err != nil {
-		return models.Image{}, err
+		return models.SavedImage{}, err
 	}
 
 	return img, nil
 }
 
 // FillInTheResultingImageLocally fills the resultedImage with information for local storage.
-func FillInTheResultingImageLocally(resultedName string, newImg *os.File) (models.ResultedImage, error) {
+func FillInTheResultingImageLocally(resultedName string, newImg *os.File) (models.Image, error) {
 	currentDir, err := os.Getwd()
 	if err != nil {
-		return models.ResultedImage{}, utils.ErrGetDir
+		return models.Image{}, utils.ErrGetDir
 	}
 
 	err = newImg.Close()
 	if err != nil {
-		return models.ResultedImage{}, err
+		return models.Image{}, err
 	}
 
 	result := FillInTheReceivedNameAndLocation(resultedName, currentDir+"/results/")

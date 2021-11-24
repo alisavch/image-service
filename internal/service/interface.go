@@ -17,12 +17,14 @@ type AuthorizationRepo interface {
 
 // ImageRepo consists of methods for working with images.
 type ImageRepo interface {
-	FindUserHistoryByID(ctx context.Context, id uuid.UUID) ([]models.History, error)
-	UploadImage(ctx context.Context, img models.UploadedImage) (uuid.UUID, error)
-	CreateRequest(ctx context.Context, user models.User, uplImg models.UploadedImage, resImg models.ResultedImage, uI models.UserImage, r models.Request) (uuid.UUID, error)
-	FindTheResultingImage(ctx context.Context, id uuid.UUID, service models.Service) (models.ResultedImage, error)
-	FindOriginalImage(ctx context.Context, id uuid.UUID) (models.UploadedImage, error)
+	FindUserRequestHistory(ctx context.Context, id uuid.UUID) ([]models.History, error)
+	UploadImage(ctx context.Context, img models.Image) (uuid.UUID, error)
+	UploadResultedImage(ctx context.Context, img models.Image) error
+	CreateRequest(ctx context.Context, user models.User, img models.Image, req models.Request) (uuid.UUID, error)
+	FindResultedImage(ctx context.Context, id uuid.UUID) (models.Image, error)
+	FindOriginalImage(ctx context.Context, id uuid.UUID) (models.Image, error)
 	UpdateStatus(ctx context.Context, id uuid.UUID, status models.Status) error
+	SetCompletedTime(ctx context.Context, id uuid.UUID) error
 }
 
 // S3Bucket contains the basic functions for interacting with the bucket.

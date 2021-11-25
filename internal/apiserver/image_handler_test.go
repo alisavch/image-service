@@ -215,8 +215,6 @@ func TestHandler_compressImage(t *testing.T) {
 					mockAMQP.On("QosQueue").Return(nil)
 					mockSO.On("UpdateStatus", mock.Anything, model.req.ID, models.Processing).Return(nil)
 					mockAMQP.On("Publish", "", q.Name, mock.Anything).Return(nil)
-					mockSO.On("UpdateStatus", mock.Anything, model.req.ID, models.Done).Return(nil)
-					mockSO.On("SetCompletedTime", mock.Anything, model.req.ID).Return(nil)
 				case local:
 					mockSO.On("UploadImage", mock.Anything, mock.Anything).Return(model.image.ID, nil)
 					mockSO.On("CreateRequest", mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(model.req.ID, nil)
@@ -224,11 +222,9 @@ func TestHandler_compressImage(t *testing.T) {
 					mockAMQP.On("QosQueue").Return(nil)
 					mockSO.On("UpdateStatus", mock.Anything, model.req.ID, models.Processing).Return(nil)
 					mockAMQP.On("Publish", "", q.Name, mock.Anything).Return(nil)
-					mockSO.On("UpdateStatus", mock.Anything, uplImg.ID, models.Done).Return(nil)
-					mockSO.On("SetCompletedTime", mock.Anything, model.req.ID).Return(nil)
 				}
 			},
-			expectedStatusCode:   200,
+			expectedStatusCode:   202,
 			expectedResponseBody: "{\"Image ID\":\"00000000-0000-0000-0000-000000000000\"}\n",
 		},
 		{
@@ -277,39 +273,6 @@ func TestHandler_compressImage(t *testing.T) {
 					mockAMQP.On("DeclareQueue", "publisher").Return(q, nil)
 					mockAMQP.On("QosQueue").Return(nil)
 					mockSO.On("UpdateStatus", mock.Anything, model.req.ID, models.Processing).Return(utils.ErrUpdateStatusRequest)
-				}
-			},
-			expectedStatusCode:   500,
-			expectedResponseBody: "{\"error\":\"cannot update image status\"}\n",
-		},
-		{
-			name:         "Failed update status",
-			headerNames:  []string{"Authorization", "Content-Type"},
-			headerValues: []string{"Bearer token", "image/jpeg", `multipart/form-data; boundary="foo123"`},
-			params:       params{name: "width", quantity: 100},
-			token:        "token",
-			fn: func(mockSO *mocks.ServiceOperations, mockBucket *mocks.S3Bucket, mockAMQP *mocks.AMQP, token string, model model, storage string) {
-				asString := "00000000-0000-0000-0000-000000000000"
-				s := uuid.MustParse(asString)
-				mockSO.On("ParseToken", token).Return(s, nil)
-				switch storage {
-				case aws:
-					mockBucket.On("UploadToS3Bucket", mock.Anything, mock.Anything).Return(mock.Anything, nil)
-					mockSO.On("UploadImage", mock.Anything, mock.Anything).Return(model.image.ID, nil)
-					mockSO.On("CreateRequest", mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(model.req.ID, nil)
-					mockAMQP.On("DeclareQueue", "publisher").Return(q, nil)
-					mockAMQP.On("QosQueue").Return(nil)
-					mockSO.On("UpdateStatus", mock.Anything, model.req.ID, models.Processing).Return(nil)
-					mockAMQP.On("Publish", "", q.Name, mock.Anything).Return(nil).Return(nil)
-					mockSO.On("UpdateStatus", mock.Anything, model.req.ID, models.Done).Return(utils.ErrUpdateStatusRequest)
-				case local:
-					mockSO.On("UploadImage", mock.Anything, mock.Anything).Return(model.image.ID, nil)
-					mockSO.On("CreateRequest", mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(model.req.ID, nil)
-					mockAMQP.On("DeclareQueue", "publisher").Return(q, nil)
-					mockAMQP.On("QosQueue").Return(nil)
-					mockSO.On("UpdateStatus", mock.Anything, model.req.ID, models.Processing).Return(nil)
-					mockAMQP.On("Publish", "", q.Name, mock.Anything).Return(nil)
-					mockSO.On("UpdateStatus", mock.Anything, model.req.ID, models.Done).Return(utils.ErrUpdateStatusRequest)
 				}
 			},
 			expectedStatusCode:   500,
@@ -439,6 +402,7 @@ func TestHandler_findCompressedImage(t *testing.T) {
 				asString := "00000000-0000-0000-0000-000000000000"
 				s := uuid.MustParse(asString)
 				mockSO.On("ParseToken", token).Return(s, nil)
+				mockSO.On("CheckStatus", mock.Anything, compressedID).Return(nil)
 				mockSO.On("FindResultedImage", mock.Anything, compressedID).Return(resultedImage, nil)
 				mockSO.On("SaveImage", mock.Anything, mock.Anything, mock.Anything).Return(&models.SavedImage{}, nil)
 			},
@@ -474,6 +438,7 @@ func TestHandler_findCompressedImage(t *testing.T) {
 				asString := "00000000-0000-0000-0000-000000000000"
 				s := uuid.MustParse(asString)
 				mockSO.On("ParseToken", token).Return(s, nil)
+				mockSO.On("CheckStatus", mock.Anything, compressedID).Return(nil)
 				mockSO.On("FindResultedImage", mock.Anything, compressedID).Return(models.Image{}, utils.ErrFindImage)
 			},
 			expectedStatusCode:   500,
@@ -490,6 +455,7 @@ func TestHandler_findCompressedImage(t *testing.T) {
 				asString := "00000000-0000-0000-0000-000000000000"
 				s := uuid.MustParse(asString)
 				mockSO.On("ParseToken", token).Return(s, nil)
+				mockSO.On("CheckStatus", mock.Anything, compressedID).Return(nil)
 				mockSO.On("FindResultedImage", mock.Anything, compressedID).Return(resultedImage, nil)
 				mockSO.On("SaveImage", mock.Anything, mock.Anything, mock.Anything).Return(&models.SavedImage{}, utils.ErrSaveImage)
 			},
@@ -637,8 +603,6 @@ func TestHandler_convertImage(t *testing.T) {
 					mockAMQP.On("QosQueue").Return(nil)
 					mockSO.On("UpdateStatus", mock.Anything, model.req.ID, models.Processing).Return(nil)
 					mockAMQP.On("Publish", "", q.Name, mock.Anything).Return(nil)
-					mockSO.On("UpdateStatus", mock.Anything, model.req.ID, models.Done).Return(nil)
-					mockSO.On("SetCompletedTime", mock.Anything, model.req.ID).Return(nil)
 				case local:
 					mockSO.On("UploadImage", mock.Anything, mock.Anything).Return(model.image.ID, nil)
 					mockSO.On("CreateRequest", mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(model.req.ID, nil)
@@ -646,11 +610,9 @@ func TestHandler_convertImage(t *testing.T) {
 					mockAMQP.On("QosQueue").Return(nil)
 					mockSO.On("UpdateStatus", mock.Anything, model.req.ID, models.Processing).Return(nil)
 					mockAMQP.On("Publish", "", q.Name, mock.Anything).Return(nil)
-					mockSO.On("UpdateStatus", mock.Anything, uplImg.ID, models.Done).Return(nil)
-					mockSO.On("SetCompletedTime", mock.Anything, model.req.ID).Return(nil)
 				}
 			},
-			expectedStatusCode:   200,
+			expectedStatusCode:   202,
 			expectedResponseBody: "{\"Image ID\":\"00000000-0000-0000-0000-000000000000\"}\n",
 		},
 		{
@@ -696,38 +658,6 @@ func TestHandler_convertImage(t *testing.T) {
 					mockAMQP.On("DeclareQueue", "publisher").Return(q, nil)
 					mockAMQP.On("QosQueue").Return(nil)
 					mockSO.On("UpdateStatus", mock.Anything, model.req.ID, models.Processing).Return(utils.ErrUpdateStatusRequest)
-				}
-			},
-			expectedStatusCode:   500,
-			expectedResponseBody: "{\"error\":\"cannot update image status\"}\n",
-		},
-		{
-			name:         "Failed update status",
-			headerNames:  []string{"Authorization", "Content-Type"},
-			headerValues: []string{"Bearer token", "image/jpeg", `multipart/form-data; boundary="foo123"`},
-			token:        "token",
-			fn: func(mockSO *mocks.ServiceOperations, mockBucket *mocks.S3Bucket, mockAMQP *mocks.AMQP, token string, model model, storage string) {
-				asString := "00000000-0000-0000-0000-000000000000"
-				s := uuid.MustParse(asString)
-				mockSO.On("ParseToken", token).Return(s, nil)
-				switch storage {
-				case aws:
-					mockBucket.On("UploadToS3Bucket", mock.Anything, mock.Anything).Return(mock.Anything, nil)
-					mockSO.On("UploadImage", mock.Anything, mock.Anything).Return(model.image.ID, nil)
-					mockSO.On("CreateRequest", mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(model.req.ID, nil)
-					mockAMQP.On("DeclareQueue", "publisher").Return(q, nil)
-					mockAMQP.On("QosQueue").Return(nil)
-					mockSO.On("UpdateStatus", mock.Anything, model.req.ID, models.Processing).Return(nil)
-					mockAMQP.On("Publish", "", q.Name, mock.Anything).Return(nil)
-					mockSO.On("UpdateStatus", mock.Anything, uplImg.ID, models.Done).Return(utils.ErrUpdateStatusRequest)
-				case local:
-					mockSO.On("UploadImage", mock.Anything, mock.Anything).Return(model.image.ID, nil)
-					mockSO.On("CreateRequest", mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(model.req.ID, nil)
-					mockAMQP.On("DeclareQueue", "publisher").Return(q, nil)
-					mockAMQP.On("QosQueue").Return(nil)
-					mockSO.On("UpdateStatus", mock.Anything, model.req.ID, models.Processing).Return(nil)
-					mockAMQP.On("Publish", "", q.Name, mock.Anything).Return(nil)
-					mockSO.On("UpdateStatus", mock.Anything, uplImg.ID, models.Done).Return(utils.ErrUpdateStatusRequest)
 				}
 			},
 			expectedStatusCode:   500,
@@ -849,6 +779,7 @@ func TestHandler_findConvertedImage(t *testing.T) {
 				asString := "00000000-0000-0000-0000-000000000000"
 				s := uuid.MustParse(asString)
 				mockSO.On("ParseToken", token).Return(s, nil)
+				mockSO.On("CheckStatus", mock.Anything, convertedID).Return(nil)
 				mockSO.On("FindResultedImage", mock.Anything, convertedID).Return(resultedImage, nil)
 				mockSO.On("SaveImage", mock.Anything, mock.Anything, mock.Anything).Return(&models.SavedImage{}, nil)
 			},
@@ -898,6 +829,7 @@ func TestHandler_findConvertedImage(t *testing.T) {
 				asString := "00000000-0000-0000-0000-000000000000"
 				s := uuid.MustParse(asString)
 				mockSO.On("ParseToken", token).Return(s, nil)
+				mockSO.On("CheckStatus", mock.Anything, convertedID).Return(nil)
 				mockSO.On("FindResultedImage", mock.Anything, mock.Anything).Return(models.Image{}, utils.ErrFindImage)
 			},
 			expectedStatusCode:   500,
@@ -913,6 +845,7 @@ func TestHandler_findConvertedImage(t *testing.T) {
 				asString := "00000000-0000-0000-0000-000000000000"
 				s := uuid.MustParse(asString)
 				mockSO.On("ParseToken", token).Return(s, nil)
+				mockSO.On("CheckStatus", mock.Anything, convertedID).Return(nil)
 				mockSO.On("FindResultedImage", mock.Anything, convertedID).Return(resultedImage, nil)
 				mockSO.On("SaveImage", mock.Anything, mock.Anything, mock.Anything).Return(&models.SavedImage{}, utils.ErrSaveImage)
 			},

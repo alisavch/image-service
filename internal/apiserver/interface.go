@@ -39,6 +39,7 @@ type Image interface {
 	UploadResultedImage(ctx context.Context, img models.Image) error
 	ChangeFormat(filename string) (string, error)
 	ConvertToType(format, resultedName string, img image.Image, newImg *os.File, storage string) (models.Image, error)
+	CheckStatus(ctx context.Context, id uuid.UUID) error
 	UploadImage(ctx context.Context, img models.Image) (uuid.UUID, error)
 	CreateRequest(ctx context.Context, user models.User, img models.Image, req models.Request) (uuid.UUID, error)
 	FindResultedImage(ctx context.Context, id uuid.UUID) (models.Image, error)

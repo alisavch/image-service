@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
+	"time"
 
 	"github.com/alisavch/image-service/internal/models"
 	"github.com/alisavch/image-service/internal/utils"
@@ -87,10 +88,11 @@ func (r *RabbitMQ) ConsumeQueue(queue string) error {
 				return
 			}
 
+			time.Sleep(time.Minute)
+
 			err = r.Process(message)
 			if err != nil {
 				r.logger.Fatalf("%s: %s", "Failed to process image", err)
-				return
 			}
 
 			err = d.Ack(false)

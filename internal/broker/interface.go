@@ -6,6 +6,8 @@ import (
 	"io"
 	"os"
 
+	"github.com/google/uuid"
+
 	"github.com/alisavch/image-service/internal/models"
 )
 
@@ -27,4 +29,6 @@ type Image interface {
 	UploadResultedImage(ctx context.Context, img models.Image) error
 	ChangeFormat(filename string) (string, error)
 	ConvertToType(format, resultedName string, img image.Image, newImg *os.File, storage string) (models.Image, error)
+	UpdateStatus(ctx context.Context, id uuid.UUID, status models.Status) error
+	SetCompletedTime(ctx context.Context, id uuid.UUID) error
 }

@@ -1,6 +1,7 @@
 package apiserver
 
 import (
+	"errors"
 	"fmt"
 	"net/http"
 	"strconv"
@@ -87,7 +88,7 @@ func (req *compressImageRequest) Build(r *http.Request) error {
 	}
 	req.Width = convertedWidth
 	req.ImageRequest.Status = models.Queued
-	req.ImageRequest.ServiceName = models.Conversion
+	req.ImageRequest.ServiceName = models.Compression
 
 	return nil
 }
@@ -130,7 +131,7 @@ func (s *Server) compressImage() http.HandlerFunc {
 
 		err = s.mq.QosQueue()
 		if err != nil {
-			s.logger.Fatalf("%s: %s", "Failed to controls messages", err)
+			s.logger.Fatalf("%s: %s", "Failed to set qos parameters", err)
 		}
 
 		err = s.service.ServiceOperations.UpdateStatus(r.Context(), requestID, models.Processing)
@@ -140,7 +141,7 @@ func (s *Server) compressImage() http.HandlerFunc {
 		}
 		s.logger.Printf("%s:%s", "Status updated", models.Processing)
 
-		message := models.NewQueuedMessage(req.Width, models.Compression, originalImage)
+		message := models.NewQueuedMessage(req.Width, requestID, req.ImageRequest.ServiceName, originalImage)
 
 		err = s.mq.Publish("", q.Name, message)
 		if err != nil {
@@ -148,21 +149,7 @@ func (s *Server) compressImage() http.HandlerFunc {
 		}
 		s.logger.Printf("%s:%s", "Message sent", message.Service)
 
-		err = s.service.ServiceOperations.UpdateStatus(r.Context(), requestID, models.Done)
-		if err != nil {
-			s.errorJSON(w, http.StatusInternalServerError, err)
-			return
-		}
-		s.logger.Printf("%s:%s", "Status updated", models.Done)
-
-		err = s.service.ServiceOperations.SetCompletedTime(r.Context(), requestID)
-		if err != nil {
-			s.errorJSON(w, http.StatusInternalServerError, err)
-			return
-		}
-		s.logger.Printf("%s:%s", "Time completed set", requestID)
-
-		s.respondFormData(w, http.StatusOK, requestID)
+		s.respondFormData(w, http.StatusAccepted, requestID)
 	}
 }
 
@@ -238,6 +225,16 @@ func (s *Server) findCompressedImage() http.HandlerFunc {
 			s.logger.Printf("%s:%s", "Original image received", uploadedImage.UploadedName)
 
 			s.respondImage(w, file)
+			return
+		}
+
+		err = s.service.ServiceOperations.CheckStatus(r.Context(), req.requestID)
+		if errors.Is(err, utils.ErrImageProcessing) {
+			s.errorJSON(w, http.StatusNotFound, err)
+			return
+		}
+		if err != nil {
+			s.errorJSON(w, http.StatusInternalServerError, err)
 			return
 		}
 
@@ -328,7 +325,7 @@ func (s *Server) convertImage() http.HandlerFunc {
 		}
 		s.logger.Printf("%s:%s", "Status updated", models.Processing)
 
-		message := models.NewQueuedMessage(0, models.Conversion, originalImage)
+		message := models.NewQueuedMessage(0, requestID, req.ImageRequest.ServiceName, originalImage)
 
 		err = s.mq.Publish("", q.Name, message)
 		if err != nil {
@@ -336,21 +333,7 @@ func (s *Server) convertImage() http.HandlerFunc {
 		}
 		s.logger.Printf("%s:%s", "Message sent", message.Service)
 
-		err = s.service.ServiceOperations.UpdateStatus(r.Context(), requestID, models.Done)
-		if err != nil {
-			s.errorJSON(w, http.StatusInternalServerError, err)
-			return
-		}
-		s.logger.Printf("%s:%s", "Status updated", models.Done)
-
-		err = s.service.ServiceOperations.SetCompletedTime(r.Context(), requestID)
-		if err != nil {
-			s.errorJSON(w, http.StatusInternalServerError, err)
-			return
-		}
-		s.logger.Printf("%s:%s", "Time completed set", requestID)
-
-		s.respondFormData(w, http.StatusOK, requestID)
+		s.respondFormData(w, http.StatusAccepted, requestID)
 	}
 }
 
@@ -426,6 +409,16 @@ func (s *Server) findConvertedImage() http.HandlerFunc {
 			s.logger.Printf("%s:%s", "Original image received", uploadedImage.UploadedName)
 
 			s.respondImage(w, file)
+			return
+		}
+
+		err = s.service.ServiceOperations.CheckStatus(r.Context(), req.requestID)
+		if errors.Is(err, utils.ErrImageProcessing) {
+			s.errorJSON(w, http.StatusNotFound, err)
+			return
+		}
+		if err != nil {
+			s.errorJSON(w, http.StatusInternalServerError, err)
 			return
 		}
 

@@ -2,7 +2,6 @@ package broker
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"image"
 	"os"
@@ -22,29 +21,43 @@ func (r *RabbitMQ) Process(message models.QueuedMessage) error {
 	conf := utils.NewConfig()
 	ctx := context.Background()
 
-	var resultedImage models.Image
 	switch message.Service {
 	case models.Compression:
 		compressedImage, err := r.Compress(message, conf.Storage)
 		if err != nil {
+			r.logger.Printf("%s:%s", "Failed to compress image", err)
 			return err
 		}
-		resultedImage = compressedImage
+		message.Image.ResultedName = compressedImage.ResultedName
+		message.Image.ResultedLocation = compressedImage.ResultedLocation
 
 	case models.Conversion:
 		convertedImage, err := r.Convert(message, conf.Storage)
 		if err != nil {
+			r.logger.Printf("%s:%s", "Failed to convert image", err)
 			return err
 		}
-		resultedImage = convertedImage
+		message.Image.ResultedName = convertedImage.ResultedName
+		message.Image.ResultedLocation = convertedImage.ResultedLocation
 	}
 
-	resultedImage.ID = message.Image.ID
-	err := r.UploadResultedImage(ctx, resultedImage)
+	err := r.UploadResultedImage(ctx, message.Image)
 	if err != nil {
-		return fmt.Errorf("%s:%s", errors.New("eeee"), err)
+		return err
 	}
-	r.logger.Printf("%s:%s", "Resulted image uploaded", resultedImage.ResultedName)
+	r.logger.Printf("%s:%s", "Resulted image uploaded", message.Image.ResultedName)
+
+	err = r.UpdateStatus(ctx, message.RequestID, models.Done)
+	if err != nil {
+		return err
+	}
+	r.logger.Printf("%s:%s", "Status updated", models.Done)
+
+	err = r.SetCompletedTime(ctx, message.RequestID)
+	if err != nil {
+		return err
+	}
+	r.logger.Printf("%s:%s", "Completion time added", message.RequestID)
 
 	return nil
 }

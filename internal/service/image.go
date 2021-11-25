@@ -102,6 +102,11 @@ func (s *ImageService) ConvertToType(format, resultedName string, img image.Imag
 	return result, nil
 }
 
+// CheckStatus checks request status.
+func (s *ImageService) CheckStatus(ctx context.Context, id uuid.UUID) error {
+	return s.repo.CheckStatus(ctx, id)
+}
+
 // CreateRequest creates request.
 func (s *ImageService) CreateRequest(ctx context.Context, user models.User, img models.Image, req models.Request) (uuid.UUID, error) {
 	return s.repo.CreateRequest(ctx, user, img, req)

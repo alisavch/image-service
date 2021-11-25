@@ -95,9 +95,25 @@ func (i *ImageRepository) CreateRequest(ctx context.Context, user models.User, i
 	return id, nil
 }
 
+// CheckStatus checks request status.
+func (i *ImageRepository) CheckStatus(ctx context.Context, id uuid.UUID) error {
+	var status string
+
+	imageStatus := "SELECT r.status FROM image_service.request r WHERE r.id=$1"
+	statusRow := i.db.QueryRowContext(ctx, imageStatus, id)
+	if err := statusRow.Scan(&status); err != nil {
+		return utils.ErrGetStatus
+	}
+	if status == string(models.Processing) {
+		return utils.ErrImageProcessing
+	}
+	return nil
+}
+
 // FindResultedImage finds processed image by ID.WillReturnResult
 func (i *ImageRepository) FindResultedImage(ctx context.Context, id uuid.UUID) (models.Image, error) {
 	var filename, location string
+
 	image := "SELECT i.resulted_name, i.resulted_location FROM image_service.image i INNER JOIN image_service.request r on i.id = r.image_id WHERE r.id=$1"
 	row := i.db.QueryRowContext(ctx, image, id)
 	if err := row.Scan(&filename, &location); err != nil {
@@ -109,6 +125,7 @@ func (i *ImageRepository) FindResultedImage(ctx context.Context, id uuid.UUID) (
 // FindOriginalImage finds original image by ID.
 func (i *ImageRepository) FindOriginalImage(ctx context.Context, id uuid.UUID) (models.Image, error) {
 	var filename, location string
+
 	image := "SELECT i.uploaded_name, i.uploaded_location FROM image_service.image i INNER JOIN image_service.request r on i.id = r.image_id WHERE r.id=$1"
 	row := i.db.QueryRowContext(ctx, image, id)
 	if err := row.Scan(&filename, &location); err != nil {

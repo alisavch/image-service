@@ -18,6 +18,7 @@ type AuthorizationRepo interface {
 // ImageRepo consists of methods for working with images.
 type ImageRepo interface {
 	FindUserRequestHistory(ctx context.Context, id uuid.UUID) ([]models.History, error)
+	CheckStatus(ctx context.Context, id uuid.UUID) error
 	UploadImage(ctx context.Context, img models.Image) (uuid.UUID, error)
 	UploadResultedImage(ctx context.Context, img models.Image) error
 	CreateRequest(ctx context.Context, user models.User, img models.Image, req models.Request) (uuid.UUID, error)

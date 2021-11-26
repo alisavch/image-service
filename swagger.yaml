@@ -78,8 +78,8 @@ paths:
         schema:
           $ref: '#/definitions/Image'
       responses:
-        "200":
-          description: successful operation
+        "202":
+          description: request accepted
         "401":
           description: unauthorized user
         "500":
@@ -106,6 +106,8 @@ paths:
           description: successful operation
         "401":
           description: unauthorized user
+        "404":
+          description: image is being processed
         "500":
           description: internal server error
       summary: Finds the compressed image.
@@ -123,8 +125,8 @@ paths:
         schema:
           $ref: '#/definitions/Image'
       responses:
-        "200":
-          description: successful operation
+        "202":
+          description: request accepted
         "401":
           description: unauthorized user
         "500":
@@ -151,6 +153,8 @@ paths:
           description: successful operation
         "401":
           description: unauthorized user
+        "404":
+          description: image is being processed
         "500":
           description: internal server error
       summary: Finds the converted image.
@@ -200,7 +204,7 @@ paths:
           $ref: '#/definitions/User'
       responses:
         "201":
-          description: user created successfully
+          description: user registered successfully
         "400":
           description: bad request
         "409":

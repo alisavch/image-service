@@ -23,7 +23,7 @@ func (s *Server) newAPIRouter() {
 	//     "$ref": "#/definitions/User"
 	// responses:
 	//   "201":
-	//     description: user created successfully
+	//     description: user registered successfully
 	//   "400":
 	//     description: bad request
 	//   "409":
@@ -74,8 +74,8 @@ func (s *Server) newAPIRouter() {
 	//   schema:
 	//     "$ref": "#/definitions/Image"
 	// responses:
-	//   "200":
-	//     description: successful operation
+	//   "202":
+	//     description: request accepted
 	//   "401":
 	//     description: unauthorized user
 	//   "500":
@@ -101,6 +101,8 @@ func (s *Server) newAPIRouter() {
 	//     description: successful operation
 	//   "401":
 	//     description: unauthorized user
+	//   "404":
+	//     description: image is being processed
 	//   "500":
 	//     description: internal server error
 	apiRouter.HandleFunc("/compress/{compressedID}", s.authorize(s.findCompressedImage())).Methods(http.MethodGet)
@@ -115,8 +117,8 @@ func (s *Server) newAPIRouter() {
 	//   schema:
 	//     "$ref": "#/definitions/Image"
 	// responses:
-	//   "200":
-	//     description: successful operation
+	//   "202":
+	//     description: request accepted
 	//   "401":
 	//     description: unauthorized user
 	//   "500":
@@ -142,6 +144,8 @@ func (s *Server) newAPIRouter() {
 	//     description: successful operation
 	//   "401":
 	//     description: unauthorized user
+	//   "404":
+	//     description: image is being processed
 	//   "500":
 	//     description: internal server error
 	apiRouter.HandleFunc("/convert/{convertedID}", s.authorize(s.findConvertedImage())).Methods(http.MethodGet)

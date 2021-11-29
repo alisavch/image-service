@@ -95,19 +95,17 @@ func (i *ImageRepository) CreateRequest(ctx context.Context, user models.User, i
 	return id, nil
 }
 
-// CheckStatus checks request status.
-func (i *ImageRepository) CheckStatus(ctx context.Context, id uuid.UUID) error {
+// FindRequestStatus checks request status.
+func (i *ImageRepository) FindRequestStatus(ctx context.Context, id uuid.UUID) (models.Status, error) {
 	var status string
 
 	imageStatus := "SELECT r.status FROM image_service.request r WHERE r.id=$1"
 	statusRow := i.db.QueryRowContext(ctx, imageStatus, id)
 	if err := statusRow.Scan(&status); err != nil {
-		return utils.ErrGetStatus
+		return "", utils.ErrGetStatus
 	}
-	if status == string(models.Processing) {
-		return utils.ErrImageProcessing
-	}
-	return nil
+
+	return models.Status(status), nil
 }
 
 // FindResultedImage finds processed image by ID.WillReturnResult

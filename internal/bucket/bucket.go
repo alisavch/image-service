@@ -8,6 +8,7 @@ import (
 	"github.com/alisavch/image-service/internal/utils"
 
 	"github.com/aws/aws-sdk-go/aws"
+	"github.com/aws/aws-sdk-go/aws/awserr"
 	"github.com/aws/aws-sdk-go/aws/credentials"
 	"github.com/aws/aws-sdk-go/aws/session"
 	"github.com/aws/aws-sdk-go/service/s3"
@@ -26,6 +27,7 @@ type S3Session struct {
 	credentialKey    string
 	credentialSecret string
 	logger           *Logger
+	displayProgress  bool
 }
 
 // NewS3Session configures S3Session.
@@ -36,6 +38,8 @@ func NewS3Session() *S3Session {
 		credentialKey:    conf.Bucket.AWSAccessKeyID,
 		credentialSecret: conf.Bucket.AWSSecretAccessKey,
 		logger:           NewLogger(),
+		displayProgress:  true,
+		//request: models.RequestStatus{}
 	}
 }
 
@@ -57,7 +61,10 @@ func connectAWS(s3sess *S3Session) *session.Session {
 
 // UploadToS3Bucket uploads an object to S3.
 func (s3sess *S3Session) UploadToS3Bucket(file io.Reader, filename string) (string, error) {
-	uploader := s3manager.NewUploader(sess)
+	uploader := s3manager.NewUploader(sess, func(d *s3manager.Uploader) {
+		d.PartSize = 64 * 1024 * 1024 // 64MB per part
+		d.Concurrency = 6
+	})
 
 	result, err := uploader.Upload(&s3manager.UploadInput{
 		Body:   file,
@@ -74,21 +81,52 @@ func (s3sess *S3Session) UploadToS3Bucket(file io.Reader, filename string) (stri
 
 // DownloadFromS3Bucket downloads objects from S3.
 func (s3sess *S3Session) DownloadFromS3Bucket(filename string) (*os.File, error) {
-	downloader := s3manager.NewDownloader(sess)
-
 	file, err := os.Create(filename)
 	if err != nil {
 		return nil, fmt.Errorf("%s:%s", utils.ErrCreateFile, err)
 	}
 
-	_, err = downloader.Download(file, &s3.GetObjectInput{
+	s3ObjectSize := s3sess.GetS3ObjectSize(filename)
+
+	downloader := s3manager.NewDownloader(sess, func(d *s3manager.Downloader) {
+		d.PartSize = 64 * 1024 * 1024 // 64MB per part
+		d.Concurrency = 6
+	})
+
+	pw := &progressWriter{writer: file, size: s3ObjectSize}
+	pw.display = s3sess.displayProgress
+	pw.init(s3ObjectSize)
+
+	numBytes, err := downloader.Download(pw, &s3.GetObjectInput{
 		Bucket: aws.String(s3sess.bucketName),
 		Key:    aws.String(filename),
 	})
 	if err != nil {
-		return nil, fmt.Errorf("%s:%s", "failed get object", err)
+		return nil, fmt.Errorf("%s:%s", "failed to get object", err)
 	}
 
-	s3sess.logger.Printf("%s:%s", "Successfully downloaded", file.Name())
+	pw.finish()
+
+	s3sess.logger.Printf("%s:%s", "Download status", pw.bar.String())
+	s3sess.logger.Printf("%s:%s, %d %s", "Successfully downloaded", file.Name(), numBytes, "bytes")
 	return file, nil
+}
+
+// GetS3ObjectSize get the size of the file.
+func (s3sess *S3Session) GetS3ObjectSize(item string) int64 {
+	svc := s3.New(sess)
+	input := &s3.HeadObjectInput{
+		Bucket: aws.String(s3sess.bucketName),
+		Key:    aws.String(item),
+	}
+
+	result, err := svc.HeadObject(input)
+	if err != nil {
+		if aerr, ok := err.(awserr.Error); ok {
+			s3sess.logger.Fatalf("%s:%s", "Error getting size of file", aerr)
+			return 0
+		}
+		s3sess.logger.Fatalf("%s:%s", "Error getting size of file", err)
+	}
+	return *result.ContentLength
 }

@@ -1,7 +1,6 @@
 package apiserver
 
 import (
-	"errors"
 	"fmt"
 	"net/http"
 	"strconv"
@@ -153,109 +152,6 @@ func (s *Server) compressImage() http.HandlerFunc {
 	}
 }
 
-type findCompressedImageRequest struct {
-	models.Image
-	User       models.User
-	requestID  uuid.UUID
-	isOriginal bool
-}
-
-// Build builds a request to find compressed image.
-func (req *findCompressedImageRequest) Build(r *http.Request) error {
-	id, ok := r.Context().Value(userCtx).(uuid.UUID)
-	if !ok {
-		return utils.ErrGetUserID
-	}
-
-	req.User.ID = id
-
-	vars := mux.Vars(r)
-	compressedImageID, ok := vars["compressedID"]
-	if !ok {
-		return utils.ErrMissingParams
-	}
-
-	originalImage := r.FormValue("original")
-	if originalImage == "" {
-		originalImage = DefaultOriginal
-	}
-
-	convertedBool, err := strconv.ParseBool(originalImage)
-	if err != nil {
-		return err
-	}
-
-	compressedID := uuid.MustParse(compressedImageID)
-
-	req.requestID = compressedID
-	req.isOriginal = convertedBool
-
-	return nil
-}
-
-// Validate validates request to find compressed image.
-func (req findCompressedImageRequest) Validate() error {
-	return nil
-}
-
-func (s *Server) findCompressedImage() http.HandlerFunc {
-	return func(w http.ResponseWriter, r *http.Request) {
-		var req findCompressedImageRequest
-		conf := utils.NewConfig()
-
-		err := ParseRequest(r, &req)
-		if err != nil {
-			s.errorJSON(w, http.StatusUnauthorized, err)
-			return
-		}
-
-		if req.isOriginal {
-			uploadedImage, err := s.service.ServiceOperations.FindOriginalImage(r.Context(), req.requestID)
-			if err != nil {
-				s.errorJSON(w, http.StatusInternalServerError, fmt.Errorf("%s:%s", utils.ErrFindImage, err))
-				return
-			}
-			s.logger.Printf("%s:%s", "Original image found", uploadedImage.UploadedName)
-
-			file, err := s.service.ServiceOperations.SaveImage(uploadedImage.UploadedName, uploadedImage.UploadedLocation, conf.Storage)
-			if err != nil {
-				s.errorJSON(w, http.StatusInternalServerError, fmt.Errorf("%s:%s", utils.ErrSaveImage, err))
-				return
-			}
-			s.logger.Printf("%s:%s", "Original image received", uploadedImage.UploadedName)
-
-			s.respondImage(w, file)
-			return
-		}
-
-		err = s.service.ServiceOperations.CheckStatus(r.Context(), req.requestID)
-		if errors.Is(err, utils.ErrImageProcessing) {
-			s.errorJSON(w, http.StatusNotFound, err)
-			return
-		}
-		if err != nil {
-			s.errorJSON(w, http.StatusInternalServerError, err)
-			return
-		}
-
-		resultedImage, err := s.service.ServiceOperations.FindResultedImage(r.Context(), req.requestID)
-		if err != nil {
-			s.errorJSON(w, http.StatusInternalServerError, fmt.Errorf("%s:%s", utils.ErrFindImage, err))
-			return
-		}
-		s.logger.Printf("%s:%s", "Resulted image found", resultedImage.ResultedName)
-
-		file, err := s.service.ServiceOperations.SaveImage(resultedImage.ResultedName, resultedImage.ResultedLocation, conf.Storage)
-		if err != nil {
-			s.errorJSON(w, http.StatusInternalServerError, fmt.Errorf("%s:%s", utils.ErrSaveImage, err))
-			return
-		}
-		s.logger.Printf("%s:%s", "Resulted image received", resultedImage.ResultedName)
-
-		s.respondImage(w, file)
-	}
-}
-
 type convertImageRequest struct {
 	models.Image
 	User         models.User
@@ -337,7 +233,7 @@ func (s *Server) convertImage() http.HandlerFunc {
 	}
 }
 
-type findConvertedImageRequest struct {
+type findImageRequest struct {
 	models.Image
 	User       models.User
 	requestID  uuid.UUID
@@ -345,7 +241,7 @@ type findConvertedImageRequest struct {
 }
 
 // Build builds a request to find converted image.
-func (req *findConvertedImageRequest) Build(r *http.Request) error {
+func (req *findImageRequest) Build(r *http.Request) error {
 	id, ok := r.Context().Value(userCtx).(uuid.UUID)
 	if !ok {
 		return utils.ErrGetUserID
@@ -354,7 +250,7 @@ func (req *findConvertedImageRequest) Build(r *http.Request) error {
 	req.User.ID = id
 
 	vars := mux.Vars(r)
-	convertedImageID, ok := vars["convertedID"]
+	convertedImageID, ok := vars["requestID"]
 	if !ok {
 		return utils.ErrRequest
 	}
@@ -378,13 +274,13 @@ func (req *findConvertedImageRequest) Build(r *http.Request) error {
 }
 
 // Validate validates request to find converted image.
-func (req findConvertedImageRequest) Validate() error {
+func (req findImageRequest) Validate() error {
 	return nil
 }
 
-func (s *Server) findConvertedImage() http.HandlerFunc {
+func (s *Server) findImage() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		var req findConvertedImageRequest
+		var req findImageRequest
 		conf := utils.NewConfig()
 
 		err := ParseRequest(r, &req)
@@ -412,9 +308,9 @@ func (s *Server) findConvertedImage() http.HandlerFunc {
 			return
 		}
 
-		err = s.service.ServiceOperations.CheckStatus(r.Context(), req.requestID)
-		if errors.Is(err, utils.ErrImageProcessing) {
-			s.errorJSON(w, http.StatusNotFound, err)
+		status, err := s.service.ServiceOperations.FindRequestStatus(r.Context(), req.requestID)
+		if status == models.Processing {
+			s.errorJSON(w, http.StatusNotFound, fmt.Errorf("%s:%s", "cannot get image", utils.ErrImageProcessing))
 			return
 		}
 		if err != nil {
@@ -437,5 +333,58 @@ func (s *Server) findConvertedImage() http.HandlerFunc {
 		s.logger.Printf("%s:%s", "Resulted image received", resultedImage.ResultedName)
 
 		s.respondImage(w, file)
+	}
+}
+
+type getStatusRequest struct {
+	models.User
+	models.RequestStatus
+}
+
+// Build builds a request to get status request.
+func (req *getStatusRequest) Build(r *http.Request) error {
+	id, ok := r.Context().Value(userCtx).(uuid.UUID)
+	if !ok {
+		return utils.ErrGetUserID
+	}
+
+	req.User.ID = id
+
+	vars := mux.Vars(r)
+	imageID, ok := vars["requestID"]
+	if !ok {
+		return utils.ErrMissingParams
+	}
+
+	ID := uuid.MustParse(imageID)
+	req.RequestID = ID
+
+	return nil
+}
+
+// Validate validates request to get status request.
+func (req getStatusRequest) Validate() error {
+	return nil
+}
+
+func (s *Server) findStatus() http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		var req getStatusRequest
+
+		err := ParseRequest(r, &req)
+		if err != nil {
+			s.errorJSON(w, http.StatusUnauthorized, err)
+			return
+		}
+
+		status, err := s.service.ServiceOperations.FindRequestStatus(r.Context(), req.RequestID)
+		if err != nil {
+			s.errorJSON(w, http.StatusInternalServerError, err)
+			return
+		}
+
+		req.Status = status
+
+		s.respondJSON(w, http.StatusOK, req.RequestStatus)
 	}
 }

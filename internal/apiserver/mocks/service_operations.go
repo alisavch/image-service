@@ -41,20 +41,6 @@ func (_m *ServiceOperations) ChangeFormat(filename string) (string, error) {
 	return r0, r1
 }
 
-// CheckStatus provides a mock function with given fields: ctx, id
-func (_m *ServiceOperations) CheckStatus(ctx context.Context, id uuid.UUID) error {
-	ret := _m.Called(ctx, id)
-
-	var r0 error
-	if rf, ok := ret.Get(0).(func(context.Context, uuid.UUID) error); ok {
-		r0 = rf(ctx, id)
-	} else {
-		r0 = ret.Error(0)
-	}
-
-	return r0
-}
-
 // CompressImage provides a mock function with given fields: width, format, resultedName, img, newImg, storage
 func (_m *ServiceOperations) CompressImage(width int, format string, resultedName string, img image.Image, newImg *os.File, storage string) (models.Image, error) {
 	ret := _m.Called(width, format, resultedName, img, newImg, storage)
@@ -194,6 +180,27 @@ func (_m *ServiceOperations) FindOriginalImage(ctx context.Context, id uuid.UUID
 		r0 = rf(ctx, id)
 	} else {
 		r0 = ret.Get(0).(models.Image)
+	}
+
+	var r1 error
+	if rf, ok := ret.Get(1).(func(context.Context, uuid.UUID) error); ok {
+		r1 = rf(ctx, id)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
+}
+
+// FindRequestStatus provides a mock function with given fields: ctx, id
+func (_m *ServiceOperations) FindRequestStatus(ctx context.Context, id uuid.UUID) (models.Status, error) {
+	ret := _m.Called(ctx, id)
+
+	var r0 models.Status
+	if rf, ok := ret.Get(0).(func(context.Context, uuid.UUID) models.Status); ok {
+		r0 = rf(ctx, id)
+	} else {
+		r0 = ret.Get(0).(models.Status)
 	}
 
 	var r1 error

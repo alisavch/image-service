@@ -87,32 +87,6 @@ paths:
       summary: Compresses the image.
       tags:
       - compress
-  /api/compress/{compressedID}:
-    get:
-      description: Downloads the compressed image and original if required.
-      operationId: findCompressedImage
-      parameters:
-      - description: compressedID to filter by id
-        in: path
-        name: compressedID
-        required: true
-        type: integer
-      - description: If true - the original will be saved
-        in: query
-        name: original
-        type: boolean
-      responses:
-        "200":
-          description: successful operation
-        "401":
-          description: unauthorized user
-        "404":
-          description: image is being processed
-        "500":
-          description: internal server error
-      summary: Finds the compressed image.
-      tags:
-      - findCompressedImage
   /api/convert:
     post:
       description: Receives an image from an input form and converts it PNG to JPG
@@ -134,14 +108,14 @@ paths:
       summary: Converts the image.
       tags:
       - convert
-  /api/convert/{convertedID}:
+  /api/download/{requestID}:
     get:
-      description: Downloads the converted image and original if required.
-      operationId: findConvertedImage
+      description: Downloads the processed image and original if required.
+      operationId: findImage
       parameters:
-      - description: convertedID to filter by id
+      - description: requestID to filter by id
         in: path
-        name: convertedID
+        name: requestID
         required: true
         type: integer
       - description: If true - the original will be saved
@@ -157,9 +131,9 @@ paths:
           description: image is being processed
         "500":
           description: internal server error
-      summary: Finds the converted image.
+      summary: Finds and downloads an image.
       tags:
-      - findConvertedImage
+      - findImage
   /api/history:
     get:
       description: Lists all queries created by user.
@@ -214,6 +188,26 @@ paths:
       summary: Registers a user.
       tags:
       - sign-up
+  /api/status/{requestID}:
+    get:
+      description: finds the status of the request.
+      operationId: findRequestStatus
+      parameters:
+      - description: requestID to filter by id
+        in: path
+        name: requestID
+        required: true
+        type: integer
+      responses:
+        "200":
+          description: successful operation
+        "401":
+          description: unauthorized user
+        "500":
+          description: internal server error
+      summary: finds the status of the request.
+      tags:
+      - findRequestStatus
 produces:
 - application/json
 schemes:

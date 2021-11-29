@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
-	"time"
 
 	"github.com/alisavch/image-service/internal/models"
 	"github.com/alisavch/image-service/internal/utils"
@@ -19,6 +18,7 @@ type RabbitMQ struct {
 	ch     *amqp.Channel
 	done   chan error
 	logger *Logger
+	*models.RequestStatus
 }
 
 // NewRabbitMQ configures RabbitMQ.
@@ -87,8 +87,6 @@ func (r *RabbitMQ) ConsumeQueue(queue string) error {
 				r.logger.Fatalf("%s: %s", "Failed to decode json", err)
 				return
 			}
-
-			time.Sleep(time.Minute)
 
 			err = r.Process(message)
 			if err != nil {

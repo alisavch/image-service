@@ -366,7 +366,7 @@ func TestHandler_compressImage(t *testing.T) {
 	}
 }
 
-func TestHandler_findCompressedImage(t *testing.T) {
+func TestHandler_findImage(t *testing.T) {
 	type fnBehavior func(mockSO *mocks.ServiceOperations, token string, compressedID uuid.UUID, isOriginal bool)
 
 	resultedImage := models.Image{
@@ -386,23 +386,23 @@ func TestHandler_findCompressedImage(t *testing.T) {
 		headerValue          []string
 		params               params
 		token                string
-		compressedID         uuid.UUID
+		requestID            uuid.UUID
 		fn                   fnBehavior
 		expectedStatusCode   int
 		expectedResponseBody string
 	}{
 		{
-			name:         "Find compressed image without errors",
-			headerName:   []string{"Authorization", "Content-Type"},
-			headerValue:  []string{"Bearer token"},
-			token:        "token",
-			compressedID: [16]byte{00000000 - 0000 - 0000 - 0000 - 000000000000},
-			params:       params{name: "original", isOriginal: false},
+			name:        "Find compressed image without errors",
+			headerName:  []string{"Authorization", "Content-Type"},
+			headerValue: []string{"Bearer token"},
+			token:       "token",
+			requestID:   [16]byte{00000000 - 0000 - 0000 - 0000 - 000000000000},
+			params:      params{name: "original", isOriginal: false},
 			fn: func(mockSO *mocks.ServiceOperations, token string, compressedID uuid.UUID, isOriginal bool) {
 				asString := "00000000-0000-0000-0000-000000000000"
 				s := uuid.MustParse(asString)
 				mockSO.On("ParseToken", token).Return(s, nil)
-				mockSO.On("CheckStatus", mock.Anything, compressedID).Return(nil)
+				mockSO.On("FindRequestStatus", mock.Anything, compressedID).Return(models.Done, nil)
 				mockSO.On("FindResultedImage", mock.Anything, compressedID).Return(resultedImage, nil)
 				mockSO.On("SaveImage", mock.Anything, mock.Anything, mock.Anything).Return(&models.SavedImage{}, nil)
 			},
@@ -410,12 +410,12 @@ func TestHandler_findCompressedImage(t *testing.T) {
 			expectedResponseBody: "",
 		},
 		{
-			name:         "Find original image without errors",
-			headerName:   []string{"Authorization", "Content-Type"},
-			headerValue:  []string{"Bearer token"},
-			token:        "token",
-			compressedID: [16]byte{00000000 - 0000 - 0000 - 0000 - 000000000000},
-			params:       params{name: "original", isOriginal: true},
+			name:        "Find original image without errors",
+			headerName:  []string{"Authorization", "Content-Type"},
+			headerValue: []string{"Bearer token"},
+			token:       "token",
+			requestID:   [16]byte{00000000 - 0000 - 0000 - 0000 - 000000000000},
+			params:      params{name: "original", isOriginal: true},
 			fn: func(mockSO *mocks.ServiceOperations, token string, compressedID uuid.UUID, isOriginal bool) {
 				asString := "00000000-0000-0000-0000-000000000000"
 				s := uuid.MustParse(asString)
@@ -429,33 +429,33 @@ func TestHandler_findCompressedImage(t *testing.T) {
 			expectedResponseBody: "",
 		},
 		{
-			name:         "Wrong to find image",
-			headerName:   []string{"Authorization", "Content-Type"},
-			headerValue:  []string{"Bearer token"},
-			token:        "token",
-			compressedID: [16]byte{00000000 - 0000 - 0000 - 0000 - 000000000000},
+			name:        "Wrong to find image",
+			headerName:  []string{"Authorization", "Content-Type"},
+			headerValue: []string{"Bearer token"},
+			token:       "token",
+			requestID:   [16]byte{00000000 - 0000 - 0000 - 0000 - 000000000000},
 			fn: func(mockSO *mocks.ServiceOperations, token string, compressedID uuid.UUID, isOriginal bool) {
 				asString := "00000000-0000-0000-0000-000000000000"
 				s := uuid.MustParse(asString)
 				mockSO.On("ParseToken", token).Return(s, nil)
-				mockSO.On("CheckStatus", mock.Anything, compressedID).Return(nil)
+				mockSO.On("FindRequestStatus", mock.Anything, compressedID).Return(models.Done, nil)
 				mockSO.On("FindResultedImage", mock.Anything, compressedID).Return(models.Image{}, utils.ErrFindImage)
 			},
 			expectedStatusCode:   500,
 			expectedResponseBody: "{\"error\":\"cannot find image:cannot find image\"}\n",
 		},
 		{
-			name:         "Incorrectly saved image",
-			headerName:   []string{"Authorization", "Content-Type"},
-			headerValue:  []string{"Bearer token"},
-			token:        "token",
-			params:       params{name: "original", isOriginal: false},
-			compressedID: [16]byte{00000000 - 0000 - 0000 - 0000 - 000000000000},
+			name:        "Incorrectly saved image",
+			headerName:  []string{"Authorization", "Content-Type"},
+			headerValue: []string{"Bearer token"},
+			token:       "token",
+			params:      params{name: "original", isOriginal: false},
+			requestID:   [16]byte{00000000 - 0000 - 0000 - 0000 - 000000000000},
 			fn: func(mockSO *mocks.ServiceOperations, token string, compressedID uuid.UUID, isOriginal bool) {
 				asString := "00000000-0000-0000-0000-000000000000"
 				s := uuid.MustParse(asString)
 				mockSO.On("ParseToken", token).Return(s, nil)
-				mockSO.On("CheckStatus", mock.Anything, compressedID).Return(nil)
+				mockSO.On("FindRequestStatus", mock.Anything, compressedID).Return(models.Done, nil)
 				mockSO.On("FindResultedImage", mock.Anything, compressedID).Return(resultedImage, nil)
 				mockSO.On("SaveImage", mock.Anything, mock.Anything, mock.Anything).Return(&models.SavedImage{}, utils.ErrSaveImage)
 			},
@@ -463,12 +463,12 @@ func TestHandler_findCompressedImage(t *testing.T) {
 			expectedResponseBody: "{\"error\":\"cannot save image:cannot save image\"}\n",
 		},
 		{
-			name:         "Wrong to find original image",
-			headerName:   []string{"Authorization", "Content-Type"},
-			headerValue:  []string{"Bearer token"},
-			token:        "token",
-			params:       params{name: "original", isOriginal: true},
-			compressedID: [16]byte{00000000 - 0000 - 0000 - 0000 - 000000000000},
+			name:        "Wrong to find original image",
+			headerName:  []string{"Authorization", "Content-Type"},
+			headerValue: []string{"Bearer token"},
+			token:       "token",
+			params:      params{name: "original", isOriginal: true},
+			requestID:   [16]byte{00000000 - 0000 - 0000 - 0000 - 000000000000},
 			fn: func(mockSO *mocks.ServiceOperations, token string, compressedID uuid.UUID, isOriginal bool) {
 				asString := "00000000-0000-0000-0000-000000000000"
 				s := uuid.MustParse(asString)
@@ -481,12 +481,12 @@ func TestHandler_findCompressedImage(t *testing.T) {
 			expectedResponseBody: "{\"error\":\"cannot find image:cannot find image\"}\n",
 		},
 		{
-			name:         "Incorrectly saved original image",
-			headerName:   []string{"Authorization", "Content-Type"},
-			headerValue:  []string{"Bearer token"},
-			token:        "token",
-			params:       params{name: "original", isOriginal: true},
-			compressedID: [16]byte{00000000 - 0000 - 0000 - 0000 - 000000000000},
+			name:        "Incorrectly saved original image",
+			headerName:  []string{"Authorization", "Content-Type"},
+			headerValue: []string{"Bearer token"},
+			token:       "token",
+			params:      params{name: "original", isOriginal: true},
+			requestID:   [16]byte{00000000 - 0000 - 0000 - 0000 - 000000000000},
 			fn: func(mockSO *mocks.ServiceOperations, token string, compressedID uuid.UUID, isOriginal bool) {
 				asString := "00000000-0000-0000-0000-000000000000"
 				s := uuid.MustParse(asString)
@@ -513,13 +513,13 @@ func TestHandler_findCompressedImage(t *testing.T) {
 
 			s := NewServer(mq, currentService)
 
-			tt.fn(mockSO, tt.token, tt.compressedID, tt.params.isOriginal)
+			tt.fn(mockSO, tt.token, tt.requestID, tt.params.isOriginal)
 
-			s.router.HandleFunc(fmt.Sprintf(getCompressedURL, "{compressedID}"),
-				s.authorize(s.findCompressedImage())).Methods(http.MethodGet)
+			s.router.HandleFunc(fmt.Sprintf(getCompressedURL, "{requestID}"),
+				s.authorize(s.findImage())).Methods(http.MethodGet)
 
 			w := httptest.NewRecorder()
-			req := httptest.NewRequest(http.MethodGet, fmt.Sprintf(getCompressedURL, tt.compressedID), nil)
+			req := httptest.NewRequest(http.MethodGet, fmt.Sprintf(getCompressedURL, tt.requestID), nil)
 
 			q := req.URL.Query()
 			q.Add(tt.params.name, strconv.FormatBool(tt.params.isOriginal))
@@ -742,14 +742,8 @@ func TestHandler_convertImage(t *testing.T) {
 	}
 }
 
-func TestHandler_findConvertedImage(t *testing.T) {
-	type fnBehavior func(mockSO *mocks.ServiceOperations, token string, convertedID uuid.UUID, isOriginal bool)
-
-	resultedImage := models.Image{
-		ID:               [16]byte{00000000 - 0000 - 0000 - 0000 - 000000000000},
-		ResultedName:     "filename",
-		ResultedLocation: "location",
-	}
+func TestHandler_findStatus(t *testing.T) {
+	type fnBehavior func(mockSO *mocks.ServiceOperations, token string, compressedID uuid.UUID, isOriginal bool)
 
 	type params struct {
 		name       string
@@ -760,138 +754,49 @@ func TestHandler_findConvertedImage(t *testing.T) {
 		name                 string
 		headerName           []string
 		headerValue          []string
-		convertedID          uuid.UUID
 		params               params
 		token                string
-		userID               uuid.UUID
+		requestID            uuid.UUID
 		fn                   fnBehavior
-		isRemoteStorage      bool
 		expectedStatusCode   int
 		expectedResponseBody string
 	}{
 		{
-			name:        "Find converted image without errors",
+			name:        "Find compressed image without errors",
 			headerName:  []string{"Authorization", "Content-Type"},
 			headerValue: []string{"Bearer token"},
-			convertedID: [16]byte{00000000 - 0000 - 0000 - 0000 - 000000000000},
 			token:       "token",
-			fn: func(mockSO *mocks.ServiceOperations, token string, convertedID uuid.UUID, isOriginal bool) {
+			requestID:   [16]byte{00000000 - 0000 - 0000 - 0000 - 000000000000},
+			params:      params{name: "original", isOriginal: false},
+			fn: func(mockSO *mocks.ServiceOperations, token string, compressedID uuid.UUID, isOriginal bool) {
 				asString := "00000000-0000-0000-0000-000000000000"
 				s := uuid.MustParse(asString)
 				mockSO.On("ParseToken", token).Return(s, nil)
-				mockSO.On("CheckStatus", mock.Anything, convertedID).Return(nil)
-				mockSO.On("FindResultedImage", mock.Anything, convertedID).Return(resultedImage, nil)
-				mockSO.On("SaveImage", mock.Anything, mock.Anything, mock.Anything).Return(&models.SavedImage{}, nil)
+				mockSO.On("FindRequestStatus", mock.Anything, compressedID).Return(models.Done, nil)
 			},
 			expectedStatusCode:   200,
-			expectedResponseBody: "",
-		},
-		{
-			name:        "Find original image without errors",
-			headerName:  []string{"Authorization", "Content-Type"},
-			headerValue: []string{"Bearer token"},
-			params:      params{name: "original", isOriginal: true},
-			convertedID: [16]byte{00000000 - 0000 - 0000 - 0000 - 000000000000},
-			token:       "token",
-			fn: func(mockSO *mocks.ServiceOperations, token string, convertedID uuid.UUID, isOriginal bool) {
-				asString := "00000000-0000-0000-0000-000000000000"
-				s := uuid.MustParse(asString)
-				mockSO.On("ParseToken", token).Return(s, nil)
-				if isOriginal {
-					mockSO.On("FindOriginalImage", mock.Anything, convertedID).Return(models.Image{}, nil)
-					mockSO.On("SaveImage", mock.Anything, mock.Anything, mock.Anything).Return(&models.SavedImage{}, nil)
-				}
-			},
-			expectedStatusCode:   200,
-			expectedResponseBody: "",
-		},
-		{
-			name:        "Test with invalid token",
-			headerName:  []string{"Authorization", "Content-Type"},
-			headerValue: []string{"Bearer token"},
-			convertedID: [16]byte{00000000 - 0000 - 0000 - 0000 - 000000000000},
-			token:       "token",
-			fn: func(mockSO *mocks.ServiceOperations, token string, convertedID uuid.UUID, isOriginal bool) {
-				asString := "00000000-0000-0000-0000-000000000000"
-				s := uuid.MustParse(asString)
-				mockSO.On("ParseToken", token).Return(s, utils.ErrEmptyToken)
-			},
-			expectedStatusCode:   401,
-			expectedResponseBody: "{\"error\":\"token is empty\"}\n",
-		},
-		{
-			name:        "Wrong to find image",
-			headerName:  []string{"Authorization", "Content-Type"},
-			headerValue: []string{"Bearer token"},
-			convertedID: [16]byte{00000000 - 0000 - 0000 - 0000 - 000000000000},
-			token:       "token",
-			fn: func(mockSO *mocks.ServiceOperations, token string, convertedID uuid.UUID, isOriginal bool) {
-				asString := "00000000-0000-0000-0000-000000000000"
-				s := uuid.MustParse(asString)
-				mockSO.On("ParseToken", token).Return(s, nil)
-				mockSO.On("CheckStatus", mock.Anything, convertedID).Return(nil)
-				mockSO.On("FindResultedImage", mock.Anything, mock.Anything).Return(models.Image{}, utils.ErrFindImage)
-			},
-			expectedStatusCode:   500,
-			expectedResponseBody: "{\"error\":\"cannot find image:cannot find image\"}\n",
+			expectedResponseBody: "{\"request_id\":\"00000000-0000-0000-0000-000000000000\",\"status\":\"done\"}\n",
 		},
 		{
 			name:        "Incorrectly saved image",
 			headerName:  []string{"Authorization", "Content-Type"},
 			headerValue: []string{"Bearer token"},
-			convertedID: [16]byte{00000000 - 0000 - 0000 - 0000 - 000000000000},
 			token:       "token",
-			fn: func(mockSO *mocks.ServiceOperations, token string, convertedID uuid.UUID, isOriginal bool) {
+			params:      params{name: "original", isOriginal: false},
+			requestID:   [16]byte{00000000 - 0000 - 0000 - 0000 - 000000000000},
+			fn: func(mockSO *mocks.ServiceOperations, token string, compressedID uuid.UUID, isOriginal bool) {
 				asString := "00000000-0000-0000-0000-000000000000"
 				s := uuid.MustParse(asString)
 				mockSO.On("ParseToken", token).Return(s, nil)
-				mockSO.On("CheckStatus", mock.Anything, convertedID).Return(nil)
-				mockSO.On("FindResultedImage", mock.Anything, convertedID).Return(resultedImage, nil)
-				mockSO.On("SaveImage", mock.Anything, mock.Anything, mock.Anything).Return(&models.SavedImage{}, utils.ErrSaveImage)
+				mockSO.On("FindRequestStatus", mock.Anything, compressedID).Return(models.Status(""), utils.ErrGetStatus)
 			},
 			expectedStatusCode:   500,
-			expectedResponseBody: "{\"error\":\"cannot save image:cannot save image\"}\n",
-		},
-		{
-			name:        "Wrong to find original image",
-			headerName:  []string{"Authorization", "Content-Type"},
-			headerValue: []string{"Bearer token"},
-			params:      params{name: "original", isOriginal: true},
-			convertedID: [16]byte{00000000 - 0000 - 0000 - 0000 - 000000000000},
-			token:       "token",
-			fn: func(mockSO *mocks.ServiceOperations, token string, convertedID uuid.UUID, isOriginal bool) {
-				asString := "00000000-0000-0000-0000-000000000000"
-				s := uuid.MustParse(asString)
-				mockSO.On("ParseToken", token).Return(s, nil)
-				if isOriginal {
-					mockSO.On("FindOriginalImage", mock.Anything, convertedID).Return(models.Image{}, utils.ErrFindImage)
-				}
-			},
-			expectedStatusCode:   500,
-			expectedResponseBody: "{\"error\":\"cannot find image:cannot find image\"}\n",
-		},
-		{
-			name:        "Incorrectly saved original image",
-			headerName:  []string{"Authorization", "Content-Type"},
-			headerValue: []string{"Bearer token"},
-			params:      params{name: "original", isOriginal: true},
-			convertedID: [16]byte{00000000 - 0000 - 0000 - 0000 - 000000000000},
-			token:       "token",
-			fn: func(mockSO *mocks.ServiceOperations, token string, convertedID uuid.UUID, isOriginal bool) {
-				asString := "00000000-0000-0000-0000-000000000000"
-				s := uuid.MustParse(asString)
-				mockSO.On("ParseToken", token).Return(s, nil)
-				if isOriginal {
-					mockSO.On("FindOriginalImage", mock.Anything, convertedID).Return(models.Image{}, nil)
-					mockSO.On("SaveImage", mock.Anything, mock.Anything, mock.Anything).Return(&models.SavedImage{}, utils.ErrSaveImage)
-				}
-			},
-			expectedStatusCode:   500,
-			expectedResponseBody: "{\"error\":\"cannot save image:cannot save image\"}\n",
+			expectedResponseBody: "{\"error\":\"cannot find status for this request\"}\n",
 		},
 	}
 
-	getConvertedURL := "/api/convert/%s"
+	getCompressedURL := "/api/compress/%s"
+
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			mockBucket := new(mocks.S3Bucket)
@@ -902,13 +807,13 @@ func TestHandler_findConvertedImage(t *testing.T) {
 
 			s := NewServer(mq, currentService)
 
-			tt.fn(mockSO, tt.token, tt.convertedID, tt.params.isOriginal)
+			tt.fn(mockSO, tt.token, tt.requestID, tt.params.isOriginal)
 
-			s.router.HandleFunc(fmt.Sprintf(getConvertedURL, tt.convertedID),
-				s.authorize(s.findConvertedImage())).Methods(http.MethodGet)
+			s.router.HandleFunc(fmt.Sprintf(getCompressedURL, "{requestID}"),
+				s.authorize(s.findStatus())).Methods(http.MethodGet)
 
 			w := httptest.NewRecorder()
-			req := httptest.NewRequest(http.MethodGet, fmt.Sprintf(getConvertedURL, tt.convertedID), nil)
+			req := httptest.NewRequest(http.MethodGet, fmt.Sprintf(getCompressedURL, tt.requestID), nil)
 
 			q := req.URL.Query()
 			q.Add(tt.params.name, strconv.FormatBool(tt.params.isOriginal))

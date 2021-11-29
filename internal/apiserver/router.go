@@ -81,31 +81,6 @@ func (s *Server) newAPIRouter() {
 	//   "500":
 	//     description: internal server error
 	apiRouter.HandleFunc("/compress", s.authorize(s.compressImage())).Methods(http.MethodPost)
-	// swagger:operation GET /api/compress/{compressedID} findCompressedImage findCompressedImage
-	// ---
-	// summary: Finds the compressed image.
-	// description: Downloads the compressed image and original if required.
-	// parameters:
-	// - name: compressedID
-	//   in: path
-	//   description: compressedID to filter by id
-	//   required: true
-	//   type: integer
-	// - name: original
-	//   in: query
-	//   type: boolean
-	//   required: false
-	//   description: If true - the original will be saved
-	// responses:
-	//   "200":
-	//     description: successful operation
-	//   "401":
-	//     description: unauthorized user
-	//   "404":
-	//     description: image is being processed
-	//   "500":
-	//     description: internal server error
-	apiRouter.HandleFunc("/compress/{compressedID}", s.authorize(s.findCompressedImage())).Methods(http.MethodGet)
 	// swagger:operation POST /api/convert convert convert
 	// ---
 	// summary: Converts the image.
@@ -124,14 +99,14 @@ func (s *Server) newAPIRouter() {
 	//   "500":
 	//     description: internal server error
 	apiRouter.HandleFunc("/convert", s.authorize(s.convertImage())).Methods(http.MethodPost)
-	// swagger:operation GET /api/convert/{convertedID} findConvertedImage findConvertedImage
+	// swagger:operation GET /api/download/{requestID} findImage findImage
 	// ---
-	// summary: Finds the converted image.
-	// description: Downloads the converted image and original if required.
+	// summary: Finds and downloads an image.
+	// description: Downloads the processed image and original if required.
 	// parameters:
-	// - name: convertedID
+	// - name: requestID
 	//   in: path
-	//   description: convertedID to filter by id
+	//   description: requestID to filter by id
 	//   required: true
 	//   type: integer
 	// - name: original
@@ -148,5 +123,23 @@ func (s *Server) newAPIRouter() {
 	//     description: image is being processed
 	//   "500":
 	//     description: internal server error
-	apiRouter.HandleFunc("/convert/{convertedID}", s.authorize(s.findConvertedImage())).Methods(http.MethodGet)
+	apiRouter.HandleFunc("/download/{requestID}", s.authorize(s.findImage())).Methods(http.MethodGet)
+	// swagger:operation GET /api/status/{requestID} findRequestStatus findRequestStatus
+	// ---
+	// summary: finds the status of the request.
+	// description: finds the status of the request.
+	// parameters:
+	// - name: requestID
+	//   in: path
+	//   description: requestID to filter by id
+	//   required: true
+	//   type: integer
+	// responses:
+	//   "200":
+	//     description: successful operation
+	//   "401":
+	//     description: unauthorized user
+	//   "500":
+	//     description: internal server error
+	apiRouter.HandleFunc("/status/{requestID}", s.authorize(s.findStatus())).Methods(http.MethodGet)
 }

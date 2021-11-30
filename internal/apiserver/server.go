@@ -85,7 +85,7 @@ func (s *Server) respondFormData(w http.ResponseWriter, code int, id uuid.UUID) 
 		}
 	}(writer)
 	w.Header().Set("Content-Type", writer.FormDataContentType())
-	s.respondJSON(w, code, map[string]uuid.UUID{"Image ID": id})
+	s.respondJSON(w, code, map[string]uuid.UUID{"Request ID": id})
 }
 
 func (s *Server) respondImage(w http.ResponseWriter, image *models.SavedImage) {

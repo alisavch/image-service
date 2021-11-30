@@ -85,7 +85,6 @@ func (r *RabbitMQ) ConsumeQueue(queue string) error {
 			err := json.NewDecoder(bytes.NewReader(d.Body)).Decode(&message)
 			if err != nil {
 				r.logger.Fatalf("%s: %s", "Failed to decode json", err)
-				return
 			}
 
 			err = r.Process(message)
@@ -95,9 +94,9 @@ func (r *RabbitMQ) ConsumeQueue(queue string) error {
 
 			err = d.Ack(false)
 			if err != nil {
-				r.logger.Printf("%s: %s", "Failed to delegates acknowledgment", d.Body)
-				return
+				r.logger.Printf("%s: %s", "Failed confirmation message", err)
 			}
+			r.logger.Printf("%s: %s", "Acknowledged message", d.Body)
 		}()
 		if err != nil {
 			return err
@@ -110,7 +109,7 @@ func (r *RabbitMQ) ConsumeQueue(queue string) error {
 // QosQueue controls messages.
 func (r *RabbitMQ) QosQueue() error {
 	err := r.ch.Qos(
-		1,
+		7,
 		0,
 		false,
 	)

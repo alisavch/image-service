@@ -28,8 +28,8 @@ psql -v ON_ERROR_STOP=1 --username "$POSTGRES_USER" --dbname "$DB_NAME" <<-EOSQL
       image_id uuid DEFAULT gen_random_uuid(),
       service_name image_service.enum_service,
       status image_service.enum_status,
-      time_started date,
-      time_completed date,
+      time_started TIMESTAMP,
+      time_completed TIMESTAMP,
       CONSTRAINT fk_user_image_user_account_id FOREIGN KEY (user_account_id) REFERENCES image_service.user_account(id),
       CONSTRAINT fk_request_image_id FOREIGN KEY (image_id) REFERENCES image_service.image(id),
       CONSTRAINT request_id PRIMARY KEY (id)

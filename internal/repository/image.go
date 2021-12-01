@@ -24,10 +24,10 @@ func NewImageRepository(db *sql.DB) *ImageRepository {
 
 // FindUserRequestHistory allows to get the history of interaction with the user's service.
 func (i *ImageRepository) FindUserRequestHistory(ctx context.Context, id uuid.UUID) ([]models.History, error) {
-	query := "SELECT i.uploaded_name, i.resulted_name, r.service_name, r.time_started, r.time_completed, r.status from image_service.request r INNER JOIN image_service.image i on r.image_id = i.id INNER JOIN image_service.user_account ua on ua.id = r.user_account_id where ua.id = $1"
+	query := "SELECT i.uploaded_name, COALESCE(NULLIF(i.resulted_name, ''), 'no such photo') as resulted_name, r.service_name, r.time_started, COALESCE(NULLIF(r.time_completed, CAST('2011-01-01 00:00:00' AS TIMESTAMP)), '2000-01-01 00:00:00') as time_completed, r.status from image_service.request r INNER JOIN image_service.image i on r.image_id = i.id INNER JOIN image_service.user_account ua on ua.id = r.user_account_id where ua.id = $1"
 	rows, err := i.db.QueryContext(ctx, query, id)
 	if err != nil {
-		return nil, utils.ErrCreateQuery
+		return []models.History{}, utils.ErrCreateQuery
 	}
 
 	defer func(rows *sql.Rows) {
@@ -37,7 +37,7 @@ func (i *ImageRepository) FindUserRequestHistory(ctx context.Context, id uuid.UU
 		}
 	}(rows)
 
-	var history []models.History
+	history := []models.History{}
 
 	for rows.Next() {
 		var hist models.History

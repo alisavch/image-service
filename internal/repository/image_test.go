@@ -47,7 +47,7 @@ func TestImageRepository_FindUserRequestHistory(t *testing.T) {
 				mock.ExpectQuery("SELECT (.+) from image_service.request r INNER JOIN image_service.image i on r.image_id = i.id INNER JOIN image_service.user_account ua on ua.id = r.user_account_id").
 					WithArgs(asString).WillReturnRows(rows)
 			},
-			want: []models.History(nil),
+			want: []models.History{},
 			isOk: true,
 		},
 		{

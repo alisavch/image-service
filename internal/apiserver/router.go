@@ -54,8 +54,8 @@ func (s *Server) newAPIRouter() {
 	// responses:
 	//   "200":
 	//     description: successful operation
-	//   "401":
-	//     description: unauthorized user
+	//   "403":
+	//     description: access denied
 	//   "500":
 	//     description: internal server error
 	apiRouter.HandleFunc("/history", s.authorize(s.findUserHistory())).Methods(http.MethodGet)
@@ -76,8 +76,8 @@ func (s *Server) newAPIRouter() {
 	// responses:
 	//   "202":
 	//     description: request accepted
-	//   "401":
-	//     description: unauthorized user
+	//   "403":
+	//     description: access denied
 	//   "500":
 	//     description: internal server error
 	apiRouter.HandleFunc("/compress", s.authorize(s.compressImage())).Methods(http.MethodPost)
@@ -94,8 +94,8 @@ func (s *Server) newAPIRouter() {
 	// responses:
 	//   "202":
 	//     description: request accepted
-	//   "401":
-	//     description: unauthorized user
+	//   "403":
+	//     description: access denied
 	//   "500":
 	//     description: internal server error
 	apiRouter.HandleFunc("/convert", s.authorize(s.convertImage())).Methods(http.MethodPost)
@@ -106,20 +106,22 @@ func (s *Server) newAPIRouter() {
 	// parameters:
 	// - name: requestID
 	//   in: path
-	//   description: requestID to filter by id
+	//   description: requestID for image search
 	//   required: true
 	//   type: integer
 	// - name: original
 	//   in: query
 	//   type: boolean
 	//   required: false
-	//   description: If true - the original will be saved
+	//   description: if the parameter is true, the original image will be downloaded.
 	// responses:
 	//   "200":
 	//     description: successful operation
-	//   "401":
-	//     description: unauthorized user
+	//   "403":
+	//     description: access denied
 	//   "404":
+	//     description: no such image
+	//   "409":
 	//     description: image is being processed
 	//   "500":
 	//     description: internal server error
@@ -137,8 +139,8 @@ func (s *Server) newAPIRouter() {
 	// responses:
 	//   "200":
 	//     description: successful operation
-	//   "401":
-	//     description: unauthorized user
+	//   "403":
+	//     description: access denied
 	//   "500":
 	//     description: internal server error
 	apiRouter.HandleFunc("/status/{requestID}", s.authorize(s.findStatus())).Methods(http.MethodGet)

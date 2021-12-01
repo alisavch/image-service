@@ -10,10 +10,10 @@ COPY go.mod .
 COPY go.sum .
 RUN go mod download
 COPY . .
-RUN go build -o main ./cmd/api/main.go
+RUN go build -o api ./cmd/api/main.go
 
 FROM alpine:latest
 RUN apk --no-cache add ca-certificates
-COPY --from=builder ["/app/main", "/"]
+COPY --from=builder ["/app/api", "/"]
 
-ENTRYPOINT ["/main"]
+ENTRYPOINT ["/api"]

@@ -402,7 +402,7 @@ func TestHandler_findImage(t *testing.T) {
 				asString := "00000000-0000-0000-0000-000000000000"
 				s := uuid.MustParse(asString)
 				mockSO.On("ParseToken", token).Return(s, nil)
-				mockSO.On("FindRequestStatus", mock.Anything, compressedID).Return(models.Done, nil)
+				mockSO.On("FindRequestStatus", mock.Anything, s, compressedID).Return(models.Done, nil)
 				mockSO.On("FindResultedImage", mock.Anything, compressedID).Return(resultedImage, nil)
 				mockSO.On("SaveImage", mock.Anything, mock.Anything, mock.Anything).Return(&models.SavedImage{}, nil)
 			},
@@ -438,11 +438,11 @@ func TestHandler_findImage(t *testing.T) {
 				asString := "00000000-0000-0000-0000-000000000000"
 				s := uuid.MustParse(asString)
 				mockSO.On("ParseToken", token).Return(s, nil)
-				mockSO.On("FindRequestStatus", mock.Anything, compressedID).Return(models.Done, nil)
-				mockSO.On("FindResultedImage", mock.Anything, compressedID).Return(models.Image{}, utils.ErrFindImage)
+				mockSO.On("FindRequestStatus", mock.Anything, s, compressedID).Return(models.Done, nil)
+				mockSO.On("FindResultedImage", mock.Anything, compressedID).Return(models.Image{}, utils.ErrFindTheResultingImage)
 			},
-			expectedStatusCode:   500,
-			expectedResponseBody: "{\"error\":\"cannot find image:cannot find image\"}\n",
+			expectedStatusCode:   404,
+			expectedResponseBody: "{\"error\":\"cannot find image:no such resulting image\"}\n",
 		},
 		{
 			name:        "Incorrectly saved image",
@@ -455,7 +455,7 @@ func TestHandler_findImage(t *testing.T) {
 				asString := "00000000-0000-0000-0000-000000000000"
 				s := uuid.MustParse(asString)
 				mockSO.On("ParseToken", token).Return(s, nil)
-				mockSO.On("FindRequestStatus", mock.Anything, compressedID).Return(models.Done, nil)
+				mockSO.On("FindRequestStatus", mock.Anything, s, compressedID).Return(models.Done, nil)
 				mockSO.On("FindResultedImage", mock.Anything, compressedID).Return(resultedImage, nil)
 				mockSO.On("SaveImage", mock.Anything, mock.Anything, mock.Anything).Return(&models.SavedImage{}, utils.ErrSaveImage)
 			},
@@ -474,11 +474,11 @@ func TestHandler_findImage(t *testing.T) {
 				s := uuid.MustParse(asString)
 				mockSO.On("ParseToken", token).Return(s, nil)
 				if isOriginal {
-					mockSO.On("FindOriginalImage", mock.Anything, compressedID).Return(models.Image{}, utils.ErrFindImage)
+					mockSO.On("FindOriginalImage", mock.Anything, compressedID).Return(models.Image{}, utils.ErrFindOriginalImage)
 				}
 			},
-			expectedStatusCode:   500,
-			expectedResponseBody: "{\"error\":\"cannot find image:cannot find image\"}\n",
+			expectedStatusCode:   404,
+			expectedResponseBody: "{\"error\":\"cannot find image:no such original image\"}\n",
 		},
 		{
 			name:        "Incorrectly saved original image",
@@ -772,13 +772,13 @@ func TestHandler_findStatus(t *testing.T) {
 				asString := "00000000-0000-0000-0000-000000000000"
 				s := uuid.MustParse(asString)
 				mockSO.On("ParseToken", token).Return(s, nil)
-				mockSO.On("FindRequestStatus", mock.Anything, compressedID).Return(models.Done, nil)
+				mockSO.On("FindRequestStatus", mock.Anything, s, compressedID).Return(models.Done, nil)
 			},
 			expectedStatusCode:   200,
 			expectedResponseBody: "{\"request_id\":\"00000000-0000-0000-0000-000000000000\",\"status\":\"done\"}\n",
 		},
 		{
-			name:        "Incorrectly saved image",
+			name:        "Error cannot find status for this request",
 			headerName:  []string{"Authorization", "Content-Type"},
 			headerValue: []string{"Bearer token"},
 			token:       "token",
@@ -788,7 +788,7 @@ func TestHandler_findStatus(t *testing.T) {
 				asString := "00000000-0000-0000-0000-000000000000"
 				s := uuid.MustParse(asString)
 				mockSO.On("ParseToken", token).Return(s, nil)
-				mockSO.On("FindRequestStatus", mock.Anything, compressedID).Return(models.Status(""), utils.ErrGetStatus)
+				mockSO.On("FindRequestStatus", mock.Anything, s, compressedID).Return(models.Status(""), utils.ErrGetStatus)
 			},
 			expectedStatusCode:   500,
 			expectedResponseBody: "{\"error\":\"cannot find status for this request\"}\n",

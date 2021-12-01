@@ -46,7 +46,7 @@ func (s *Server) findUserHistory() http.HandlerFunc {
 
 		err := ParseRequest(r, &req)
 		if err != nil {
-			s.errorJSON(w, http.StatusUnauthorized, err)
+			s.errorJSON(w, http.StatusForbidden, err)
 			return
 		}
 
@@ -102,7 +102,7 @@ func (s *Server) compressImage() http.HandlerFunc {
 		var req compressImageRequest
 		err := ParseRequest(r, &req)
 		if err != nil {
-			s.errorJSON(w, http.StatusUnauthorized, err)
+			s.errorJSON(w, http.StatusForbidden, err)
 			return
 		}
 
@@ -183,7 +183,7 @@ func (s *Server) convertImage() http.HandlerFunc {
 
 		err := ParseRequest(r, &req)
 		if err != nil {
-			s.errorJSON(w, http.StatusUnauthorized, err)
+			s.errorJSON(w, http.StatusForbidden, err)
 			return
 		}
 
@@ -285,14 +285,14 @@ func (s *Server) findImage() http.HandlerFunc {
 
 		err := ParseRequest(r, &req)
 		if err != nil {
-			s.errorJSON(w, http.StatusUnauthorized, err)
+			s.errorJSON(w, http.StatusForbidden, err)
 			return
 		}
 
 		if req.isOriginal {
 			uploadedImage, err := s.service.ServiceOperations.FindOriginalImage(r.Context(), req.requestID)
 			if err != nil {
-				s.errorJSON(w, http.StatusInternalServerError, fmt.Errorf("%s:%s", utils.ErrFindImage, err))
+				s.errorJSON(w, http.StatusNotFound, fmt.Errorf("%s:%s", utils.ErrFindImage, err))
 				return
 			}
 			s.logger.Printf("%s:%s", "Original image found", uploadedImage.UploadedName)
@@ -308,9 +308,9 @@ func (s *Server) findImage() http.HandlerFunc {
 			return
 		}
 
-		status, err := s.service.ServiceOperations.FindRequestStatus(r.Context(), req.requestID)
+		status, err := s.service.ServiceOperations.FindRequestStatus(r.Context(), req.User.ID, req.requestID)
 		if status == models.Processing {
-			s.errorJSON(w, http.StatusNotFound, fmt.Errorf("%s:%s", "cannot get image", utils.ErrImageProcessing))
+			s.errorJSON(w, http.StatusConflict, fmt.Errorf("%s:%s", "cannot get image", utils.ErrImageProcessing))
 			return
 		}
 		if err != nil {
@@ -320,7 +320,7 @@ func (s *Server) findImage() http.HandlerFunc {
 
 		resultedImage, err := s.service.ServiceOperations.FindResultedImage(r.Context(), req.requestID)
 		if err != nil {
-			s.errorJSON(w, http.StatusInternalServerError, fmt.Errorf("%s:%s", utils.ErrFindImage, err))
+			s.errorJSON(w, http.StatusNotFound, fmt.Errorf("%s:%s", utils.ErrFindImage, err))
 			return
 		}
 		s.logger.Printf("%s:%s", "Resulted image found", resultedImage.ResultedName)
@@ -373,11 +373,11 @@ func (s *Server) findStatus() http.HandlerFunc {
 
 		err := ParseRequest(r, &req)
 		if err != nil {
-			s.errorJSON(w, http.StatusUnauthorized, err)
+			s.errorJSON(w, http.StatusForbidden, err)
 			return
 		}
 
-		status, err := s.service.ServiceOperations.FindRequestStatus(r.Context(), req.RequestID)
+		status, err := s.service.ServiceOperations.FindRequestStatus(r.Context(), req.User.ID, req.RequestID)
 		if err != nil {
 			s.errorJSON(w, http.StatusInternalServerError, err)
 			return

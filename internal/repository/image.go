@@ -96,11 +96,11 @@ func (i *ImageRepository) CreateRequest(ctx context.Context, user models.User, i
 }
 
 // FindRequestStatus checks request status.
-func (i *ImageRepository) FindRequestStatus(ctx context.Context, id uuid.UUID) (models.Status, error) {
+func (i *ImageRepository) FindRequestStatus(ctx context.Context, userID, requestID uuid.UUID) (models.Status, error) {
 	var status string
 
-	imageStatus := "SELECT r.status FROM image_service.request r WHERE r.id=$1"
-	statusRow := i.db.QueryRowContext(ctx, imageStatus, id)
+	imageStatus := "SELECT r.status FROM image_service.request r WHERE r.user_account_id=$1 and r.id=$2"
+	statusRow := i.db.QueryRowContext(ctx, imageStatus, userID, requestID)
 	if err := statusRow.Scan(&status); err != nil {
 		return "", utils.ErrGetStatus
 	}

@@ -70,9 +70,9 @@ var (
 	// ErrUploadImageToDB verifies that the image information can be loaded into the database.
 	ErrUploadImageToDB = errors.New("unable to insert image into database")
 	// ErrFindTheResultingImage checks if the resulting image can be found.
-	ErrFindTheResultingImage = errors.New("cannot complete request to get resulting image")
+	ErrFindTheResultingImage = errors.New("no such resulting image")
 	// ErrFindOriginalImage checks if the original image can be found.
-	ErrFindOriginalImage = errors.New("cannot complete request to get original image")
+	ErrFindOriginalImage = errors.New("no such original image")
 	// ErrUpdateStatusRequest checks if the status of the request can be updated.
 	ErrUpdateStatusRequest = errors.New("cannot update image status")
 	// ErrGenerateHash checks the hash generation capability.

@@ -17,41 +17,28 @@ services:
       - ./sql/01-init.sh:/docker-entrypoint-initdb.d/01-init.sh
     networks:
       - fullstack
-    healthcheck:
-      test: [ "CMD", "nc", "-z", "localhost", "5432" ]
-      interval: 5s
-      timeout: 15s
-      retries: 1
 
   rabbitmq:
     image: rabbitmq:management
     restart: always
     container_name: rabbitmq
-    env_file: .env
     environment:
-      - RABBITMQ_DEFAULT_PASS=test
-      - RABBITMQ_DEFAULT_USER=test
+      - RABBITMQ_DEFAULT_PASS=${RABBITMQ_DEFAULT_USER}
+      - RABBITMQ_DEFAULT_USER=${RABBITMQ_DEFAULT_PASS}
     ports:
-      - "8002:5672"
-      - "8004:15672"
+      - "5672:5672"
+      - "15672:15672"
     volumes:
-      - ~/.docker-conf/rabbitmq:/var/lib/rabbitmq/
-      - ~/.docker-conf/rabbitmq:/var/log/rabbitmq/
-      - ~/.docker-conf/rabbitmq:/etc/rabbitmq/
+      - ~/.docker-conf/rabbitmq/data/:/var/lib/rabbitmq/mnesia/
     networks:
       - fullstack
-    healthcheck:
-      test: [ "CMD", "nc", "-z", "localhost", "15672" ]
-      interval: 5s
-      timeout: 15s
-      retries: 1
 
-  image-service:
-    image: alisavch/image-service:latest
+  api:
+    image: alisavch/api:latest
     build:
       context: .
       dockerfile: Dockerfile
-    container_name: image-service
+    container_name: api
     env_file: .env
     restart: always
     ports:
@@ -67,6 +54,7 @@ services:
       - fullstack
 
   consumer:
+    image: alisavch/consumer:latest
     build:
       context: .
       dockerfile: Dockerfile-consumer
@@ -74,7 +62,7 @@ services:
     env_file: .env
     restart: always
     depends_on:
-      - image-service
+      - api
       - rabbitmq
     networks:
       - fullstack

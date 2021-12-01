@@ -225,7 +225,7 @@ func TestHandler_compressImage(t *testing.T) {
 				}
 			},
 			expectedStatusCode:   202,
-			expectedResponseBody: "{\"Image ID\":\"00000000-0000-0000-0000-000000000000\"}\n",
+			expectedResponseBody: "{\"Request ID\":\"00000000-0000-0000-0000-000000000000\"}\n",
 		},
 		{
 			name:         "Failed to load file",
@@ -613,7 +613,7 @@ func TestHandler_convertImage(t *testing.T) {
 				}
 			},
 			expectedStatusCode:   202,
-			expectedResponseBody: "{\"Image ID\":\"00000000-0000-0000-0000-000000000000\"}\n",
+			expectedResponseBody: "{\"Request ID\":\"00000000-0000-0000-0000-000000000000\"}\n",
 		},
 		{
 			name:         "Failed upload file",

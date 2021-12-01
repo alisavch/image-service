@@ -84,12 +84,12 @@ func (r *RabbitMQ) ConsumeQueue(queue string) error {
 		go func() {
 			err := json.NewDecoder(bytes.NewReader(d.Body)).Decode(&message)
 			if err != nil {
-				r.logger.Fatalf("%s: %s", "Failed to decode json", err)
+				r.logger.Printf("%s: %s", "Failed to decode json", err)
 			}
 
 			err = r.Process(message)
 			if err != nil {
-				r.logger.Fatalf("%s: %s", "Failed to process image", err)
+				r.logger.Printf("%s: %s", "Failed to process image", err)
 			}
 
 			err = d.Ack(false)

@@ -15,6 +15,7 @@ import (
 type FormattingOutput interface {
 	Printf(format string, args ...interface{})
 	Fatalf(format string, args ...interface{})
+	Errorf(format string, args ...interface{})
 }
 
 // S3Bucket contains the basic functions for interacting with the bucket.

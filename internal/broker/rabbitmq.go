@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
-
 	"github.com/alisavch/image-service/internal/models"
 	"github.com/alisavch/image-service/internal/utils"
 
@@ -84,19 +83,30 @@ func (r *RabbitMQ) ConsumeQueue(queue string) error {
 		go func() {
 			err := json.NewDecoder(bytes.NewReader(d.Body)).Decode(&message)
 			if err != nil {
-				r.logger.Printf("%s: %s", "Failed to decode json", err)
+				r.logger.Errorf("%s: %s", "Failed to decode json", err)
+				err := d.Nack(false, true)
+				if err != nil {
+					r.logger.Printf("%s: %s", "Could not nack message", err)
+				}
+				return
 			}
 
 			err = r.Process(message)
 			if err != nil {
-				r.logger.Printf("%s: %s", "Failed to process image", err)
+				r.logger.Errorf("%s: %s", "Failed to process message", err)
+				err := d.Nack(false, true)
+				if err != nil {
+					r.logger.Printf("%s: %s", "Could not nack message", err)
+				}
+				return
 			}
 
+			r.logger.Printf("%s: %s", "Successfully processed message", message.ID)
 			err = d.Ack(false)
 			if err != nil {
-				r.logger.Printf("%s: %s", "Failed confirmation message", err)
+				r.logger.Printf("%s: %s", "Could not ack message", err)
+				return
 			}
-			r.logger.Printf("%s: %s", "Acknowledged message", d.Body)
 		}()
 		if err != nil {
 			return err
@@ -109,7 +119,7 @@ func (r *RabbitMQ) ConsumeQueue(queue string) error {
 // QosQueue controls messages.
 func (r *RabbitMQ) QosQueue() error {
 	err := r.ch.Qos(
-		7,
+		1,
 		0,
 		false,
 	)

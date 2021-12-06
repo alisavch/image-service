@@ -55,6 +55,11 @@ func Consume() {
 		logger.Fatalf("%s: %s", "Failed to declare a queue", err)
 	}
 
+	err = currentService.QosQueue()
+	if err != nil {
+		logger.Fatalf("%s: %s", "Failed to set qos parameters", err)
+	}
+
 	err = currentService.ConsumeQueue(q.Name)
 	if err != nil {
 		logger.Fatalf("%s: %s", "Failed to consume a queue", err)

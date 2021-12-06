@@ -15,6 +15,7 @@ type AMQP interface {
 	Connect() error
 	DeclareQueue(name string) (amqp.Queue, error)
 	ConsumeQueue(queue string) error
+	QosQueue() error
 }
 
 // DisplayLog contains methods for log display.

@@ -128,11 +128,6 @@ func (s *Server) compressImage() http.HandlerFunc {
 			s.logger.Fatalf("%s: %s", "Failed to declare a queue", err)
 		}
 
-		err = s.mq.QosQueue()
-		if err != nil {
-			s.logger.Fatalf("%s: %s", "Failed to set qos parameters", err)
-		}
-
 		err = s.service.ServiceOperations.UpdateStatus(r.Context(), requestID, models.Processing)
 		if err != nil {
 			s.errorJSON(w, http.StatusInternalServerError, err)
@@ -207,11 +202,6 @@ func (s *Server) convertImage() http.HandlerFunc {
 		q, err := s.mq.DeclareQueue("publisher")
 		if err != nil {
 			s.logger.Fatalf("%s: %s", "Failed to declare a queue", err)
-		}
-
-		err = s.mq.QosQueue()
-		if err != nil {
-			s.logger.Fatalf("%s: %s", "Failed to controls messages", err)
 		}
 
 		err = s.service.ServiceOperations.UpdateStatus(r.Context(), requestID, models.Processing)

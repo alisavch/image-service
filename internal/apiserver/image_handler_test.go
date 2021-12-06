@@ -212,14 +212,12 @@ func TestHandler_compressImage(t *testing.T) {
 					mockSO.On("UploadImage", mock.Anything, mock.Anything).Return(model.image.ID, nil)
 					mockSO.On("CreateRequest", mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(model.req.ID, nil)
 					mockAMQP.On("DeclareQueue", "publisher").Return(q, nil)
-					mockAMQP.On("QosQueue").Return(nil)
 					mockSO.On("UpdateStatus", mock.Anything, model.req.ID, models.Processing).Return(nil)
 					mockAMQP.On("Publish", "", q.Name, mock.Anything).Return(nil)
 				case local:
 					mockSO.On("UploadImage", mock.Anything, mock.Anything).Return(model.image.ID, nil)
 					mockSO.On("CreateRequest", mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(model.req.ID, nil)
 					mockAMQP.On("DeclareQueue", "publisher").Return(q, nil)
-					mockAMQP.On("QosQueue").Return(nil)
 					mockSO.On("UpdateStatus", mock.Anything, model.req.ID, models.Processing).Return(nil)
 					mockAMQP.On("Publish", "", q.Name, mock.Anything).Return(nil)
 				}
@@ -265,13 +263,11 @@ func TestHandler_compressImage(t *testing.T) {
 					mockSO.On("UploadImage", mock.Anything, mock.Anything).Return(model.image.ID, nil)
 					mockSO.On("CreateRequest", mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(model.req.ID, nil)
 					mockAMQP.On("DeclareQueue", "publisher").Return(q, nil)
-					mockAMQP.On("QosQueue").Return(nil)
 					mockSO.On("UpdateStatus", mock.Anything, model.req.ID, models.Processing).Return(utils.ErrUpdateStatusRequest)
 				case local:
 					mockSO.On("UploadImage", mock.Anything, mock.Anything).Return(model.image.ID, nil)
 					mockSO.On("CreateRequest", mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(model.req.ID, nil)
 					mockAMQP.On("DeclareQueue", "publisher").Return(q, nil)
-					mockAMQP.On("QosQueue").Return(nil)
 					mockSO.On("UpdateStatus", mock.Anything, model.req.ID, models.Processing).Return(utils.ErrUpdateStatusRequest)
 				}
 			},
@@ -600,14 +596,12 @@ func TestHandler_convertImage(t *testing.T) {
 					mockSO.On("UploadImage", mock.Anything, mock.Anything).Return(model.image.ID, nil)
 					mockSO.On("CreateRequest", mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(model.req.ID, nil)
 					mockAMQP.On("DeclareQueue", "publisher").Return(q, nil)
-					mockAMQP.On("QosQueue").Return(nil)
 					mockSO.On("UpdateStatus", mock.Anything, model.req.ID, models.Processing).Return(nil)
 					mockAMQP.On("Publish", "", q.Name, mock.Anything).Return(nil)
 				case local:
 					mockSO.On("UploadImage", mock.Anything, mock.Anything).Return(model.image.ID, nil)
 					mockSO.On("CreateRequest", mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(model.req.ID, nil)
 					mockAMQP.On("DeclareQueue", "publisher").Return(q, nil)
-					mockAMQP.On("QosQueue").Return(nil)
 					mockSO.On("UpdateStatus", mock.Anything, model.req.ID, models.Processing).Return(nil)
 					mockAMQP.On("Publish", "", q.Name, mock.Anything).Return(nil)
 				}
@@ -650,13 +644,11 @@ func TestHandler_convertImage(t *testing.T) {
 					mockSO.On("UploadImage", mock.Anything, mock.Anything).Return(model.image.ID, nil)
 					mockSO.On("CreateRequest", mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(model.req.ID, nil)
 					mockAMQP.On("DeclareQueue", "publisher").Return(q, nil)
-					mockAMQP.On("QosQueue").Return(nil)
 					mockSO.On("UpdateStatus", mock.Anything, uplImg.ID, models.Processing).Return(utils.ErrUpdateStatusRequest)
 				case local:
 					mockSO.On("UploadImage", mock.Anything, mock.Anything).Return(uplImg.ID, nil)
 					mockSO.On("CreateRequest", mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(model.req.ID, nil)
 					mockAMQP.On("DeclareQueue", "publisher").Return(q, nil)
-					mockAMQP.On("QosQueue").Return(nil)
 					mockSO.On("UpdateStatus", mock.Anything, model.req.ID, models.Processing).Return(utils.ErrUpdateStatusRequest)
 				}
 			},

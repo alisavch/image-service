@@ -81,7 +81,7 @@ paths:
         "202":
           description: request accepted
         "401":
-          description: unauthorized user
+          description: login required
         "500":
           description: internal server error
       summary: Compresses the image.
@@ -102,7 +102,7 @@ paths:
         "202":
           description: request accepted
         "401":
-          description: unauthorized user
+          description: login required
         "500":
           description: internal server error
       summary: Converts the image.
@@ -113,12 +113,12 @@ paths:
       description: Downloads the processed image and original if required.
       operationId: findImage
       parameters:
-      - description: requestID to filter by id
+      - description: requestID for image search
         in: path
         name: requestID
         required: true
         type: integer
-      - description: If true - the original will be saved
+      - description: if the parameter is true, the original image will be downloaded.
         in: query
         name: original
         type: boolean
@@ -126,8 +126,12 @@ paths:
         "200":
           description: successful operation
         "401":
-          description: unauthorized user
+          description: login required
+        "403":
+          description: forbidden
         "404":
+          description: no such image
+        "409":
           description: image is being processed
         "500":
           description: internal server error
@@ -142,7 +146,7 @@ paths:
         "200":
           description: successful operation
         "401":
-          description: unauthorized user
+          description: login required
         "500":
           description: internal server error
       summary: Finds users history.
@@ -166,6 +170,16 @@ paths:
       summary: Authorizes the user.
       tags:
       - sign-in
+  /api/sign-out:
+    post:
+      description: Could be any user.
+      operationId: sign-out
+      responses:
+        "200":
+          description: successful operation
+      summary: Signed out user.
+      tags:
+      - sign-out
   /api/sign-up:
     post:
       description: Could be any user.
@@ -202,7 +216,9 @@ paths:
         "200":
           description: successful operation
         "401":
-          description: unauthorized user
+          description: login required
+        "403":
+          description: forbidden
         "500":
           description: internal server error
       summary: finds the status of the request.

@@ -16,7 +16,6 @@ import (
 type AMQP interface {
 	Publish(exchange, key string, message models.QueuedMessage) error
 	DeclareQueue(name string) (amqp.Queue, error)
-	QosQueue() error
 }
 
 // DisplayLog contains methods for log display.

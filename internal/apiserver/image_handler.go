@@ -46,7 +46,7 @@ func (s *Server) findUserHistory() http.HandlerFunc {
 
 		err := ParseRequest(r, &req)
 		if err != nil {
-			s.errorJSON(w, http.StatusForbidden, err)
+			s.errorJSON(w, http.StatusUnauthorized, err)
 			return
 		}
 
@@ -102,7 +102,7 @@ func (s *Server) compressImage() http.HandlerFunc {
 		var req compressImageRequest
 		err := ParseRequest(r, &req)
 		if err != nil {
-			s.errorJSON(w, http.StatusForbidden, err)
+			s.errorJSON(w, http.StatusUnauthorized, err)
 			return
 		}
 
@@ -126,11 +126,6 @@ func (s *Server) compressImage() http.HandlerFunc {
 		q, err := s.mq.DeclareQueue("publisher")
 		if err != nil {
 			s.logger.Fatalf("%s: %s", "Failed to declare a queue", err)
-		}
-
-		err = s.mq.QosQueue()
-		if err != nil {
-			s.logger.Fatalf("%s: %s", "Failed to set qos parameters", err)
 		}
 
 		err = s.service.ServiceOperations.UpdateStatus(r.Context(), requestID, models.Processing)
@@ -183,7 +178,7 @@ func (s *Server) convertImage() http.HandlerFunc {
 
 		err := ParseRequest(r, &req)
 		if err != nil {
-			s.errorJSON(w, http.StatusForbidden, err)
+			s.errorJSON(w, http.StatusUnauthorized, err)
 			return
 		}
 
@@ -207,11 +202,6 @@ func (s *Server) convertImage() http.HandlerFunc {
 		q, err := s.mq.DeclareQueue("publisher")
 		if err != nil {
 			s.logger.Fatalf("%s: %s", "Failed to declare a queue", err)
-		}
-
-		err = s.mq.QosQueue()
-		if err != nil {
-			s.logger.Fatalf("%s: %s", "Failed to controls messages", err)
 		}
 
 		err = s.service.ServiceOperations.UpdateStatus(r.Context(), requestID, models.Processing)
@@ -285,7 +275,7 @@ func (s *Server) findImage() http.HandlerFunc {
 
 		err := ParseRequest(r, &req)
 		if err != nil {
-			s.errorJSON(w, http.StatusForbidden, err)
+			s.errorJSON(w, http.StatusUnauthorized, err)
 			return
 		}
 
@@ -314,7 +304,7 @@ func (s *Server) findImage() http.HandlerFunc {
 			return
 		}
 		if err != nil {
-			s.errorJSON(w, http.StatusInternalServerError, err)
+			s.errorJSON(w, http.StatusForbidden, err)
 			return
 		}
 
@@ -373,13 +363,13 @@ func (s *Server) findStatus() http.HandlerFunc {
 
 		err := ParseRequest(r, &req)
 		if err != nil {
-			s.errorJSON(w, http.StatusForbidden, err)
+			s.errorJSON(w, http.StatusUnauthorized, err)
 			return
 		}
 
 		status, err := s.service.ServiceOperations.FindRequestStatus(r.Context(), req.User.ID, req.RequestID)
 		if err != nil {
-			s.errorJSON(w, http.StatusInternalServerError, err)
+			s.errorJSON(w, http.StatusForbidden, err)
 			return
 		}
 

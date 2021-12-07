@@ -76,7 +76,7 @@ func (s *Server) authorize(next http.Handler) http.HandlerFunc {
 
 		err := ParseRequest(r, &req)
 		if err != nil {
-			s.errorJSON(w, http.StatusBadRequest, err)
+			s.errorJSON(w, http.StatusUnauthorized, err)
 		}
 
 		userID, err := s.service.ParseToken(req.token)

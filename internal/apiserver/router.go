@@ -54,8 +54,10 @@ func (s *Server) newAPIRouter() {
 	// responses:
 	//   "200":
 	//     description: successful operation
+	//   "401":
+	//     description: login required
 	//   "403":
-	//     description: access denied
+	//     description: forbidden
 	//   "500":
 	//     description: internal server error
 	apiRouter.HandleFunc("/history", s.authorize(s.findUserHistory())).Methods(http.MethodGet)
@@ -76,8 +78,10 @@ func (s *Server) newAPIRouter() {
 	// responses:
 	//   "202":
 	//     description: request accepted
+	//   "401":
+	//     description: login required
 	//   "403":
-	//     description: access denied
+	//     description: forbidden
 	//   "500":
 	//     description: internal server error
 	apiRouter.HandleFunc("/compress", s.authorize(s.compressImage())).Methods(http.MethodPost)
@@ -94,8 +98,10 @@ func (s *Server) newAPIRouter() {
 	// responses:
 	//   "202":
 	//     description: request accepted
+	//   "401":
+	//     description: login required
 	//   "403":
-	//     description: access denied
+	//     description: forbidden
 	//   "500":
 	//     description: internal server error
 	apiRouter.HandleFunc("/convert", s.authorize(s.convertImage())).Methods(http.MethodPost)
@@ -117,8 +123,10 @@ func (s *Server) newAPIRouter() {
 	// responses:
 	//   "200":
 	//     description: successful operation
+	//   "401":
+	//     description: login required
 	//   "403":
-	//     description: access denied
+	//     description: forbidden
 	//   "404":
 	//     description: no such image
 	//   "409":
@@ -128,8 +136,8 @@ func (s *Server) newAPIRouter() {
 	apiRouter.HandleFunc("/download/{requestID}", s.authorize(s.findImage())).Methods(http.MethodGet)
 	// swagger:operation GET /api/status/{requestID} findRequestStatus findRequestStatus
 	// ---
-	// summary: finds the status of the request.
-	// description: finds the status of the request.
+	// summary: Finds the status of the request.
+	// description: Finds the status of the request.
 	// parameters:
 	// - name: requestID
 	//   in: path
@@ -139,8 +147,10 @@ func (s *Server) newAPIRouter() {
 	// responses:
 	//   "200":
 	//     description: successful operation
+	//   "401":
+	//     description: login required
 	//   "403":
-	//     description: access denied
+	//     description: forbidden
 	//   "500":
 	//     description: internal server error
 	apiRouter.HandleFunc("/status/{requestID}", s.authorize(s.findStatus())).Methods(http.MethodGet)

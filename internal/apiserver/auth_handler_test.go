@@ -42,7 +42,7 @@ func TestHandler_signUp(t *testing.T) {
 				mockAuthorization.On("CreateUser", mock.Anything, user).Return(s, nil)
 			},
 			expectedStatusCode:   201,
-			expectedResponseBody: "\"User registered successfully\"\n",
+			expectedResponseBody: "{\"Message\":\"You have successfully registered\"}\n",
 		},
 		{
 			name:      "Password must not be empty",

@@ -7,6 +7,8 @@ var (
 	ErrGetUserID = errors.New("cannot get userID from context")
 	// ErrRequest checks the correctness of the request.
 	ErrRequest = errors.New("invalid path in request")
+	// ErrGetJWTCookie checks jwt cookie.
+	ErrGetJWTCookie = errors.New("cannot get jwt cookie")
 	// ErrEmptyHeader checks empty header.
 	ErrEmptyHeader = errors.New("auth header is empty")
 	// ErrInvalidAuthHeader checks invalid header.

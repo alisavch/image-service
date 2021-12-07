@@ -21,10 +21,9 @@ import (
 type key string
 
 const (
-	authorizationHeader key = "Authorization"
-	userCtx             key = "userId"
-	aws                     = "AWS"
-	local                   = "local"
+	userCtx key    = "userId"
+	aws     string = "AWS"
+	local   string = "local"
 )
 
 // Request is an interface which must be implemented by request models.
@@ -43,27 +42,22 @@ func ParseRequest(r *http.Request, req Request) error {
 }
 
 type authorization struct {
-	header      string
-	headerParts []string
-	token       string
+	token string
 }
 
 // Build builds a request to authorize.
 func (req *authorization) Build(r *http.Request) error {
-	req.header = r.Header.Get(string(authorizationHeader))
-	if req.header == "" {
-		return utils.ErrEmptyHeader
+	c, err := r.Cookie("jwt")
+	if err != nil {
+		return utils.ErrGetJWTCookie
 	}
-	req.headerParts = strings.Split(req.header, " ")
-	req.token = req.headerParts[1]
+	req.token = c.Value
+
 	return nil
 }
 
 // Validate validates request to authorize.
 func (req authorization) Validate() error {
-	if len(req.headerParts) != 2 || req.headerParts[0] != "Bearer" {
-		return utils.ErrInvalidAuthHeader
-	}
 	if req.token == "" {
 		return utils.ErrEmptyToken
 	}
@@ -76,7 +70,8 @@ func (s *Server) authorize(next http.Handler) http.HandlerFunc {
 
 		err := ParseRequest(r, &req)
 		if err != nil {
-			s.errorJSON(w, http.StatusBadRequest, err)
+			s.errorJSON(w, http.StatusUnauthorized, err)
+			return
 		}
 
 		userID, err := s.service.ParseToken(req.token)

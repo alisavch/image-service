@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"errors"
 	"net/http"
+	"time"
 
 	"github.com/alisavch/image-service/internal/models"
 	"github.com/alisavch/image-service/internal/utils"
@@ -52,7 +53,15 @@ func (s *Server) signUp() http.HandlerFunc {
 			s.errorJSON(w, http.StatusInternalServerError, err)
 			return
 		}
-		s.respondJSON(w, http.StatusCreated, "User registered successfully")
+
+		type response struct {
+			Message string
+		}
+		resp := response{
+			Message: "You have successfully registered",
+		}
+
+		s.respondJSON(w, http.StatusCreated, resp)
 	}
 }
 
@@ -95,6 +104,36 @@ func (s *Server) signIn() http.HandlerFunc {
 			s.errorJSON(w, http.StatusUnauthorized, err)
 			return
 		}
+
+		const expTimeHrs = 24
+		cookie := http.Cookie{
+			Name:     "jwt",
+			Value:    token,
+			Expires:  time.Now().Add(time.Hour * expTimeHrs),
+			HttpOnly: true,
+		}
+		http.SetCookie(w, &cookie)
+
 		s.respondJSON(w, http.StatusOK, token)
+	}
+}
+
+func (s *Server) signOut() http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		cookie := http.Cookie{
+			Name:     "jwt",
+			Value:    "",
+			Expires:  time.Now().Add(-time.Hour),
+			HttpOnly: true,
+		}
+		http.SetCookie(w, &cookie)
+
+		type response struct {
+			Message string
+		}
+		resp := response{
+			Message: "You have successfully been logged out",
+		}
+		s.respondJSON(w, http.StatusOK, resp)
 	}
 }

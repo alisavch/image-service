@@ -47,6 +47,14 @@ func (s *Server) newAPIRouter() {
 	//   "401":
 	//     description: unauthorized user
 	apiRouter.HandleFunc("/sign-in", s.signIn()).Methods(http.MethodPost)
+	// swagger:operation POST /api/sign-up sign-up sign-up
+	// ---
+	// summary: Signed out user.
+	// description: Could be any user.
+	// responses:
+	//   "200":
+	//     description: successful operation
+	apiRouter.HandleFunc("/sign-out", s.signOut()).Methods(http.MethodPost)
 	// swagger:operation GET /api/history history history
 	// ---
 	// summary: Finds users history.

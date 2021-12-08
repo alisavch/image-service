@@ -1,6 +1,6 @@
 basePath: /
 consumes:
-- application/json
+  - application/json
 definitions:
   Image:
     description: An image is what is processed in the application.
@@ -24,8 +24,8 @@ definitions:
         type: string
         x-go-name: UploadedName
     required:
-    - uploaded_name
-    - uploaded_location
+      - uploaded_name
+      - uploaded_location
     title: Image contains details of a single request.
     type: object
     x-go-package: github.com/alisavch/image-service/internal/models
@@ -52,8 +52,8 @@ definitions:
         type: string
         x-go-name: Username
     required:
-    - username
-    - password
+      - username
+      - password
     title: User contains information about user.
     type: object
     x-go-package: github.com/alisavch/image-service/internal/models
@@ -69,14 +69,14 @@ paths:
         you to enter width in the query string.
       operationId: compress
       parameters:
-      - in: query
-        name: width
-        type: integer
-      - in: body
-        name: uploadFile
-        required: true
-        schema:
-          $ref: '#/definitions/Image'
+        - in: query
+          name: width
+          type: integer
+        - in: body
+          name: uploadFile
+          required: true
+          schema:
+            $ref: '#/definitions/Image'
       responses:
         "202":
           description: request accepted
@@ -86,18 +86,18 @@ paths:
           description: internal server error
       summary: Compresses the image.
       tags:
-      - compress
+        - compress
   /api/convert:
     post:
       description: Receives an image from an input form and converts it PNG to JPG
         and vice versa.
       operationId: convert
       parameters:
-      - in: body
-        name: uploadFile
-        required: true
-        schema:
-          $ref: '#/definitions/Image'
+        - in: body
+          name: uploadFile
+          required: true
+          schema:
+            $ref: '#/definitions/Image'
       responses:
         "202":
           description: request accepted
@@ -107,7 +107,7 @@ paths:
           description: internal server error
       summary: Converts the image.
       tags:
-      - convert
+        - convert
   /api/download/{requestID}:
     get:
       description: Downloads the processed image and original if required.
@@ -137,7 +137,7 @@ paths:
           description: internal server error
       summary: Finds and downloads an image.
       tags:
-      - findImage
+        - findImage
   /api/history:
     get:
       description: Lists all queries created by user.
@@ -151,17 +151,17 @@ paths:
           description: internal server error
       summary: Finds users history.
       tags:
-      - history
+        - history
   /api/sign-in:
     post:
       description: Only authorized user has access.
       operationId: sign-in
       parameters:
-      - description: the user to create
-        in: body
-        name: user
-        schema:
-          $ref: '#/definitions/User'
+        - description: the user to create
+          in: body
+          name: user
+          schema:
+            $ref: '#/definitions/User'
       responses:
         "200":
           description: successful operation
@@ -169,17 +169,17 @@ paths:
           description: login required
       summary: Authorizes the user.
       tags:
-      - sign-in
+        - sign-in
   /api/sign-up:
     post:
       description: Could be any user.
       operationId: sign-up
       parameters:
-      - description: the user to create
-        in: body
-        name: user
-        schema:
-          $ref: '#/definitions/User'
+        - description: the user to create
+          in: body
+          name: user
+          schema:
+            $ref: '#/definitions/User'
       responses:
         "201":
           description: user registered successfully
@@ -191,17 +191,17 @@ paths:
           description: internal server error
       summary: Registers a user.
       tags:
-      - sign-up
+        - sign-up
   /api/status/{requestID}:
     get:
       description: finds the status of the request.
       operationId: findRequestStatus
       parameters:
-      - description: requestID to filter by id
-        in: path
-        name: requestID
-        required: true
-        type: integer
+        - description: requestID to filter by id
+          in: path
+          name: requestID
+          required: true
+          type: integer
       responses:
         "200":
           description: successful operation
@@ -213,11 +213,11 @@ paths:
           description: internal server error
       summary: finds the status of the request.
       tags:
-      - findRequestStatus
+        - findRequestStatus
 produces:
-- application/json
+  - application/json
 schemes:
-- http
+  - http
 securityDefinitions:
   basic:
     type: basic

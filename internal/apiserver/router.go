@@ -130,8 +130,8 @@ func (s *Server) newAPIRouter() {
 	apiRouter.HandleFunc("/download/{requestID}", s.authorize(s.findImage())).Methods(http.MethodGet)
 	// swagger:operation GET /api/status/{requestID} findRequestStatus findRequestStatus
 	// ---
-	// summary: finds the status of the request.
-	// description: finds the status of the request.
+	// summary: Finds the status of the request.
+	// description: Finds the status of the request.
 	// parameters:
 	// - name: requestID
 	//   in: path

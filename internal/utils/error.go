@@ -94,7 +94,7 @@ var (
 	// ErrSetCompletedTime verifies the ability to set a processing completion time.
 	ErrSetCompletedTime = errors.New("cannot set the processing completion time")
 	// ErrGetStatus checks request status.
-	ErrGetStatus = errors.New("access denied to get status")
+	ErrGetStatus = errors.New("access denied")
 	// ErrImageProcessing checks processing status.
 	ErrImageProcessing = errors.New("the image is being processed at the moment")
 )

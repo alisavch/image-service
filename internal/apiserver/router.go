@@ -45,7 +45,7 @@ func (s *Server) newAPIRouter() {
 	//   "200":
 	//     description: successful operation
 	//   "401":
-	//     description: unauthorized user
+	//     description: login required
 	apiRouter.HandleFunc("/sign-in", s.signIn()).Methods(http.MethodPost)
 	// swagger:operation GET /api/history history history
 	// ---
@@ -54,8 +54,8 @@ func (s *Server) newAPIRouter() {
 	// responses:
 	//   "200":
 	//     description: successful operation
-	//   "403":
-	//     description: access denied
+	//   "401":
+	//     description: login required
 	//   "500":
 	//     description: internal server error
 	apiRouter.HandleFunc("/history", s.authorize(s.findUserHistory())).Methods(http.MethodGet)
@@ -76,8 +76,8 @@ func (s *Server) newAPIRouter() {
 	// responses:
 	//   "202":
 	//     description: request accepted
-	//   "403":
-	//     description: access denied
+	//   "401":
+	//     description: login required
 	//   "500":
 	//     description: internal server error
 	apiRouter.HandleFunc("/compress", s.authorize(s.compressImage())).Methods(http.MethodPost)
@@ -94,8 +94,8 @@ func (s *Server) newAPIRouter() {
 	// responses:
 	//   "202":
 	//     description: request accepted
-	//   "403":
-	//     description: access denied
+	//   "401":
+	//     description: login required
 	//   "500":
 	//     description: internal server error
 	apiRouter.HandleFunc("/convert", s.authorize(s.convertImage())).Methods(http.MethodPost)
@@ -117,8 +117,10 @@ func (s *Server) newAPIRouter() {
 	// responses:
 	//   "200":
 	//     description: successful operation
+	//   "401":
+	//     description: login required
 	//   "403":
-	//     description: access denied
+	//     description: forbidden
 	//   "404":
 	//     description: no such image
 	//   "409":
@@ -139,8 +141,10 @@ func (s *Server) newAPIRouter() {
 	// responses:
 	//   "200":
 	//     description: successful operation
+	//   "401":
+	//     description: login required
 	//   "403":
-	//     description: access denied
+	//     description: forbidden
 	//   "500":
 	//     description: internal server error
 	apiRouter.HandleFunc("/status/{requestID}", s.authorize(s.findStatus())).Methods(http.MethodGet)

@@ -782,7 +782,7 @@ func TestHandler_findStatus(t *testing.T) {
 				mockSO.On("ParseToken", token).Return(s, nil)
 				mockSO.On("FindRequestStatus", mock.Anything, s, compressedID).Return(models.Status(""), utils.ErrGetStatus)
 			},
-			expectedStatusCode:   500,
+			expectedStatusCode:   403,
 			expectedResponseBody: "{\"error\":\"cannot find status for this request\"}\n",
 		},
 	}

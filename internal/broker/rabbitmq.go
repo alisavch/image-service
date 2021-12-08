@@ -85,7 +85,7 @@ func (r *RabbitMQ) ConsumeQueue(queue string) error {
 			err := json.NewDecoder(bytes.NewReader(d.Body)).Decode(&message)
 			if err != nil {
 				r.logger.Errorf("%s: %s", "Failed to decode json", err)
-				err := d.Nack(false, true)
+				err := d.Nack(false, false)
 				if err != nil {
 					r.logger.Printf("%s: %s", "Could not nack message", err)
 				}

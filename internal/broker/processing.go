@@ -47,17 +47,11 @@ func (r *RabbitMQ) Process(message models.QueuedMessage) error {
 	}
 	r.logger.Printf("%s:%s", "Resulted image uploaded", message.Image.ResultedName)
 
-	err = r.UpdateStatus(ctx, message.RequestID, models.Done)
+	err = r.CompleteRequest(ctx, message.RequestID, models.Done)
 	if err != nil {
 		return err
 	}
-	r.logger.Printf("%s:%s", "Status updated", models.Done)
-
-	err = r.SetCompletedTime(ctx, message.RequestID)
-	if err != nil {
-		return err
-	}
-	r.logger.Printf("%s:%s", "Completion time added", message.RequestID)
+	r.logger.Printf("%s:%s", "Request completed", message.RequestID)
 
 	return nil
 }

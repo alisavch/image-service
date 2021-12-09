@@ -216,7 +216,7 @@ func (s *ImageService) FillInTheResultingImage(storage, resultedName string, new
 	return result, nil
 }
 
-// SetCompletedTime ets the completion time.
-func (s *ImageService) SetCompletedTime(ctx context.Context, id uuid.UUID) error {
-	return s.repo.SetCompletedTime(ctx, id)
+// CompleteRequest updates the status of image processing and sets the completion time.
+func (s *ImageService) CompleteRequest(ctx context.Context, id uuid.UUID, status models.Status) error {
+	return s.repo.CompleteRequest(ctx, id, status)
 }

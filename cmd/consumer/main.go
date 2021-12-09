@@ -13,4 +13,5 @@ func main() {
 	flag.Parse()
 	logger.Info("The consumer is running")
 	consumer.Consume()
+	logger.Info("The consumer has stopped receiving messages")
 }

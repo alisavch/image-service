@@ -89,8 +89,8 @@ var (
 	ErrRowsAffected = errors.New("cannot return the number of affected rows")
 	// ErrExpectedAffected checks expected affected rows.
 	ErrExpectedAffected = errors.New("expected to affect 1 row, affected")
-	// ErrSetCompletedTime verifies the ability to set a processing completion time.
-	ErrSetCompletedTime = errors.New("cannot set the processing completion time")
+	// ErrCompleteRequest verifies the ability to update the status of image processing and set completed time.
+	ErrCompleteRequest = errors.New("cannot complete request")
 	// ErrGetStatus checks request status.
 	ErrGetStatus = errors.New("cannot find status for this request")
 	// ErrImageProcessing checks processing status.

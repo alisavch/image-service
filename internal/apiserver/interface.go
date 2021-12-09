@@ -48,7 +48,7 @@ type Image interface {
 	UpdateStatus(ctx context.Context, id uuid.UUID, status models.Status) error
 	FillInTheResultingImageForAWS(resultedName string) (models.Image, error)
 	FillInTheResultingImage(storage, resultedName string, newImg *os.File) (models.Image, error)
-	SetCompletedTime(ctx context.Context, id uuid.UUID) error
+	CompleteRequest(ctx context.Context, id uuid.UUID, status models.Status) error
 }
 
 // S3Bucket contains the basic functions for interacting with the bucket.

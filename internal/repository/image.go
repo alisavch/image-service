@@ -149,12 +149,12 @@ func (i *ImageRepository) UpdateStatus(ctx context.Context, id uuid.UUID, status
 	return nil
 }
 
-// SetCompletedTime sets the completion time to the database.
-func (i *ImageRepository) SetCompletedTime(ctx context.Context, id uuid.UUID) error {
-	updated := "UPDATE image_service.request SET time_completed = $1 WHERE id = $2"
-	result, err := i.db.ExecContext(ctx, updated, time.Now(), id)
+// CompleteRequest updates the status of image processing and sets the completion time.
+func (i *ImageRepository) CompleteRequest(ctx context.Context, id uuid.UUID, status models.Status) error {
+	updated := "UPDATE image_service.request SET status = $1, time_completed = $1 WHERE id = $2"
+	result, err := i.db.ExecContext(ctx, updated, status, time.Now(), id)
 	if err != nil {
-		return utils.ErrSetCompletedTime
+		return utils.ErrCompleteRequest
 	}
 	rows, err := result.RowsAffected()
 	if err != nil {

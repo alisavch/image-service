@@ -25,7 +25,7 @@ type ImageRepo interface {
 	FindResultedImage(ctx context.Context, id uuid.UUID) (models.Image, error)
 	FindOriginalImage(ctx context.Context, id uuid.UUID) (models.Image, error)
 	UpdateStatus(ctx context.Context, id uuid.UUID, status models.Status) error
-	SetCompletedTime(ctx context.Context, id uuid.UUID) error
+	CompleteRequest(ctx context.Context, id uuid.UUID, status models.Status) error
 }
 
 // S3Bucket contains the basic functions for interacting with the bucket.

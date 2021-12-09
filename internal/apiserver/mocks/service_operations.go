@@ -41,6 +41,20 @@ func (_m *ServiceOperations) ChangeFormat(filename string) (string, error) {
 	return r0, r1
 }
 
+// CompleteRequest provides a mock function with given fields: ctx, id, status
+func (_m *ServiceOperations) CompleteRequest(ctx context.Context, id uuid.UUID, status models.Status) error {
+	ret := _m.Called(ctx, id, status)
+
+	var r0 error
+	if rf, ok := ret.Get(0).(func(context.Context, uuid.UUID, models.Status) error); ok {
+		r0 = rf(ctx, id, status)
+	} else {
+		r0 = ret.Error(0)
+	}
+
+	return r0
+}
+
 // CompressImage provides a mock function with given fields: width, format, resultedName, img, newImg, storage
 func (_m *ServiceOperations) CompressImage(width int, format string, resultedName string, img image.Image, newImg *os.File, storage string) (models.Image, error) {
 	ret := _m.Called(width, format, resultedName, img, newImg, storage)
@@ -322,20 +336,6 @@ func (_m *ServiceOperations) SaveImage(filename string, location string, storage
 	}
 
 	return r0, r1
-}
-
-// SetCompletedTime provides a mock function with given fields: ctx, id
-func (_m *ServiceOperations) SetCompletedTime(ctx context.Context, id uuid.UUID) error {
-	ret := _m.Called(ctx, id)
-
-	var r0 error
-	if rf, ok := ret.Get(0).(func(context.Context, uuid.UUID) error); ok {
-		r0 = rf(ctx, id)
-	} else {
-		r0 = ret.Error(0)
-	}
-
-	return r0
 }
 
 // UpdateStatus provides a mock function with given fields: ctx, id, status

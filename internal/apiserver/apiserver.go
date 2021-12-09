@@ -36,7 +36,7 @@ func Start() error {
 	aws := bucket.NewAWS()
 	services := service.NewService(repos, aws)
 	currentService := NewAPI(services, aws)
-	rabbit := broker.NewAMQPBroker(services, aws)
+	rabbit := broker.NewAMQPBrokerAPI()
 
 	err = rabbit.Connect()
 	if err != nil {

@@ -52,7 +52,7 @@ func (s *Server) findUserHistory() http.HandlerFunc {
 
 		history, err := s.service.ServiceOperations.FindUserRequestHistory(r.Context(), req.User.ID)
 		if err != nil {
-			s.errorJSON(w, http.StatusInternalServerError, err)
+			s.errorJSON(w, http.StatusNotFound, err)
 			return
 		}
 
@@ -279,6 +279,12 @@ func (s *Server) findImage() http.HandlerFunc {
 			return
 		}
 
+		err = s.service.ServiceOperations.IsAuthenticated(r.Context(), req.User.ID, req.requestID)
+		if err != nil {
+			s.errorJSON(w, http.StatusForbidden, err)
+			return
+		}
+
 		if req.isOriginal {
 			uploadedImage, err := s.service.ServiceOperations.FindOriginalImage(r.Context(), req.requestID)
 			if err != nil {
@@ -304,7 +310,7 @@ func (s *Server) findImage() http.HandlerFunc {
 			return
 		}
 		if err != nil {
-			s.errorJSON(w, http.StatusForbidden, err)
+			s.errorJSON(w, http.StatusNotFound, err)
 			return
 		}
 
@@ -367,9 +373,15 @@ func (s *Server) findStatus() http.HandlerFunc {
 			return
 		}
 
-		status, err := s.service.ServiceOperations.FindRequestStatus(r.Context(), req.User.ID, req.RequestID)
+		err = s.service.ServiceOperations.IsAuthenticated(r.Context(), req.User.ID, req.RequestID)
 		if err != nil {
 			s.errorJSON(w, http.StatusForbidden, err)
+			return
+		}
+
+		status, err := s.service.ServiceOperations.FindRequestStatus(r.Context(), req.User.ID, req.RequestID)
+		if err != nil {
+			s.errorJSON(w, http.StatusNotFound, err)
 			return
 		}
 

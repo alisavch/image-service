@@ -95,4 +95,8 @@ var (
 	ErrGetStatus = errors.New("cannot find status for this request")
 	// ErrImageProcessing checks processing status.
 	ErrImageProcessing = errors.New("the image is being processed at the moment")
+	// ErrReceivedEmpty checks RabbitMQ
+	ErrReceivedEmpty = errors.New("received an empty string")
+	// ErrUserAuthentication checks if there are such identifiers in the database.
+	ErrUserAuthentication = errors.New("access denied")
 )

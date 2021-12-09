@@ -41,7 +41,7 @@ func Consume() {
 	repos := repository.NewRepository(db)
 	aws := bucket.NewAWS()
 	services := service.NewService(repos, aws)
-	rabbit := broker.NewAMQPBroker(services, aws)
+	rabbit := broker.NewAMQPBrokerConsumer(services, aws)
 
 	currentService := NewConversionService(rabbit)
 

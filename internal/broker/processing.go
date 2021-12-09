@@ -6,8 +6,9 @@ import (
 	"image"
 	"os"
 
-	"github.com/alisavch/image-service/internal/models"
 	"github.com/alisavch/image-service/internal/service"
+
+	"github.com/alisavch/image-service/internal/models"
 	"github.com/alisavch/image-service/internal/utils"
 )
 
@@ -17,97 +18,97 @@ const (
 )
 
 // Process service processes.
-func (r *RabbitMQ) Process(message models.QueuedMessage) error {
+func (process *ProcessMessage) Process(message models.QueuedMessage) error {
 	conf := utils.NewConfig()
 	ctx := context.Background()
 
 	switch message.Service {
 	case models.Compression:
-		compressedImage, err := r.Compress(message, conf.Storage)
+		compressedImage, err := process.Compress(message, conf.Storage)
 		if err != nil {
-			r.logger.Printf("%s:%s", "Failed to compress image", err)
+			process.logger.Printf("%s:%s", "Failed to compress image", err)
 			return err
 		}
 		message.Image.ResultedName = compressedImage.ResultedName
 		message.Image.ResultedLocation = compressedImage.ResultedLocation
 
 	case models.Conversion:
-		convertedImage, err := r.Convert(message, conf.Storage)
+		convertedImage, err := process.Convert(message, conf.Storage)
 		if err != nil {
-			r.logger.Printf("%s:%s", "Failed to convert image", err)
+			process.logger.Printf("%s:%s", "Failed to convert image", err)
 			return err
 		}
 		message.Image.ResultedName = convertedImage.ResultedName
 		message.Image.ResultedLocation = convertedImage.ResultedLocation
 	}
 
-	err := r.UploadResultedImage(ctx, message.Image)
+	err := process.ImageService.UploadResultedImage(ctx, message.Image)
 	if err != nil {
 		return err
 	}
-	r.logger.Printf("%s:%s", "Resulted image uploaded", message.Image.ResultedName)
+	process.logger.Printf("%s:%s", "Resulted image uploaded", message.Image.ResultedName)
 
-	err = r.CompleteRequest(ctx, message.RequestID, models.Done)
+	err = process.ImageService.CompleteRequest(ctx, message.RequestID, models.Done)
 	if err != nil {
 		return err
 	}
-	r.logger.Printf("%s:%s", "Request completed", message.RequestID)
+	process.logger.Printf("%s:%s", "Request completed", message.RequestID)
 
 	return nil
 }
 
 // Compress is the compression service.
-func (r *RabbitMQ) Compress(message models.QueuedMessage, storage string) (models.Image, error) {
-	r.logger.Printf("%s:%s", "Process started", message.Service)
+func (process *ProcessMessage) Compress(message models.QueuedMessage, storage string) (models.Image, error) {
+	process.logger.Printf("%s:%s", "Process started", message.Service)
 	resultedName := newImgName("cmp-" + message.UploadedName)
-	r.logger.Printf("%s:%s", "Image renamed", resultedName)
+	process.logger.Printf("%s:%s", "Image renamed", resultedName)
 
-	img, format, file, err := r.prepareImage(message.Image, message.Image.UploadedName, resultedName)
+	img, format, file, err := process.prepareImage(message.Image, message.Image.UploadedName, resultedName)
 	if err != nil {
 		return models.Image{}, err
 	}
 
-	compressedImage, err := r.CompressImage(message.Width, format, resultedName, img, file, storage)
+	compressedImage, err := process.ImageService.CompressImage(message.Width, format, resultedName, img, file, storage)
 	if err != nil {
 		return models.Image{}, err
 	}
-	r.logger.Printf("%s:%s", "Process finished", message.Service)
+	process.logger.Printf("%s:%s", "Process finished", message.Service)
 
 	return compressedImage, nil
 }
 
 // Convert is the conversion service.
-func (r *RabbitMQ) Convert(message models.QueuedMessage, storage string) (models.Image, error) {
-	r.logger.Printf("%s:%s", "Process started", message.Service)
-	convertedName, err := r.ChangeFormat(message.UploadedName)
+func (process *ProcessMessage) Convert(message models.QueuedMessage, storage string) (models.Image, error) {
+	process.logger.Printf("%s:%s", "Process started", message.Service)
+	convertedName, err := process.ImageService.ChangeFormat(message.UploadedName)
 	if err != nil {
 		return models.Image{}, err
 	}
-	r.logger.Printf("%s:%s", "Image format changed", convertedName)
+	process.logger.Printf("%s:%s", "Image format changed", convertedName)
 
 	resultedName := newImgName("cnv-" + convertedName)
-	r.logger.Printf("%s:%s", "Image renamed", resultedName)
+	process.logger.Printf("%s:%s", "Image renamed", resultedName)
 
-	img, format, file, err := r.prepareImage(message.Image, message.Image.UploadedName, resultedName)
+	img, format, file, err := process.prepareImage(message.Image, message.Image.UploadedName, resultedName)
 	if err != nil {
 		return models.Image{}, err
 	}
 
-	convertedImage, err := r.ConvertToType(format, resultedName, img, file, storage)
+	convertedImage, err := process.ImageService.ConvertToType(format, resultedName, img, file, storage)
 	if err != nil {
 		return models.Image{}, err
 	}
-	r.logger.Printf("%s:%s", "Process finished", message.Service)
+	process.logger.Printf("%s:%s", "Process finished", message.Service)
 
 	return convertedImage, nil
 }
 
-func (r *RabbitMQ) prepareImage(uploadedImage models.Image, originalImageName, resultedImageName string) (image.Image, string, *os.File, error) {
+func (process *ProcessMessage) prepareImage(uploadedImage models.Image, originalImageName, resultedImageName string) (image.Image, string, *os.File, error) {
 	conf := utils.NewConfig()
 
 	switch conf.Storage {
 	case aws:
-		img, format, resultedFile, err := r.downloadOriginalImageFormAWS(originalImageName, resultedImageName)
+		img, format, resultedFile, err := process.downloadOriginalImageFormAWS(originalImageName, resultedImageName)
 		if err != nil {
 			return nil, "", nil, err
 		}
@@ -124,8 +125,8 @@ func (r *RabbitMQ) prepareImage(uploadedImage models.Image, originalImageName, r
 	return nil, "", nil, nil
 }
 
-func (r *RabbitMQ) downloadOriginalImageFormAWS(originalImageName, resultedImageName string) (image.Image, string, *os.File, error) {
-	file, err := r.DownloadFromS3Bucket(originalImageName)
+func (process *ProcessMessage) downloadOriginalImageFormAWS(originalImageName, resultedImageName string) (image.Image, string, *os.File, error) {
+	file, err := process.ImageService.DownloadFromS3Bucket(originalImageName)
 	if err != nil {
 		return nil, "", nil, err
 	}

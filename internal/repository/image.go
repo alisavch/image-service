@@ -165,3 +165,14 @@ func (i *ImageRepository) CompleteRequest(ctx context.Context, id uuid.UUID, sta
 	}
 	return nil
 }
+
+// IsAuthenticated tries to find requestID for this user.
+func (i *ImageRepository) IsAuthenticated(ctx context.Context, userID, requestID uuid.UUID) error {
+	var count int
+	value := "SELECT count(*) from image_service.request r where r.id=$1 and r.user_account_id=$2"
+	err := i.db.QueryRowContext(ctx, value, requestID, userID).Scan(&count)
+	if err != nil || count == 0 {
+		return utils.ErrUserAuthentication
+	}
+	return nil
+}

@@ -1,11 +1,21 @@
 package broker
 
-// AMQPBroker contains interfaces.
-type AMQPBroker struct {
-	*RabbitMQ
+// AMQPBrokerAPI contains interfaces.
+type AMQPBrokerAPI struct {
+	*ProcessMessage
 }
 
-// NewAMQPBroker is the AMQP constructor.
-func NewAMQPBroker(image Image, bucket S3Bucket) *AMQPBroker {
-	return &AMQPBroker{NewRabbitMQ(NewService(image, bucket))}
+// NewAMQPBrokerAPI configures AMQP.
+func NewAMQPBrokerAPI() *AMQPBrokerAPI {
+	return &AMQPBrokerAPI{NewProcessMessageAPI()}
+}
+
+// AMQPBrokerConsumer contains interfaces for rabbitmq and message handling.
+type AMQPBrokerConsumer struct {
+	*ProcessMessage
+}
+
+// NewAMQPBrokerConsumer configures AMQPBrokerConsumer.
+func NewAMQPBrokerConsumer(image Image, bucket S3Bucket) *AMQPBrokerConsumer {
+	return &AMQPBrokerConsumer{ProcessMessage: NewProcessMessageConsumer(NewService(image, bucket))}
 }

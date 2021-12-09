@@ -104,7 +104,7 @@ func TestHandler_signUp(t *testing.T) {
 			mockSO := new(mocks.ServiceOperations)
 
 			currentService := NewAPI(mockSO, mockBucket)
-			mq := broker.NewAMQPBroker(mockSO, mockBucket)
+			mq := broker.NewAMQPBrokerAPI()
 
 			s := NewServer(mq, currentService)
 
@@ -194,7 +194,7 @@ func TestHandler_singIn(t *testing.T) {
 			mockSO := new(mocks.ServiceOperations)
 
 			currentService := NewAPI(mockSO, mockBucket)
-			mq := broker.NewAMQPBroker(mockSO, mockBucket)
+			mq := broker.NewAMQPBrokerAPI()
 
 			s := NewServer(mq, currentService)
 

@@ -220,3 +220,8 @@ func (s *ImageService) FillInTheResultingImage(storage, resultedName string, new
 func (s *ImageService) CompleteRequest(ctx context.Context, id uuid.UUID, status models.Status) error {
 	return s.repo.CompleteRequest(ctx, id, status)
 }
+
+// IsAuthenticated tries to find requestID for this user.
+func (s *ImageService) IsAuthenticated(ctx context.Context, userID, requestID uuid.UUID) error {
+	return s.repo.IsAuthenticated(ctx, userID, requestID)
+}

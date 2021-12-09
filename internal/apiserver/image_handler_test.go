@@ -111,7 +111,7 @@ func TestHandler_findUserHistory(t *testing.T) {
 				mockSO.On("ParseToken", token).Return(s, nil)
 				mockSO.On("FindUserRequestHistory", mock.Anything, s).Return([]models.History{}, fmt.Errorf("cannot complete request to get history"))
 			},
-			expectedStatusCode:   500,
+			expectedStatusCode:   404,
 			expectedResponseBody: "{\"error\":\"cannot complete request to get history\"}\n",
 		},
 	}
@@ -122,7 +122,7 @@ func TestHandler_findUserHistory(t *testing.T) {
 			mockAWS := new(mocks.S3Bucket)
 
 			currentService := NewAPI(mockSO, mockAWS)
-			mq := broker.NewAMQPBroker(mockSO, mockAWS)
+			mq := broker.NewAMQPBrokerAPI()
 
 			s := NewServer(mq, currentService)
 
@@ -398,6 +398,7 @@ func TestHandler_findImage(t *testing.T) {
 				asString := "00000000-0000-0000-0000-000000000000"
 				s := uuid.MustParse(asString)
 				mockSO.On("ParseToken", token).Return(s, nil)
+				mockSO.On("IsAuthenticated", mock.Anything, s, s).Return(nil)
 				mockSO.On("FindRequestStatus", mock.Anything, s, compressedID).Return(models.Done, nil)
 				mockSO.On("FindResultedImage", mock.Anything, compressedID).Return(resultedImage, nil)
 				mockSO.On("SaveImage", mock.Anything, mock.Anything, mock.Anything).Return(&models.SavedImage{}, nil)
@@ -416,6 +417,7 @@ func TestHandler_findImage(t *testing.T) {
 				asString := "00000000-0000-0000-0000-000000000000"
 				s := uuid.MustParse(asString)
 				mockSO.On("ParseToken", token).Return(s, nil)
+				mockSO.On("IsAuthenticated", mock.Anything, s, s).Return(nil)
 				if isOriginal {
 					mockSO.On("FindOriginalImage", mock.Anything, compressedID).Return(models.Image{}, nil)
 					mockSO.On("SaveImage", mock.Anything, mock.Anything, mock.Anything).Return(&models.SavedImage{}, nil)
@@ -434,6 +436,7 @@ func TestHandler_findImage(t *testing.T) {
 				asString := "00000000-0000-0000-0000-000000000000"
 				s := uuid.MustParse(asString)
 				mockSO.On("ParseToken", token).Return(s, nil)
+				mockSO.On("IsAuthenticated", mock.Anything, s, s).Return(nil)
 				mockSO.On("FindRequestStatus", mock.Anything, s, compressedID).Return(models.Done, nil)
 				mockSO.On("FindResultedImage", mock.Anything, compressedID).Return(models.Image{}, utils.ErrFindTheResultingImage)
 			},
@@ -451,6 +454,7 @@ func TestHandler_findImage(t *testing.T) {
 				asString := "00000000-0000-0000-0000-000000000000"
 				s := uuid.MustParse(asString)
 				mockSO.On("ParseToken", token).Return(s, nil)
+				mockSO.On("IsAuthenticated", mock.Anything, s, s).Return(nil)
 				mockSO.On("FindRequestStatus", mock.Anything, s, compressedID).Return(models.Done, nil)
 				mockSO.On("FindResultedImage", mock.Anything, compressedID).Return(resultedImage, nil)
 				mockSO.On("SaveImage", mock.Anything, mock.Anything, mock.Anything).Return(&models.SavedImage{}, utils.ErrSaveImage)
@@ -469,6 +473,7 @@ func TestHandler_findImage(t *testing.T) {
 				asString := "00000000-0000-0000-0000-000000000000"
 				s := uuid.MustParse(asString)
 				mockSO.On("ParseToken", token).Return(s, nil)
+				mockSO.On("IsAuthenticated", mock.Anything, s, s).Return(nil)
 				if isOriginal {
 					mockSO.On("FindOriginalImage", mock.Anything, compressedID).Return(models.Image{}, utils.ErrFindOriginalImage)
 				}
@@ -487,6 +492,7 @@ func TestHandler_findImage(t *testing.T) {
 				asString := "00000000-0000-0000-0000-000000000000"
 				s := uuid.MustParse(asString)
 				mockSO.On("ParseToken", token).Return(s, nil)
+				mockSO.On("IsAuthenticated", mock.Anything, s, s).Return(nil)
 				if isOriginal {
 					mockSO.On("FindOriginalImage", mock.Anything, compressedID).Return(models.Image{ID: s, UploadedName: "filename", UploadedLocation: "location"}, nil)
 					mockSO.On("SaveImage", mock.Anything, mock.Anything, mock.Anything).Return(&models.SavedImage{}, utils.ErrSaveImage)
@@ -505,7 +511,7 @@ func TestHandler_findImage(t *testing.T) {
 			mockSO := new(mocks.ServiceOperations)
 
 			currentService := NewAPI(mockSO, mockBucket)
-			mq := broker.NewAMQPBroker(mockSO, mockBucket)
+			mq := broker.NewAMQPBrokerAPI()
 
 			s := NewServer(mq, currentService)
 
@@ -764,6 +770,7 @@ func TestHandler_findStatus(t *testing.T) {
 				asString := "00000000-0000-0000-0000-000000000000"
 				s := uuid.MustParse(asString)
 				mockSO.On("ParseToken", token).Return(s, nil)
+				mockSO.On("IsAuthenticated", mock.Anything, s, s).Return(nil)
 				mockSO.On("FindRequestStatus", mock.Anything, s, compressedID).Return(models.Done, nil)
 			},
 			expectedStatusCode:   200,
@@ -780,9 +787,10 @@ func TestHandler_findStatus(t *testing.T) {
 				asString := "00000000-0000-0000-0000-000000000000"
 				s := uuid.MustParse(asString)
 				mockSO.On("ParseToken", token).Return(s, nil)
+				mockSO.On("IsAuthenticated", mock.Anything, s, s).Return(nil)
 				mockSO.On("FindRequestStatus", mock.Anything, s, compressedID).Return(models.Status(""), utils.ErrGetStatus)
 			},
-			expectedStatusCode:   403,
+			expectedStatusCode:   404,
 			expectedResponseBody: "{\"error\":\"cannot find status for this request\"}\n",
 		},
 	}
@@ -795,7 +803,7 @@ func TestHandler_findStatus(t *testing.T) {
 			mockSO := new(mocks.ServiceOperations)
 
 			currentService := NewAPI(mockSO, mockBucket)
-			mq := broker.NewAMQPBroker(mockSO, mockBucket)
+			mq := broker.NewAMQPBrokerAPI()
 
 			s := NewServer(mq, currentService)
 

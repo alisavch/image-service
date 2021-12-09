@@ -6,14 +6,18 @@ ENV GO111MODULE=on \
 RUN apk --no-cache add build-base git gcc make
 
 WORKDIR /app
+
+RUN go get github.com/go-delve/delve/cmd/dlv
+
 COPY go.mod .
 COPY go.sum .
 RUN go mod download
 COPY . .
-RUN go build -o api ./cmd/api/main.go
-
+RUN go build -gcflags="all=-N -l"  -o api ./cmd/api/main.go
+FROM alpine:latest
 FROM alpine:latest
 RUN apk --no-cache add ca-certificates
-COPY --from=builder ["/app/api", "/"]
+COPY --from=builder /app/api /api
+COPY --from=builder /go/bin/dlv /dlv
 
-ENTRYPOINT ["/api"]
+ENTRYPOINT ["/dlv", "--listen=:40000", "--headless=true", "--api-version=2", "--accept-multiclient", "exec", "/api"]

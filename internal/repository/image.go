@@ -151,7 +151,7 @@ func (i *ImageRepository) UpdateStatus(ctx context.Context, id uuid.UUID, status
 
 // CompleteRequest updates the status of image processing and sets the completion time.
 func (i *ImageRepository) CompleteRequest(ctx context.Context, id uuid.UUID, status models.Status) error {
-	updated := "UPDATE image_service.request SET status = $1, time_completed = $1 WHERE id = $2"
+	updated := "UPDATE image_service.request SET status = $1, time_completed = $2 WHERE id = $3"
 	result, err := i.db.ExecContext(ctx, updated, status, time.Now(), id)
 	if err != nil {
 		return utils.ErrCompleteRequest

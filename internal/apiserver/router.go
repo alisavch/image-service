@@ -56,8 +56,8 @@ func (s *Server) newAPIRouter() {
 	//     description: successful operation
 	//   "401":
 	//     description: login required
-	//   "500":
-	//     description: internal server error
+	//   "404":
+	//     description: history not found
 	apiRouter.HandleFunc("/history", s.authorize(s.findUserHistory())).Methods(http.MethodGet)
 	// swagger:operation POST /api/compress compress compress
 	// ---
@@ -122,7 +122,7 @@ func (s *Server) newAPIRouter() {
 	//   "403":
 	//     description: forbidden
 	//   "404":
-	//     description: no such image
+	//     description: image not found
 	//   "409":
 	//     description: image is being processed
 	//   "500":
@@ -145,7 +145,7 @@ func (s *Server) newAPIRouter() {
 	//     description: login required
 	//   "403":
 	//     description: forbidden
-	//   "500":
-	//     description: internal server error
+	//   "404":
+	//     description: status not fund
 	apiRouter.HandleFunc("/status/{requestID}", s.authorize(s.findStatus())).Methods(http.MethodGet)
 }

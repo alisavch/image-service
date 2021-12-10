@@ -2,8 +2,10 @@ package broker
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"fmt"
+	"time"
 
 	"github.com/alisavch/image-service/internal/models"
 	"github.com/alisavch/image-service/internal/utils"
@@ -27,12 +29,13 @@ func NewRabbitMQ() *RabbitMQ {
 type ProcessMessage struct {
 	*ImageService
 	*RabbitMQ
-	logger *Logger
+	repeater Repeater
+	logger   *Logger
 }
 
 // NewProcessMessageConsumer configures ProcessMessage for consumer.
 func NewProcessMessageConsumer(service *ImageService) *ProcessMessage {
-	return &ProcessMessage{ImageService: service, logger: NewLogger(), RabbitMQ: NewRabbitMQ()}
+	return &ProcessMessage{ImageService: service, logger: NewLogger(), repeater: NewRepeater(NewBackoff(100*time.Millisecond, 10*time.Second, 5, nil), nil), RabbitMQ: NewRabbitMQ()}
 }
 
 // NewProcessMessageAPI configures ProcessMessage for API.
@@ -86,6 +89,19 @@ func (process *ProcessMessage) DeclareQueue(name string) (amqp.Queue, error) {
 	return q, nil
 }
 
+// QosQueue controls messages.
+func (process *ProcessMessage) QosQueue() error {
+	err := process.RabbitMQ.ch.Qos(
+		1,
+		0,
+		false,
+	)
+	if err != nil {
+		process.logger.Fatalf("%s: %s", "Failed qos", err)
+	}
+	return nil
+}
+
 // ConsumeQueue starts delivering queued messages.
 func (process *ProcessMessage) ConsumeQueue(queue string) error {
 	var message models.QueuedMessage
@@ -130,7 +146,7 @@ func (process *ProcessMessage) ConsumeOne(d amqp.Delivery, message models.Queued
 		return
 	}
 
-	err = process.Process(message)
+	err = process.RunRepeater(context.Background(), message)
 	if err != nil {
 		process.logger.Errorf("%s: %s", "Failed to process message", err)
 		err := d.Nack(false, true)
@@ -149,15 +165,24 @@ func (process *ProcessMessage) ConsumeOne(d amqp.Delivery, message models.Queued
 	}
 }
 
-// QosQueue controls messages.
-func (process *ProcessMessage) QosQueue() error {
-	err := process.RabbitMQ.ch.Qos(
-		1,
-		0,
-		false,
-	)
-	if err != nil {
-		process.logger.Fatalf("%s: %s", "Failed qos", err)
+// RunRepeater starts a processing function with limiting access attempts.
+func (process *ProcessMessage) RunRepeater(ctx context.Context, message models.QueuedMessage) error {
+	defer process.repeater.backoff.Reset()
+	for {
+		err := process.Process(message)
+
+		switch process.repeater.retryPolicy(err) {
+		case Succeed, Fail:
+			return err
+		case Retry:
+			var delay time.Duration
+			if delay = process.repeater.backoff.Next(); delay == Stop {
+				return err
+			}
+			timeout := time.After(delay)
+			if err := process.repeater.sleep(ctx, timeout); err != nil {
+				return err
+			}
+		}
 	}
-	return nil
 }

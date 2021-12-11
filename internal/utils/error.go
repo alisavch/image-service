@@ -91,10 +91,14 @@ var (
 	ErrRowsAffected = errors.New("cannot return the number of affected rows")
 	// ErrExpectedAffected checks expected affected rows.
 	ErrExpectedAffected = errors.New("expected to affect 1 row, affected")
-	// ErrSetCompletedTime verifies the ability to set a processing completion time.
-	ErrSetCompletedTime = errors.New("cannot set the processing completion time")
+	// ErrCompleteRequest verifies the ability to update the status of image processing and set completed time.
+	ErrCompleteRequest = errors.New("cannot complete request")
 	// ErrGetStatus checks request status.
 	ErrGetStatus = errors.New("access denied")
+	// ErrReceivedEmpty checks RabbitMQ
+	ErrReceivedEmpty = errors.New("received an empty string")
 	// ErrImageProcessing checks processing status.
 	ErrImageProcessing = errors.New("the image is being processed at the moment")
+	// ErrUserAuthentication checks if there are such identifiers in the database.
+	ErrUserAuthentication = errors.New("access denied")
 )

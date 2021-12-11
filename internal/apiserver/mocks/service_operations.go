@@ -278,6 +278,20 @@ func (_m *ServiceOperations) GenerateToken(ctx context.Context, username string,
 	return r0, r1
 }
 
+// IsAuthenticated provides a mock function with given fields: ctx, userID, requestID
+func (_m *ServiceOperations) IsAuthenticated(ctx context.Context, userID uuid.UUID, requestID uuid.UUID) error {
+	ret := _m.Called(ctx, userID, requestID)
+
+	var r0 error
+	if rf, ok := ret.Get(0).(func(context.Context, uuid.UUID, uuid.UUID) error); ok {
+		r0 = rf(ctx, userID, requestID)
+	} else {
+		r0 = ret.Error(0)
+	}
+
+	return r0
+}
+
 // ParseToken provides a mock function with given fields: token
 func (_m *ServiceOperations) ParseToken(token string) (uuid.UUID, error) {
 	ret := _m.Called(token)
@@ -322,20 +336,6 @@ func (_m *ServiceOperations) SaveImage(filename string, location string, storage
 	}
 
 	return r0, r1
-}
-
-// SetCompletedTime provides a mock function with given fields: ctx, id
-func (_m *ServiceOperations) SetCompletedTime(ctx context.Context, id uuid.UUID) error {
-	ret := _m.Called(ctx, id)
-
-	var r0 error
-	if rf, ok := ret.Get(0).(func(context.Context, uuid.UUID) error); ok {
-		r0 = rf(ctx, id)
-	} else {
-		r0 = ret.Error(0)
-	}
-
-	return r0
 }
 
 // UpdateStatus provides a mock function with given fields: ctx, id, status

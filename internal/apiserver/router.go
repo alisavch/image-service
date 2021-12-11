@@ -64,8 +64,8 @@ func (s *Server) newAPIRouter() {
 	//     description: successful operation
 	//   "401":
 	//     description: login required
-	//   "500":
-	//     description: internal server error
+	//   "404":
+	//     description: history not found
 	apiRouter.HandleFunc("/history", s.authorize(s.findUserHistory())).Methods(http.MethodGet)
 	// swagger:operation POST /api/compress compress compress
 	// ---
@@ -138,8 +138,8 @@ func (s *Server) newAPIRouter() {
 	apiRouter.HandleFunc("/download/{requestID}", s.authorize(s.findImage())).Methods(http.MethodGet)
 	// swagger:operation GET /api/status/{requestID} findRequestStatus findRequestStatus
 	// ---
-	// summary: finds the status of the request.
-	// description: finds the status of the request.
+	// summary: Finds the status of the request.
+	// description: Finds the status of the request.
 	// parameters:
 	// - name: requestID
 	//   in: path
@@ -153,7 +153,7 @@ func (s *Server) newAPIRouter() {
 	//     description: login required
 	//   "403":
 	//     description: forbidden
-	//   "500":
-	//     description: internal server error
+	//   "404":
+	//     description: status not fund
 	apiRouter.HandleFunc("/status/{requestID}", s.authorize(s.findStatus())).Methods(http.MethodGet)
 }

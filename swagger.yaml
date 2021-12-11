@@ -147,8 +147,8 @@ paths:
           description: successful operation
         "401":
           description: login required
-        "500":
-          description: internal server error
+        "404":
+          description: history not found
       summary: Finds users history.
       tags:
       - history
@@ -204,7 +204,7 @@ paths:
       - sign-up
   /api/status/{requestID}:
     get:
-      description: finds the status of the request.
+      description: Finds the status of the request.
       operationId: findRequestStatus
       parameters:
       - description: requestID to filter by id
@@ -219,9 +219,9 @@ paths:
           description: login required
         "403":
           description: forbidden
-        "500":
-          description: internal server error
-      summary: finds the status of the request.
+        "404":
+          description: status not fund
+      summary: Finds the status of the request.
       tags:
       - findRequestStatus
 produces:

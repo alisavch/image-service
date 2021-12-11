@@ -234,6 +234,20 @@ func (_m *Image) FindUserRequestHistory(ctx context.Context, id uuid.UUID) ([]mo
 	return r0, r1
 }
 
+// IsAuthenticated provides a mock function with given fields: ctx, userID, requestID
+func (_m *Image) IsAuthenticated(ctx context.Context, userID uuid.UUID, requestID uuid.UUID) error {
+	ret := _m.Called(ctx, userID, requestID)
+
+	var r0 error
+	if rf, ok := ret.Get(0).(func(context.Context, uuid.UUID, uuid.UUID) error); ok {
+		r0 = rf(ctx, userID, requestID)
+	} else {
+		r0 = ret.Error(0)
+	}
+
+	return r0
+}
+
 // SaveImage provides a mock function with given fields: filename, location, storage
 func (_m *Image) SaveImage(filename string, location string, storage string) (*models.SavedImage, error) {
 	ret := _m.Called(filename, location, storage)
@@ -255,20 +269,6 @@ func (_m *Image) SaveImage(filename string, location string, storage string) (*m
 	}
 
 	return r0, r1
-}
-
-// SetCompletedTime provides a mock function with given fields: ctx, id
-func (_m *Image) SetCompletedTime(ctx context.Context, id uuid.UUID) error {
-	ret := _m.Called(ctx, id)
-
-	var r0 error
-	if rf, ok := ret.Get(0).(func(context.Context, uuid.UUID) error); ok {
-		r0 = rf(ctx, id)
-	} else {
-		r0 = ret.Error(0)
-	}
-
-	return r0
 }
 
 // UpdateStatus provides a mock function with given fields: ctx, id, status

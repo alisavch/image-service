@@ -11,110 +11,153 @@ import (
 	"github.com/streadway/amqp"
 )
 
-// RabbitMQ Operate Wrapper.
+// RabbitMQ is client with RabbitMQ extensions.
 type RabbitMQ struct {
-	*Service
-	conn   *amqp.Connection
-	ch     *amqp.Channel
-	done   chan error
-	logger *Logger
-	*models.RequestStatus
+	conn     *amqp.Connection
+	ch       *amqp.Channel
+	stopChan chan int
 }
 
 // NewRabbitMQ configures RabbitMQ.
-func NewRabbitMQ(service *Service) *RabbitMQ {
-	return &RabbitMQ{Service: service, logger: NewLogger()}
+func NewRabbitMQ() *RabbitMQ {
+	return &RabbitMQ{}
 }
 
-// Connect instantiates the RabbitMW instances using configuration defined in environment variables.
-func (r *RabbitMQ) Connect() error {
+// ProcessMessage configures and processes messages.
+type ProcessMessage struct {
+	*ImageService
+	*RabbitMQ
+	logger *Logger
+}
+
+// NewProcessMessageConsumer configures ProcessMessage for consumer.
+func NewProcessMessageConsumer(service *ImageService) *ProcessMessage {
+	return &ProcessMessage{ImageService: service, logger: NewLogger(), RabbitMQ: NewRabbitMQ()}
+}
+
+// NewProcessMessageAPI configures ProcessMessage for API.
+func NewProcessMessageAPI() *ProcessMessage {
+	return &ProcessMessage{logger: NewLogger(), RabbitMQ: NewRabbitMQ()}
+}
+
+// Connect instantiates the RabbitMQ instances using configuration defined in environment variables.
+func (process *ProcessMessage) Connect() error {
 	conf := utils.NewConfig()
 	var err error
-	r.conn, err = amqp.Dial(conf.Rabbitmq.RabbitmqURL)
+	process.RabbitMQ.conn, err = amqp.Dial(conf.Rabbitmq.RabbitmqURL)
 	if err != nil {
-		r.logger.Fatalf("%s: %s", "Failed to connect to RabbitMQ", err)
+		process.logger.Fatalf("%s: %s", "Failed to connect to RabbitMQ", err)
 	}
 
-	r.ch, err = r.conn.Channel()
+	process.RabbitMQ.ch, err = process.RabbitMQ.conn.Channel()
 	if err != nil {
-		r.logger.Fatalf("%s: %s", "Failed to open a channel", err)
+		process.logger.Fatalf("%s: %s", "Failed to open a channel", err)
 	}
 
-	r.done = make(chan error)
+	process.RabbitMQ.stopChan = make(chan int)
 
 	return nil
 }
 
 // Publish sends data to the queue.
-func (r *RabbitMQ) Publish(exchange, key string, message models.QueuedMessage) error {
+func (process *ProcessMessage) Publish(exchange, key string, message models.QueuedMessage) error {
 	body, err := json.Marshal(message)
 	if err != nil {
 		return fmt.Errorf("can't marshal queue message: %w", err)
 	}
 
-	err = r.ch.Publish(exchange, key, false, false,
+	err = process.RabbitMQ.ch.Publish(exchange, key, false, false,
 		amqp.Publishing{
 			ContentType: "application/json",
 			Body:        body,
 		})
 	if err != nil {
-		r.logger.Fatalf("%s:%s", "Failed to publish a message", err)
+		process.logger.Fatalf("%s:%s", "Failed to publish a message", err)
 	}
 	return nil
 }
 
 // DeclareQueue declares a queue.
-func (r *RabbitMQ) DeclareQueue(name string) (amqp.Queue, error) {
-	q, err := r.ch.QueueDeclare(name, true, false, false, false, nil)
+func (process *ProcessMessage) DeclareQueue(name string) (amqp.Queue, error) {
+	q, err := process.RabbitMQ.ch.QueueDeclare(name, true, false, false, false, nil)
 	if err != nil {
-		r.logger.Fatalf("%s: %s", "Failed to declare a queue", err)
+		process.logger.Fatalf("%s: %s", "Failed to declare a queue", err)
 	}
 	return q, nil
 }
 
 // ConsumeQueue starts delivering queued messages.
-func (r *RabbitMQ) ConsumeQueue(queue string) error {
+func (process *ProcessMessage) ConsumeQueue(queue string) error {
 	var message models.QueuedMessage
-	deliveries, err := r.ch.Consume(queue, "", false, false, false, false, nil)
+	deliveries, err := process.RabbitMQ.ch.Consume(queue, "", false, false, false, false, nil)
 	if err != nil {
 		return fmt.Errorf("%s: %s", "Failed to register consumer", err)
 	}
-	forever := make(chan bool)
-	for d := range deliveries {
-		go func() {
-			err := json.NewDecoder(bytes.NewReader(d.Body)).Decode(&message)
-			if err != nil {
-				r.logger.Printf("%s: %s", "Failed to decode json", err)
-			}
-
-			err = r.Process(message)
-			if err != nil {
-				r.logger.Printf("%s: %s", "Failed to process image", err)
-			}
-
-			err = d.Ack(false)
-			if err != nil {
-				r.logger.Printf("%s: %s", "Failed confirmation message", err)
-			}
-			r.logger.Printf("%s: %s", "Acknowledged message", d.Body)
-		}()
-		if err != nil {
+	errorsChan := make(chan error)
+	for {
+		select {
+		case err := <-errorsChan:
 			return err
+		case d := <-deliveries:
+			go func() {
+				process.ConsumeOne(d, message, errorsChan)
+			}()
+		case <-process.stopChan:
+			return nil
 		}
 	}
-	<-forever
-	return nil
+}
+
+// ConsumeOne consumes one message
+func (process *ProcessMessage) ConsumeOne(d amqp.Delivery, message models.QueuedMessage, errorsChan chan error) {
+	if len(d.Body) == 0 {
+		err := d.Nack(false, false)
+		if err != nil {
+			process.logger.Errorf("%s: %s", "Could not nack message", err)
+		}
+		errorsChan <- utils.ErrReceivedEmpty
+		return
+	}
+
+	err := json.NewDecoder(bytes.NewReader(d.Body)).Decode(&message)
+	if err != nil {
+		process.logger.Errorf("%s: %s", "Failed to decode json", err)
+		err := d.Nack(false, false)
+		if err != nil {
+			process.logger.Errorf("%s: %s", "Could not nack message", err)
+		}
+		errorsChan <- err
+		return
+	}
+
+	err = process.Process(message)
+	if err != nil {
+		process.logger.Errorf("%s: %s", "Failed to process message", err)
+		err := d.Nack(false, true)
+		if err != nil {
+			process.logger.Errorf("%s: %s", "Could not nack message", err)
+		}
+		errorsChan <- err
+		return
+	}
+
+	process.logger.Printf("%s: %s", "Successfully processed message", message.ID)
+	err = d.Ack(false)
+	if err != nil {
+		process.logger.Printf("%s: %s", "Could not ack message", err)
+		return
+	}
 }
 
 // QosQueue controls messages.
-func (r *RabbitMQ) QosQueue() error {
-	err := r.ch.Qos(
-		7,
+func (process *ProcessMessage) QosQueue() error {
+	err := process.RabbitMQ.ch.Qos(
+		1,
 		0,
 		false,
 	)
 	if err != nil {
-		r.logger.Fatalf("%s: %s", "Failed qos", err)
+		process.logger.Fatalf("%s: %s", "Failed qos", err)
 	}
 	return nil
 }

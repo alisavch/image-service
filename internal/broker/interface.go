@@ -15,6 +15,7 @@ import (
 type FormattingOutput interface {
 	Printf(format string, args ...interface{})
 	Fatalf(format string, args ...interface{})
+	Errorf(format string, args ...interface{})
 }
 
 // S3Bucket contains the basic functions for interacting with the bucket.
@@ -30,5 +31,5 @@ type Image interface {
 	ChangeFormat(filename string) (string, error)
 	ConvertToType(format, resultedName string, img image.Image, newImg *os.File, storage string) (models.Image, error)
 	UpdateStatus(ctx context.Context, id uuid.UUID, status models.Status) error
-	SetCompletedTime(ctx context.Context, id uuid.UUID) error
+	CompleteRequest(ctx context.Context, id uuid.UUID, status models.Status) error
 }

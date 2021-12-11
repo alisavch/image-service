@@ -149,12 +149,12 @@ func (i *ImageRepository) UpdateStatus(ctx context.Context, id uuid.UUID, status
 	return nil
 }
 
-// SetCompletedTime sets the completion time to the database.
-func (i *ImageRepository) SetCompletedTime(ctx context.Context, id uuid.UUID) error {
-	updated := "UPDATE image_service.request SET time_completed = $1 WHERE id = $2"
-	result, err := i.db.ExecContext(ctx, updated, time.Now(), id)
+// CompleteRequest updates the status of image processing and sets the completion time.
+func (i *ImageRepository) CompleteRequest(ctx context.Context, id uuid.UUID, status models.Status) error {
+	updated := "UPDATE image_service.request SET status = $1, time_completed = $2 WHERE id = $3"
+	result, err := i.db.ExecContext(ctx, updated, status, time.Now(), id)
 	if err != nil {
-		return utils.ErrSetCompletedTime
+		return utils.ErrCompleteRequest
 	}
 	rows, err := result.RowsAffected()
 	if err != nil {
@@ -162,6 +162,17 @@ func (i *ImageRepository) SetCompletedTime(ctx context.Context, id uuid.UUID) er
 	}
 	if rows != 1 {
 		return fmt.Errorf("%s:%d", utils.ErrExpectedAffected, rows)
+	}
+	return nil
+}
+
+// IsAuthenticated tries to find requestID for this user.
+func (i *ImageRepository) IsAuthenticated(ctx context.Context, userID, requestID uuid.UUID) error {
+	var count int
+	value := "SELECT count(*) from image_service.request r where r.id=$1 and r.user_account_id=$2"
+	err := i.db.QueryRowContext(ctx, value, requestID, userID).Scan(&count)
+	if err != nil || count == 0 {
+		return utils.ErrUserAuthentication
 	}
 	return nil
 }

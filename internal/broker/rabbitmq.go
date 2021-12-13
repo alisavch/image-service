@@ -148,8 +148,16 @@ func (process *ProcessMessage) ConsumeOne(d amqp.Delivery, message models.Queued
 
 	err = process.RunRepeater(context.Background(), message)
 	if err != nil {
+		err := process.ImageService.UpdateStatus(context.Background(), message.RequestID, models.Failed)
+		if err != nil {
+			process.logger.Errorf("%s: %s", "Failed to update message status", err)
+			err := d.Nack(false, false)
+			if err != nil {
+				process.logger.Errorf("%s: %s", "Could not nack message", err)
+			}
+		}
 		process.logger.Errorf("%s: %s", "Failed to process message", err)
-		err := d.Nack(false, true)
+		err = d.Nack(false, true)
 		if err != nil {
 			process.logger.Errorf("%s: %s", "Could not nack message", err)
 		}

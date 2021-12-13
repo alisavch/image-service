@@ -35,7 +35,7 @@ type ProcessMessage struct {
 
 // NewProcessMessageConsumer configures ProcessMessage for consumer.
 func NewProcessMessageConsumer(service *ImageService) *ProcessMessage {
-	return &ProcessMessage{ImageService: service, logger: NewLogger(), repeater: NewRepeater(NewBackoff(100*time.Millisecond, 10*time.Second, 5, nil), nil), RabbitMQ: NewRabbitMQ()}
+	return &ProcessMessage{ImageService: service, logger: NewLogger(), repeater: NewRepeater(NewBackoff(100*time.Millisecond, 10*time.Second, 4, nil), nil), RabbitMQ: NewRabbitMQ()}
 }
 
 // NewProcessMessageAPI configures ProcessMessage for API.

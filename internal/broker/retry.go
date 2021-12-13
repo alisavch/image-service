@@ -50,7 +50,7 @@ func (r *Repeater) sleep(ctx context.Context, t <-chan time.Time) error {
 // DefaultRetryPolicy returns default retry policy.
 func DefaultRetryPolicy(err error) Action {
 	if err != nil {
-		return Succeed
+		return Retry
 	}
-	return Retry
+	return Succeed
 }

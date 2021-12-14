@@ -116,7 +116,8 @@ func (s *Server) newAPIRouter() {
 	//   in: path
 	//   description: requestID for image search
 	//   required: true
-	//   type: integer
+	//   type: string
+	//	 format: uuid
 	// - name: original
 	//   in: query
 	//   type: boolean
@@ -145,7 +146,8 @@ func (s *Server) newAPIRouter() {
 	//   in: path
 	//   description: requestID to filter by id
 	//   required: true
-	//   type: integer
+	//   type: string
+	//	 format: uuid
 	// responses:
 	//   "200":
 	//     description: successful operation

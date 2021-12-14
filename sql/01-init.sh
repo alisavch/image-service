@@ -5,7 +5,7 @@ psql -v ON_ERROR_STOP=1 --username "$POSTGRES_USER" --dbname "$DB_NAME" <<-EOSQL
   CREATE SCHEMA IF NOT EXISTS image_service;
   CREATE TYPE enum_service AS ENUM('conversion', 'compression');
   ALTER TYPE enum_service SET SCHEMA image_service;
-  CREATE TYPE enum_status AS ENUM ('queued', 'processing', 'done');
+  CREATE TYPE enum_status AS ENUM ('queued', 'processing', 'done', 'processing failed');
   ALTER TYPE enum_status SET SCHEMA image_service;
   CREATE TABLE IF NOT EXISTS image_service.user_account (
       id uuid DEFAULT gen_random_uuid(),

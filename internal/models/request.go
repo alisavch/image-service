@@ -24,6 +24,8 @@ const (
 	Processing Status = "processing"
 	// Done is the status of the request.
 	Done Status = "done"
+	// Failed is the status of the request.
+	Failed Status = "processing failed"
 )
 
 // Request contains information for logs.

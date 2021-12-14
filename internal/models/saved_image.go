@@ -8,4 +8,5 @@ type SavedImage struct {
 	Filename    string
 	ContentType string
 	Filesize    int64
+	fileURL     string
 }

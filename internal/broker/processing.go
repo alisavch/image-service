@@ -6,8 +6,9 @@ import (
 	"image"
 	"os"
 
-	"github.com/alisavch/image-service/internal/models"
 	"github.com/alisavch/image-service/internal/service"
+
+	"github.com/alisavch/image-service/internal/models"
 	"github.com/alisavch/image-service/internal/utils"
 )
 

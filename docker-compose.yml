@@ -61,6 +61,9 @@ services:
     container_name: consumer
     env_file: .env
     restart: always
+    volumes:
+      - ./uploads://uploads
+      - ./results://results
     depends_on:
       - api
       - rabbitmq

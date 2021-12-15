@@ -14,7 +14,7 @@ import (
 type AMQP interface {
 	Connect() error
 	DeclareQueue(name string) (amqp.Queue, error)
-	ConsumeQueue(queue string) error
+	ConsumeQueue(queue string, ch chan error) error
 	QosQueue() error
 }
 

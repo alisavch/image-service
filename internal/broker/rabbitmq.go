@@ -17,7 +17,7 @@ import (
 type RabbitMQ struct {
 	conn     *amqp.Connection
 	ch       *amqp.Channel
-	stopChan chan int
+	stopChan chan bool
 }
 
 // NewRabbitMQ configures RabbitMQ.
@@ -35,7 +35,7 @@ type ProcessMessage struct {
 
 // NewProcessMessageConsumer configures ProcessMessage for consumer.
 func NewProcessMessageConsumer(service *ImageService) *ProcessMessage {
-	return &ProcessMessage{ImageService: service, logger: NewLogger(), repeater: NewRepeater(NewBackoff(100*time.Millisecond, 10*time.Second, 4, nil), nil), RabbitMQ: NewRabbitMQ()}
+	return &ProcessMessage{ImageService: service, logger: NewLogger(), repeater: NewRepeater(NewBackoff(100*time.Millisecond, 10*time.Second, 2, nil), nil), RabbitMQ: NewRabbitMQ()}
 }
 
 // NewProcessMessageAPI configures ProcessMessage for API.
@@ -57,7 +57,7 @@ func (process *ProcessMessage) Connect() error {
 		process.logger.Fatalf("%s: %s", "Failed to open a channel", err)
 	}
 
-	process.RabbitMQ.stopChan = make(chan int)
+	process.RabbitMQ.stopChan = make(chan bool)
 
 	return nil
 }
@@ -103,21 +103,21 @@ func (process *ProcessMessage) QosQueue() error {
 }
 
 // ConsumeQueue starts delivering queued messages.
-func (process *ProcessMessage) ConsumeQueue(queue string) error {
+func (process *ProcessMessage) ConsumeQueue(queue string, errorChan chan error) error {
 	var message models.QueuedMessage
 	deliveries, err := process.RabbitMQ.ch.Consume(queue, "", false, false, false, false, nil)
 	if err != nil {
 		return fmt.Errorf("%s: %s", "Failed to register consumer", err)
 	}
-	errorsChan := make(chan error)
+
 	for {
 		select {
-		case err := <-errorsChan:
-			return err
 		case d := <-deliveries:
 			go func() {
-				process.ConsumeOne(d, message, errorsChan)
+				process.ConsumeOne(d, message, errorChan)
 			}()
+		case err := <-errorChan:
+			process.logger.Errorf("%s:%s", "An error occurred while consuming", err)
 		case <-process.stopChan:
 			return nil
 		}
@@ -148,20 +148,23 @@ func (process *ProcessMessage) ConsumeOne(d amqp.Delivery, message models.Queued
 
 	err = process.RunRepeater(context.Background(), message)
 	if err != nil {
+		process.logger.Errorf("%s: %s", "Failed to process message", err)
+		errorsChan <- err
+
 		err := process.ImageService.UpdateStatus(context.Background(), message.RequestID, models.Failed)
 		if err != nil {
 			process.logger.Errorf("%s: %s", "Failed to update message status", err)
-			err := d.Nack(false, true)
+			err := d.Nack(false, false)
 			if err != nil {
 				process.logger.Errorf("%s: %s", "Could not nack message", err)
 			}
 		}
-		process.logger.Errorf("%s: %s", "Failed to process message", err)
-		err = d.Nack(false, true)
+
+		err = d.Nack(false, false)
 		if err != nil {
 			process.logger.Errorf("%s: %s", "Could not nack message", err)
 		}
-		errorsChan <- err
+
 		return
 	}
 

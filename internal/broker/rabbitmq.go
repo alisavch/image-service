@@ -13,6 +13,8 @@ import (
 	"github.com/streadway/amqp"
 )
 
+const maxAttempt = 5
+
 // RabbitMQ is client with RabbitMQ extensions.
 type RabbitMQ struct {
 	conn     *amqp.Connection
@@ -35,7 +37,7 @@ type ProcessMessage struct {
 
 // NewProcessMessageConsumer configures ProcessMessage for consumer.
 func NewProcessMessageConsumer(service *ImageService) *ProcessMessage {
-	return &ProcessMessage{ImageService: service, logger: NewLogger(), repeater: NewRepeater(NewBackoff(100*time.Millisecond, 10*time.Second, 2, nil), nil), RabbitMQ: NewRabbitMQ()}
+	return &ProcessMessage{ImageService: service, logger: NewLogger(), repeater: NewRepeater(NewBackoff(100*time.Millisecond, 10*time.Second, maxAttempt, nil), nil), RabbitMQ: NewRabbitMQ()}
 }
 
 // NewProcessMessageAPI configures ProcessMessage for API.
@@ -178,7 +180,7 @@ func (process *ProcessMessage) ConsumeOne(d amqp.Delivery, message models.Queued
 
 // RunRepeater starts a processing function with limiting access attempts.
 func (process *ProcessMessage) RunRepeater(ctx context.Context, message models.QueuedMessage) error {
-	defer process.repeater.backoff.Reset()
+	process.repeater.backoff.Reset()
 	for {
 		err := process.Process(message)
 

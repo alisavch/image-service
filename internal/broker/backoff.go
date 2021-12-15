@@ -44,7 +44,7 @@ func (b *Backoff) Next() time.Duration {
 
 // Reset resets all attempts.
 func (b *Backoff) Reset() {
-	b.attemptNum = 1
+	b.attemptNum = 0
 }
 
 // ExponentialBackoff is performed exponentially.

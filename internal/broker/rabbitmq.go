@@ -114,7 +114,10 @@ func (process *ProcessMessage) ConsumeQueue(queue string, errorChan chan error) 
 
 	for {
 		select {
-		case d := <-deliveries:
+		case d, ok := <-deliveries:
+			if !ok {
+				process.stopChan <- true
+			}
 			go func() {
 				process.ConsumeOne(d, message, errorChan)
 			}()

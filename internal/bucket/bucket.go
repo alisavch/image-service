@@ -112,6 +112,28 @@ func (s3sess *S3Session) DownloadFromS3Bucket(filename string) (*os.File, error)
 	return file, nil
 }
 
+// DeleteItem deletes an item from a bucket
+func (s3sess *S3Session) DeleteItem(item string) error {
+	svc := s3.New(sess)
+	_, err := svc.DeleteObject(&s3.DeleteObjectInput{
+		Bucket: aws.String(s3sess.bucketName),
+		Key:    aws.String(item),
+	})
+	if err != nil {
+		return fmt.Errorf("%s:%s", "failed to delete an object", err)
+	}
+
+	err = svc.WaitUntilObjectNotExists(&s3.HeadObjectInput{
+		Bucket: aws.String(s3sess.bucketName),
+		Key:    aws.String(item),
+	})
+	if err != nil {
+		return fmt.Errorf("%s:%s", "failed to wait unlit object not exists", err)
+	}
+
+	return nil
+}
+
 // GetS3ObjectSize get the size of the file.
 func (s3sess *S3Session) GetS3ObjectSize(item string) int64 {
 	svc := s3.New(sess)

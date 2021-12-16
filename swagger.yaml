@@ -113,10 +113,11 @@ paths:
       description: Downloads the processed image and original if required.
       operationId: findImage
       parameters:
-      - $ref: '#/definitions/UUID'
-        description: requestID for image search
+      - description: requestID for image search
         in: path
         name: requestID
+        type: string
+        format: uuid
         required: true
       - description: if the parameter is true, the original image will be downloaded.
         in: query
@@ -207,10 +208,11 @@ paths:
       description: Finds the status of the request.
       operationId: findRequestStatus
       parameters:
-      - $ref: '#/definitions/UUID'
-        description: requestID to filter by id
+      - description: requestID to filter by id
         in: path
         name: requestID
+        type: string
+        format: uuid
         required: true
       responses:
         "200":

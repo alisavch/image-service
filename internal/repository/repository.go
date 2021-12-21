@@ -23,8 +23,7 @@ func NewRepository(db *sql.DB) *Repository {
 
 // NewDB configures database.
 func NewDB(config utils.DBConfig) (*sql.DB, error) {
-	URL := fmt.Sprintf("postgres://%s:%s@%s:%s/%s?sslmode=disable", config.User, config.Password, config.Host, config.Port, config.DBName)
-	db, err := sql.Open("postgres", URL)
+	db, err := sql.Open("postgres", config.DatabaseURL)
 	if err != nil {
 		return nil, fmt.Errorf("failed to open postgres")
 	}

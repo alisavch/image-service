@@ -4,11 +4,12 @@ import "os"
 
 // DBConfig includes database variables.
 type DBConfig struct {
-	User     string
-	Password string
-	Host     string
-	Port     string
-	DBName   string
+	DatabaseURL string
+	User        string
+	Password    string
+	Host        string
+	Port        string
+	DBName      string
 }
 
 // RabbitmqConfig includes rabbitmq variables.
@@ -43,11 +44,7 @@ type Config struct {
 func NewConfig() *Config {
 	return &Config{
 		DBConfig: DBConfig{
-			User:     getEnv("DB_USER", ""),
-			Password: getEnv("DB_PASSWORD", ""),
-			Host:     getEnv("DB_HOST", ""),
-			Port:     getEnv("DB_PORT", ""),
-			DBName:   getEnv("DB_NAME", ""),
+			DatabaseURL: getEnv("DATABASE_URL", ""),
 		},
 		Auth: Authentication{
 			TokenTTL:   getEnv("TOKEN_TTL", "12h"),

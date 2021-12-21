@@ -117,6 +117,7 @@ func (process *ProcessMessage) ConsumeQueue(queue string, errorChan chan error) 
 		case d, ok := <-deliveries:
 			if !ok {
 				process.stopChan <- true
+				return nil
 			}
 			go func() {
 				process.ConsumeOne(d, message, errorChan)

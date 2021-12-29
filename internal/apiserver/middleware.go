@@ -42,6 +42,18 @@ func ParseRequest(r *http.Request, req Request) error {
 	return req.Validate()
 }
 
+func (s *Server) healthCheck() http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		switch r.Method {
+		case http.MethodGet:
+			s.respondJSON(w, http.StatusOK, "Healthy")
+			s.logger.Printf("%s:%s", w, "OK")
+		default:
+			s.respondJSON(w, http.StatusMethodNotAllowed, "Unhealthy")
+		}
+	}
+}
+
 type authorization struct {
 	header      string
 	headerParts []string

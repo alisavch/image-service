@@ -11,6 +11,7 @@ func (s *Server) ConfigureRouter() {
 
 func (s *Server) newAPIRouter() {
 	apiRouter := s.router.PathPrefix("/api").Subrouter()
+	apiRouter.HandleFunc("/health", s.healthCheck())
 	// swagger:operation POST /api/sign-up sign-up sign-up
 	// ---
 	// summary: Registers a user.

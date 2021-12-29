@@ -11,6 +11,15 @@ func (s *Server) ConfigureRouter() {
 
 func (s *Server) newAPIRouter() {
 	apiRouter := s.router.PathPrefix("/api").Subrouter()
+	// swagger:operation POST /api/health health health
+	// ---
+	// summary: Checks the health of the api.
+	// description: Checks the health of the api.
+	// responses:
+	//   "200":
+	//     description: healthy
+	//   "405":
+	//     description: unhealthy
 	apiRouter.HandleFunc("/health", s.healthCheck())
 	// swagger:operation POST /api/sign-up sign-up sign-up
 	// ---

@@ -138,6 +138,18 @@ paths:
       summary: Finds and downloads an image.
       tags:
       - findImage
+  /api/health:
+    post:
+      description: Checks the health of the api.
+      operationId: health
+      responses:
+        "200":
+          description: healthy
+        "405":
+          description: unhealthy
+      summary: Checks the health of the api.
+      tags:
+      - health
   /api/history:
     get:
       description: Lists all queries created by user.

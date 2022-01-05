@@ -16,8 +16,13 @@ script:
 jobs:
   include:
     - stage: deploy
+      provider: script
       script: bash .docker_push
     - stage: deploy
+      provider: script
       script: aws ecs update-service --cluster ${CLUSTER} --service ${SERVICE} --force-new-deployment
+      access_key_id: $AWS_ACCESS_KEY_ID
+      secret_access_key: $AWS_SECRET_ACCESS_KEY
+      region: $AWS_REGION
       on:
         branch: bugfix-main

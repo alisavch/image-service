@@ -13,11 +13,11 @@ script:
   - docker build -t alisavch/api:latest -f Dockerfile .
   - docker build -t alisavch/consumer:latest -f Dockerfile-consumer .
 
-deploy:
-  - provider: script
-    script: bash .docker_push
-    on:
-      branch: bugfix-main
-
-after_script:
-  - docker-compose down
+jobs:
+  include:
+    - stage: build
+      script: bash .docker_push
+    - stage: deploy
+      script: aws ecs update-service --cluster ${CLUSTER} --service ${SERVICE} --force-new-deployment
+      on:
+        branch: bugfix-main

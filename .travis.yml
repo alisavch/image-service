@@ -9,17 +9,14 @@ services:
 before_install:
   - curl -sSfL https://raw.githubusercontent.com/golangci/golangci-lint/master/install.sh | sh -s -- -b $(go env GOPATH)/bin v1.24.0
 
-script:
-  - docker build -t alisavch/api:latest -f Dockerfile .
-  - docker build -t alisavch/consumer:latest -f Dockerfile-consumer .
-
 jobs:
   include:
     - stage: deploy
-      provider: script
-      script: bash .docker_push
+      script:
+        - docker build -t alisavch/api:latest -f Dockerfile .
+        - docker build -t alisavch/consumer:latest -f Dockerfile-consumer .
+        - bash .docker_push
     - stage: deploy
-      provider: script
       script: aws ecs update-service --cluster ${CLUSTER} --service ${SERVICE} --force-new-deployment
       access_key_id: $AWS_ACCESS_KEY_ID
       secret_access_key: $AWS_SECRET_ACCESS_KEY

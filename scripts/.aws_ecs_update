@@ -1,4 +1,7 @@
 #!/bin/bash
+
+set -e -x
+
 pip install --user awscli
 export PATH=$PATH:$HOME/.local/bin
 

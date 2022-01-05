@@ -15,7 +15,7 @@ script:
 
 jobs:
   include:
-    - stage: build
+    - stage: deploy
       script: bash .docker_push
     - stage: deploy
       script: aws ecs update-service --cluster ${CLUSTER} --service ${SERVICE} --force-new-deployment

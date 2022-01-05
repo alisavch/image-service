@@ -12,5 +12,5 @@ sudo chmod +x /usr/bin/ecs-deploy
 
 eval $(aws ecr get-login --no-include-email --region $AWS_REGION)
 
-aws ecs update-service --cluster ${CLUSTER} --service ${API_SERVICE} --force-new-deployment
-aws ecs update-service --cluster ${CLUSTER} --service ${CONSUMER_SERVICE} --force-new-deployment
+aws ecs update-service --cluster ${CLUSTER} --service ${API_SERVICE} --region ${AWS_REGION} --force-new-deployment
+aws ecs update-service --cluster ${CLUSTER} --service ${CONSUMER_SERVICE} --region ${AWS_REGION} --force-new-deployment

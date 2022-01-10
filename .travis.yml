@@ -17,6 +17,6 @@ before_install:
 jobs:
   include:
     - stage: build
-      script: bash ./scripts/docker_push
+      script: bash ./scripts/.docker_push
     - stage: deploy
-      script: bash ./scripts/aws_ecs_update
+      script: bash ./scripts/.aws_ecs_update

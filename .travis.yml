@@ -12,9 +12,12 @@ before_install:
 jobs:
   include:
     - stage: build
-      script: sh ./scripts/docker-push.sh
+      script:
+        - docker build -t alisavch/api:latest -f Dockerfile .
+        - docker build -t alisavch/consumer:latest -f Dockerfile-consumer .
+        - bash ./scripts/.docker-push
     - stage: deploy
-      script: sudo sh ./scripts/aws-ecs-update.sh
+      script: bash ./scripts/.aws-ecs-update
       access_key_id: $AWS_ACCESS_KEY_ID
       secret_access_key: $AWS_SECRET_ACCESS_KEY
       region: $AWS_REGION

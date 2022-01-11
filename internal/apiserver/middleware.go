@@ -47,6 +47,7 @@ func (s *Server) healthCheck() http.HandlerFunc {
 		switch r.Method {
 		case http.MethodGet:
 			s.respondJSON(w, http.StatusOK, "Healthy")
+			s.logger.Printf("%s:%s", w, "OK")
 		default:
 			s.respondJSON(w, http.StatusMethodNotAllowed, "Unhealthy")
 		}

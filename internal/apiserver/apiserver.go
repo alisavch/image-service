@@ -54,6 +54,6 @@ func Start() error {
 func initEnvironments() {
 	logger := NewLogger()
 	if err := godotenv.Load(); err != nil {
-		logger.Printf("%s:%s", "Failed to load .env", err)
+		logger.Printf("%s:%s", "The remote environment is used", err)
 	}
 }

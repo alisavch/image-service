@@ -14,4 +14,4 @@ jobs:
     - stage: build
       script: sh ./scripts/docker-push.sh
     - stage: deploy
-      script: sh ./scripts/aws-ecs-update.sh
+      script: sudo sh ./scripts/aws-ecs-update.sh

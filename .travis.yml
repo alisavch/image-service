@@ -6,17 +6,18 @@ go:
 services:
   - docker
 
-env:
-  - ACCESS_KEY_ID: $AWS_ACCESS_KEY_ID
-  - SECRET_ACCESS_KEY: $AWS_SECRET_ACCESS_KEY
-  - REGION: $AWS_REGION
-
 before_install:
   - curl -sSfL https://raw.githubusercontent.com/golangci/golangci-lint/master/install.sh | sh -s -- -b $(go env GOPATH)/bin v1.24.0
 
 jobs:
   include:
     - stage: build
-      script: bash ./scripts/.docker_push
+      script:
+        - docker build -t alisavch/api:latest -f Dockerfile .
+        - docker build -t alisavch/consumer:latest -f Dockerfile-consumer .
+        - bash ./scripts/.docker-push
     - stage: deploy
-      script: bash ./scripts/.aws_ecs_update
+      script: bash ./scripts/.aws-ecs-update
+      access_key_id: $AWS_ACCESS_KEY_ID
+      secret_access_key: $AWS_SECRET_ACCESS_KEY
+      region: $AWS_REGION

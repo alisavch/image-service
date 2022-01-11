@@ -15,3 +15,6 @@ jobs:
       script: sh ./scripts/docker-push.sh
     - stage: deploy
       script: sudo sh ./scripts/aws-ecs-update.sh
+      access_key_id: $AWS_ACCESS_KEY_ID
+      secret_access_key: $AWS_SECRET_ACCESS_KEY
+      region: $AWS_REGION

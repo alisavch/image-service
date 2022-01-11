@@ -17,6 +17,6 @@ before_install:
 jobs:
   include:
     - stage: build
-      script: sudo bash ./scripts/.docker_push
+      script: ./scripts/docker_push.sh
     - stage: deploy
-      script: sudo bash ./scripts/.aws_ecs_update
+      script: ./scripts/aws_ecs_update.sh

@@ -12,7 +12,7 @@ func main() {
 
 	flag.Parse()
 	logger.Info("The consumer is running")
-	logger.Info("v 1.0.0")
+	logger.Info("v 1.1.0")
 	consumer.Consume()
 	logger.Info("The consumer has stopped receiving messages")
 }

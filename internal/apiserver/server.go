@@ -31,8 +31,8 @@ type Service struct {
 	S3Bucket
 }
 
-// NewService configures Service.
-func NewService(operations ServiceOperations, bucket S3Bucket) *Service {
+// NewAPI configures Service.
+func NewAPI(operations ServiceOperations, bucket S3Bucket) *Service {
 	return &Service{
 		ServiceOperations: operations,
 		S3Bucket:          bucket,
@@ -85,10 +85,10 @@ func (s *Server) respondFormData(w http.ResponseWriter, code int, id uuid.UUID) 
 		}
 	}(writer)
 	w.Header().Set("Content-Type", writer.FormDataContentType())
-	s.respondJSON(w, code, map[string]uuid.UUID{"Image ID": id})
+	s.respondJSON(w, code, map[string]uuid.UUID{"Request ID": id})
 }
 
-func (s *Server) respondImage(w http.ResponseWriter, image *models.Image) {
+func (s *Server) respondImage(w http.ResponseWriter, image *models.SavedImage) {
 	w.WriteHeader(http.StatusOK)
 	w.Header().Set("Content-Disposition", "attachment; filename="+image.Filename)
 	w.Header().Set("Content-Type", image.ContentType)

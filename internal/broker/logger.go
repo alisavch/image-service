@@ -11,7 +11,7 @@ type Logger struct {
 	FormattingOutput
 }
 
-// NewLogger is the logger constructor.
+// NewLogger configures Logger..
 func NewLogger() *Logger {
 	return &Logger{
 		FormattingOutput: log.NewCustomLogger(logrus.New()),

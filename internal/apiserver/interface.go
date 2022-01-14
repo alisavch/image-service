@@ -14,9 +14,8 @@ import (
 
 // AMQP contains methods for working with message broker.
 type AMQP interface {
-	Publish(exchange, key string, body string) error
+	Publish(exchange, key string, message models.QueuedMessage) error
 	DeclareQueue(name string) (amqp.Queue, error)
-	QosQueue() error
 }
 
 // DisplayLog contains methods for log display.
@@ -35,18 +34,22 @@ type Authorization interface {
 
 // Image contains methods for working with images.
 type Image interface {
-	UploadImage(ctx context.Context, img models.UploadedImage) (uuid.UUID, error)
-	ConvertToType(format, newImageName string, img image.Image, newImg *os.File, storage string) (models.ResultedImage, error)
-	CompressImage(width int, format, resultedName string, img image.Image, newImg *os.File, storage string) (models.ResultedImage, error)
-	CreateRequest(ctx context.Context, user models.User, uplImg models.UploadedImage, resImg models.ResultedImage, uI models.UserImage, r models.Request) (uuid.UUID, error)
-	FindTheResultingImage(ctx context.Context, id uuid.UUID, service models.Service) (models.ResultedImage, error)
-	FindOriginalImage(ctx context.Context, id uuid.UUID) (models.UploadedImage, error)
-	FindUserHistoryByID(ctx context.Context, id uuid.UUID) ([]models.History, error)
-	SaveImage(filename, location, storage string) (*models.Image, error)
-	UpdateStatus(ctx context.Context, id uuid.UUID, status models.Status) error
+	CompressImage(width int, format, resultedName string, img image.Image, newImg *os.File, storage string) (models.Image, error)
+	UploadResultedImage(ctx context.Context, img models.Image) error
 	ChangeFormat(filename string) (string, error)
-	FillInTheResultingImageForAWS(resultedName string) (models.ResultedImage, error)
-	FillInTheResultingImage(storage, resultedName string, newImg *os.File) (models.ResultedImage, error)
+	ConvertToType(format, resultedName string, img image.Image, newImg *os.File, storage string) (models.Image, error)
+	FindRequestStatus(ctx context.Context, userID, requestID uuid.UUID) (models.Status, error)
+	UploadImage(ctx context.Context, img models.Image) (uuid.UUID, error)
+	CreateRequest(ctx context.Context, user models.User, img models.Image, req models.Request) (uuid.UUID, error)
+	FindResultedImage(ctx context.Context, id uuid.UUID) (models.Image, error)
+	FindOriginalImage(ctx context.Context, id uuid.UUID) (models.Image, error)
+	FindUserRequestHistory(ctx context.Context, id uuid.UUID) ([]models.History, error)
+	SaveImage(filename, location, storage string) (*models.SavedImage, error)
+	UpdateStatus(ctx context.Context, id uuid.UUID, status models.Status) error
+	FillInTheResultingImageForAWS(resultedName string) (models.Image, error)
+	FillInTheResultingImage(storage, resultedName string, newImg *os.File) (models.Image, error)
+	CompleteRequest(ctx context.Context, id uuid.UUID, status models.Status) error
+	IsAuthenticated(ctx context.Context, userID, requestID uuid.UUID) error
 }
 
 // S3Bucket contains the basic functions for interacting with the bucket.

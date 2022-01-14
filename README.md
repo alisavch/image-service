@@ -54,11 +54,11 @@ The last step is router. Endpoints:
 ~~~
 POST - /api/sign-up - create user
 POST - /api/sign-in - user authorization
-GET  - /api/user/{userID}/history - get user request history
-POST - /api/user/{userID}/compress?width={value} - compress image
-GET  - /api/user/{userID}/compress/{compressedID}?original={value} - get/download compressed or original image
-POST - /api/user/{userID}/convert - convert image
-GET  - /api/user/{userID}/convert/{convertedID}?original={value} - get/download converted or original image
+GET  - /api/history - get user request history
+POST - /api/compress?width={value} - compress image
+GET  - /api/compress/{compressedID}?original={value} - get/download compressed or original image
+POST - /api/convert - convert image
+GET  - /api/convert/{convertedID}?original={value} - get/download converted or original image
 ~~~
 
 ## Testing

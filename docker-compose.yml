@@ -1,16 +1,53 @@
 version: '3.3'
 
 services:
-  backend:
-    image: alisavch/backend:latest
+  postgresql:
+    image: postgres:latest
+    restart: always
+    container_name: postgresql
+    env_file: .env
+    ports:
+      - "8001:5432"
+    volumes:
+      - ~/.docker-conf/postgresql:/var/lib/postgresql/data
+      - ./sql/01-init.sh:/docker-entrypoint-initdb.d/01-init.sh
+    networks:
+      - fullstack
+
+  rabbitmq:
+    image: rabbitmq:management
+    restart: always
+    container_name: rabbitmq
+    environment:
+      - RABBITMQ_DEFAULT_PASS=${RABBITMQ_DEFAULT_USER}
+      - RABBITMQ_DEFAULT_USER=${RABBITMQ_DEFAULT_PASS}
+    ports:
+      - "5672:5672"
+      - "15672:15672"
+    volumes:
+      - ~/.docker-conf/rabbitmq/data/:/var/lib/rabbitmq/mnesia/
+    networks:
+      - fullstack
+
+  api:
+    image: alisavch/api:latest
     build:
       context: .
       dockerfile: Dockerfile
-    container_name: backend
+    container_name: api
     env_file: .env
     restart: always
     ports:
       - "8080:8080"
+    volumes:
+      - ./uploads://uploads
+      - ./results://results
+      - $HOME/Downloads://root/Downloads
+    depends_on:
+      - postgresql
+      - rabbitmq
+    networks:
+      - fullstack
 
   consumer:
     image: alisavch/consumer:latest
@@ -20,5 +57,18 @@ services:
     container_name: consumer
     env_file: .env
     restart: always
+    volumes:
+      - ./uploads://uploads
+      - ./results://results
     depends_on:
-      - backend
+      - api
+      - rabbitmq
+    networks:
+      - fullstack
+
+volumes:
+  api:
+  database_postgres:
+networks:
+  fullstack:
+    driver: bridge

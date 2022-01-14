@@ -35,6 +35,7 @@ func main() {
 
 	flag.Parse()
 	logger.Info("The server is running")
+	logger.Info("v 1.1.0")
 	if err := apiserver.Start(); err != nil {
 		logger.Fatalf("error starting server: %s", err.Error())
 	}

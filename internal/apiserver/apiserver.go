@@ -2,7 +2,6 @@ package apiserver
 
 import (
 	"database/sql"
-	"fmt"
 	"net/http"
 
 	"github.com/alisavch/image-service/internal/broker"
@@ -22,7 +21,7 @@ func Start() error {
 
 	conf := utils.NewConfig()
 
-	db, err := newDB(conf.DBConfig)
+	db, err := repository.NewDB(conf.DBConfig)
 	if err != nil {
 		logger.Fatalf("%s: %s", "Failed to initialize database", err)
 	}
@@ -36,8 +35,8 @@ func Start() error {
 	repos := repository.NewRepository(db)
 	aws := bucket.NewAWS()
 	services := service.NewService(repos, aws)
-	currentService := NewService(services, aws)
-	rabbit := broker.NewAMQPBroker()
+	currentService := NewAPI(services, aws)
+	rabbit := broker.NewAMQPBrokerAPI()
 
 	err = rabbit.Connect()
 	if err != nil {
@@ -55,18 +54,6 @@ func Start() error {
 func initEnvironments() {
 	logger := NewLogger()
 	if err := godotenv.Load(); err != nil {
-		logger.Printf("%s:%s", "Failed to load .env", err)
+		logger.Printf("%s:%s", "The remote environment is used", err)
 	}
-}
-
-func newDB(config utils.DBConfig) (*sql.DB, error) {
-	URL := fmt.Sprintf("postgres://%s:%s@%s:%s/%s?sslmode=disable", config.User, config.Password, config.Host, config.Port, config.DBName)
-	db, err := sql.Open("postgres", URL)
-	if err != nil {
-		return nil, fmt.Errorf("failed to open postgres")
-	}
-	if err := db.Ping(); err != nil {
-		return nil, fmt.Errorf("error, not sent ping to database, %w", err)
-	}
-	return db, nil
 }

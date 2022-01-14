@@ -7,11 +7,20 @@ import (
 // ConfigureRouter registers a couple of URL paths and handlers.
 func (s *Server) ConfigureRouter() {
 	s.newAPIRouter()
-	s.newUserRouter()
 }
 
 func (s *Server) newAPIRouter() {
 	apiRouter := s.router.PathPrefix("/api").Subrouter()
+	// swagger:operation POST /api/health health health
+	// ---
+	// summary: Checks the health of the api.
+	// description: Checks the health of the api.
+	// responses:
+	//   "200":
+	//     description: healthy
+	//   "405":
+	//     description: unhealthy
+	apiRouter.HandleFunc("/health", s.healthCheck())
 	// swagger:operation POST /api/sign-up sign-up sign-up
 	// ---
 	// summary: Registers a user.
@@ -24,9 +33,11 @@ func (s *Server) newAPIRouter() {
 	//     "$ref": "#/definitions/User"
 	// responses:
 	//   "201":
-	//     description: user created successfully
-	//   "401":
-	//     description: unauthorized user
+	//     description: user registered successfully
+	//   "400":
+	//     description: bad request
+	//   "409":
+	//     description: user already exists
 	//   "500":
 	//     description: internal server error
 	apiRouter.HandleFunc("/sign-up", s.signUp()).Methods(http.MethodPost)
@@ -43,43 +54,26 @@ func (s *Server) newAPIRouter() {
 	// responses:
 	//   "200":
 	//     description: successful operation
-	//   "403":
-	//     description: not enough right
-	//   "500":
-	//     description: internal server error
+	//   "401":
+	//     description: login required
 	apiRouter.HandleFunc("/sign-in", s.signIn()).Methods(http.MethodPost)
-}
-
-func (s *Server) newUserRouter() {
-	userRouter := s.router.PathPrefix("/api").Subrouter().PathPrefix("/user").Subrouter()
-	// swagger:operation GET /api/user/{userID}/history history
+	// swagger:operation GET /api/history history history
 	// ---
 	// summary: Finds users history.
 	// description: Lists all queries created by user.
-	// parameters:
-	// - name: userID
-	//   in: path
-	//   description: userID to filter by id
-	//   required: true
-	//   type: integer
 	// responses:
 	//   "200":
 	//     description: successful operation
 	//   "401":
-	//     description: unauthorized
-	//   "500":
-	//     description: internal server error
-	userRouter.HandleFunc("/{userID}/history", s.authorize(s.findUserHistory())).Methods(http.MethodGet)
-	// swagger:operation POST /api/user/{userID}/compress compress compress
+	//     description: login required
+	//   "404":
+	//     description: history not found
+	apiRouter.HandleFunc("/history", s.authorize(s.findUserHistory())).Methods(http.MethodGet)
+	// swagger:operation POST /api/compress compress compress
 	// ---
 	// summary: Compresses the image.
 	// description: Receives an image from an input form and compresses it, also allows you to enter width in the query string.
 	// parameters:
-	// - name: userID
-	//   in: path
-	//   description: userID to filter by id
-	//   required: true
-	//   type: integer
 	// - name: width
 	//   in: query
 	//   type: integer
@@ -88,92 +82,80 @@ func (s *Server) newUserRouter() {
 	//   in: body
 	//   required: true
 	//   schema:
-	//     "$ref": "#/definitions/UploadedImage"
+	//     "$ref": "#/definitions/Image"
 	// responses:
-	//   "200":
-	//     description: successful operation
+	//   "202":
+	//     description: request accepted
 	//   "401":
-	//     description: unauthorized
+	//     description: login required
 	//   "500":
 	//     description: internal server error
-	userRouter.HandleFunc("/{userID}/compress", s.authorize(s.compressImage())).Methods(http.MethodPost)
-	// swagger:operation GET /api/user/{userID}/compress/{compressedID} findCompressed
-	// ---
-	// summary: Finds the compressed image.
-	// description: Downloads the compressed image and original if required.
-	// parameters:
-	// - name: userID
-	//   in: path
-	//   description: userID to filter by id
-	//   required: true
-	//   type: integer
-	// - name: compressedID
-	//   in: path
-	//   description: compressedID to filter by id
-	//   required: true
-	//   type: integer
-	// - name: original
-	//   in: query
-	//   type: boolean
-	//   required: false
-	//   description: If true - the original will be saved
-	// responses:
-	//   "200":
-	//     description: successful operation
-	//   "401":
-	//     description: unauthorized user
-	//   "500":
-	//     description: internal server error
-	userRouter.HandleFunc("/{userID}/compress/{compressedID}", s.authorize(s.findCompressedImage())).Methods(http.MethodGet)
-	// swagger:operation POST /api/user/{userID}/convert convert convert
+	apiRouter.HandleFunc("/compress", s.authorize(s.compressImage())).Methods(http.MethodPost)
+	// swagger:operation POST /api/convert convert convert
 	// ---
 	// summary: Converts the image.
 	// description: Receives an image from an input form and converts it PNG to JPG and vice versa.
 	// parameters:
-	// - name: userID
-	//   in: path
-	//   description: userID to filter by id
-	//   required: true
-	//   type: integer
 	// - name: uploadFile
 	//   in: body
 	//   required: true
 	//   schema:
-	//     "$ref": "#/definitions/UploadedImage"
+	//     "$ref": "#/definitions/Image"
 	// responses:
-	//   "200":
-	//     description: successful operation
+	//   "202":
+	//     description: request accepted
 	//   "401":
-	//     description: unauthorized user
+	//     description: login required
 	//   "500":
 	//     description: internal server error
-	userRouter.HandleFunc("/{userID}/convert", s.authorize(s.convertImage())).Methods(http.MethodPost)
-	// swagger:operation GET /api/user/{userID}/convert/{convertedID} findConverted
+	apiRouter.HandleFunc("/convert", s.authorize(s.convertImage())).Methods(http.MethodPost)
+	// swagger:operation GET /api/download/{requestID} findImage findImage
 	// ---
-	// summary: Finds the converted image.
-	// description: Downloads the converted image and original if required.
+	// summary: Finds and downloads an image.
+	// description: Downloads the processed image and original if required.
 	// parameters:
-	// - name: userID
+	// - name: requestID
 	//   in: path
-	//   description: userID to filter by id
-	//   required: true
-	//   type: integer
-	// - name: convertedID
-	//   in: path
-	//   description: convertedID to filter by id
+	//   description: requestID for image search
 	//   required: true
 	//   type: integer
 	// - name: original
 	//   in: query
 	//   type: boolean
 	//   required: false
-	//   description: If true - the original will be saved
+	//   description: if the parameter is true, the original image will be downloaded.
 	// responses:
 	//   "200":
 	//     description: successful operation
 	//   "401":
-	//     description: unauthorized user
+	//     description: login required
+	//   "403":
+	//     description: forbidden
+	//   "404":
+	//     description: image not found
+	//   "409":
+	//     description: image is being processed
 	//   "500":
 	//     description: internal server error
-	userRouter.HandleFunc("/{userID}/convert/{convertedID}", s.authorize(s.findConvertedImage())).Methods(http.MethodGet)
+	apiRouter.HandleFunc("/download/{requestID}", s.authorize(s.findImage())).Methods(http.MethodGet)
+	// swagger:operation GET /api/status/{requestID} findRequestStatus findRequestStatus
+	// ---
+	// summary: Finds the status of the request.
+	// description: Finds the status of the request.
+	// parameters:
+	// - name: requestID
+	//   in: path
+	//   description: requestID to filter by id
+	//   required: true
+	//   type: integer
+	// responses:
+	//   "200":
+	//     description: successful operation
+	//   "401":
+	//     description: login required
+	//   "403":
+	//     description: forbidden
+	//   "404":
+	//     description: status not fund
+	apiRouter.HandleFunc("/status/{requestID}", s.authorize(s.findStatus())).Methods(http.MethodGet)
 }
